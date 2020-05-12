@@ -1,0 +1,20 @@
+{
+	"AgentId": "dd2adafb-6a60-4e70-9079-1868d7c01b8a",
+	"AgentName": "ToBeReplaced",
+	"Hostname": "arrowmicro.thedemodrive.com",
+	"Password": "K3yfact0r",
+	"Username": "thedemodrive\\lillback",
+	"VirtualDirectory": "proxy",
+	"TrustStore": "/etc/ssl/certs/ca-certificates.crt",
+	"ClientCert": "/home/keyfactor/CMS-CAgent/certs/Linux-server.cer",
+	"ClientKey": "/home/keyfactor/CMS-CAgent/certs/Linux-key.pem",
+	"ClientKeyPassword": "P@ssw0rd",
+	"CSRKeyType": "ECC",
+	"CSRKeySize": 256,
+	"CSRSubject": "CN=ToBeReplaced",
+	"EnrollOnStartup": true,
+	"UseSsl": true,
+	"AutoGenerateId": true,
+	"Serialize": true,
+	"SerialFile": "serial.json"
+}
