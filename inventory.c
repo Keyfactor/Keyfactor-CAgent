@@ -316,14 +316,24 @@ static int get_inventory_config(const char* sessionToken, const char* jobId, con
 
 	log_verbose("%s%sSending inventory config request: %s", MODULE, FUNCTION, jobId);
 	struct CommonConfigReq* req = CommonConfigReq_new();
+	if ( NULL == req )
+	{
+		log_error("%s%s-Out of memory in CommonConfigReq_new()", MODULE, FUNCTION);
+		return -1;
+	}
+
 	req->JobId = strdup(jobId);
+	log_trace("%s%s-Set job ID to %s", MODULE, FUNCTION, jobId);
 	req->SessionToken = strdup(sessionToken);
+	log_trace("%s%s-Set session token to %s", MODULE, FUNCTION, sessionToken);
 
 	char* jsonReq = CommonConfigReq_toJson(req);
+	log_trace("%s%s-Set Common Config Request to %s", MODULE, FUNCTION, jsonReq);
 	
 	char* jsonResp = NULL;
 
-	url = config_build_url(config, endpoint, false);
+	url = config_build_url(config, endpoint, true);
+	log_trace("%s%s-Attempting a POST to %s", MODULE, FUNCTION, url);
 	int res = http_post_json(url, config->Username, config->Password, config->TrustStore, config->ClientCert, \
 		config->ClientKey, config->ClientKeyPassword, jsonReq, &jsonResp);
 
@@ -361,7 +371,7 @@ static int send_inventory_update(const char* sessionToken, const char* jobId, co
 	
 	char* jsonResp = NULL;
 
-	url = config_build_url(config, endpoint, false);
+	url = config_build_url(config, endpoint, true);
 	int res = http_post_json(url, config->Username, config->Password, config->TrustStore, config->ClientCert, \
 		config->ClientKey, config->ClientKeyPassword, jsonReq, &jsonResp);
 	if(res == 0)
@@ -401,7 +411,7 @@ static int send_inventory_job_complete(const char* sessionToken, const char* job
 	
 	char* jsonResp = NULL;
 
-	url = config_build_url(config, endpoint, false);
+	url = config_build_url(config, endpoint, true);
 	int res = http_post_json(url, config->Username, config->Password, config->TrustStore, config->ClientCert, \
 		config->ClientKey, config->ClientKeyPassword, jsonReq, &jsonResp);
 	if(res == 0)

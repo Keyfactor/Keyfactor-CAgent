@@ -270,6 +270,15 @@ char* config_build_url(struct ConfigData* config, const char* relPath, bool vdir
 			strcat(url, "/");
 		}
 
+		/* Remove KeyfactorAgents/ from the relPath */
+		//TODO: Remove this if statement and replace with strcat(url, relPath);
+		//      Once the platform changes to not send KeyfactorAgents/
+		if ( false == config->EnrollOnStartup )
+		{
+			log_trace("%s%s-Stripping KeyfactorAgents/ from %s", MODULE, FUNCTION, relPath);
+			util_strip_string(relPath, "KeyfactorAgents/");
+			log_trace("%s%s-New relPath = %s",MODULE, FUNCTION, relPath);
+		}
 		strcat(url, relPath);
 	}
 	else

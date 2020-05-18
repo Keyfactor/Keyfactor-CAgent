@@ -201,6 +201,7 @@ Agreement shall supersede. If either you or CSS employ attorneys to enforce
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 #define MODULE "utils-"
 
@@ -310,6 +311,7 @@ int file_exists( const char *file )
 
 	return retval;
 } // file_exists
+
 
 /******************************************************************************/
 /** @fn int create_file( const char *file )
@@ -717,3 +719,49 @@ int replace_file(const char* file, const char* contents, long len, bool backup)
 }
 
 
+/******************************************************************************/
+/** @fn char* util_strip_string
+	@brief strip a string from another string & return the result.
+	       NOTE: This is a CASE SENSITIVE removal.
+	@param fromString, the full string from which we want to remove
+	@param stripString, the string we want to strip from fromString
+*/
+/******************************************************************************/
+void util_strip_string(char* fromString, const char* stripString)
+{
+#undef FUNCTION
+#define FUNCTION "util_strip_string-"
+	char* beforeString = (char*) malloc(250);
+	char* afterString = (char*) malloc(250);
+
+	log_trace("%s%s-Attempting to strip %s from %s",MODULE,FUNCTION,stripString,fromString);
+	afterString = strstr(fromString, stripString);
+	if ( afterString )
+	{
+
+		log_trace("%s%s-After string %s",MODULE,FUNCTION,afterString);
+		memcpy( beforeString, fromString, strlen(fromString) - strlen(afterString) );
+		beforeString = strcat( beforeString, "\0");
+		log_trace("%s%s-Before string = %s",MODULE,FUNCTION,beforeString);
+		afterString = memmove( afterString, afterString + strlen(stripString),
+				       strlen(afterString) - strlen(stripString) + 1 );
+		log_trace("%s%s-After string = %s",MODULE,FUNCTION,afterString);
+		fromString = strcat( beforeString, afterString );
+	}
+	else
+	{
+		log_trace("%s%s-afterString is null not modifying fromString",MODULE,FUNCTION);
+	}
+
+	/* Clean up */
+	if ( beforeString )
+	{
+		log_trace("%s%s-Freeing beforeString",MODULE,FUNCTION);
+		free(beforeString);
+	}
+
+	/* afterString release was causing core faults, so allow it to exist */
+
+	log_trace("%s%s-Returning result = %s",MODULE,FUNCTION,fromString);
+	return;
+}

@@ -247,7 +247,7 @@ static int get_management_config(const char* sessionToken, const char* jobId, co
 
 	char* jsonResp = NULL;
 	
-	url = config_build_url(config, endpoint, false);
+	url = config_build_url(config, endpoint, true);
 
 	int res = http_post_json(url, config->Username, config->Password, config->TrustStore, config->ClientCert, \
 		config->ClientKey, config->ClientKeyPassword, jsonReq, &jsonResp);
@@ -288,7 +288,7 @@ static int send_management_job_complete(const char* sessionToken, const char* jo
 
 	char* jsonResp = NULL;
 
-	url = config_build_url(config, endpoint, false);
+	url = config_build_url(config, endpoint, true);
 
 	int res = http_post_json(url, config->Username, config->Password, config->TrustStore, config->ClientCert, \
 		config->ClientKey, config->ClientKeyPassword, jsonReq, &jsonResp);

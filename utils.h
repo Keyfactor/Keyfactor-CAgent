@@ -231,4 +231,5 @@ int byte_to_hex_string( char hexStr[],
 					 unsigned char byteData[],
 					 int byteSize );
 
+void util_strip_string(char* fromString, const char* stripString);
 #endif /* UTILS_H_ */

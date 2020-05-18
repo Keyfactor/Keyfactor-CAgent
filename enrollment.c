@@ -239,7 +239,7 @@ static int get_enroll_config(const char* sessionToken, const char* jobId, const 
 
 	char* jsonResp = NULL;
 
-	url = config_build_url(config, endpoint, false);
+	url = config_build_url(config, endpoint, true);
 	int res = http_post_json(url, config->Username, config->Password, config->TrustStore, config->ClientCert, \
 		config->ClientKey, config->ClientKeyPassword, jsonReq, &jsonResp);
 	if(res == 0)
@@ -275,7 +275,7 @@ static int send_enrollment(const char* sessionToken, const char* jobId, const ch
 	char* jsonResp = NULL;
 
 
-	url = config_build_url(config, endpoint, false);
+	url = config_build_url(config, endpoint, true);
 	int res = http_post_json(url, config->Username, config->Password, config->TrustStore, config->ClientCert, \
 		config->ClientKey, config->ClientKeyPassword, jsonReq, &jsonResp);
 	if(res == 0)
@@ -312,7 +312,7 @@ static int send_enroll_job_complete(const char* sessionToken, const char* jobId,
 
 	char* jsonResp = NULL;
 
-	url = config_build_url(config, endpoint, false);
+	url = config_build_url(config, endpoint, true);
 	int res = http_post_json(url, config->Username, config->Password, config->TrustStore, config->ClientCert, \
 		config->ClientKey, config->ClientKeyPassword, jsonReq, &jsonResp);
 	if(res == 0)
