@@ -7,7 +7,7 @@ C_STD = -std=gnu99
 # Use the following LIBS for a standard curl build
 LIBS = -lcrypto -lcurl
 # The following TSSLIBS definition is for the Raspberry Pi
-#TSSLIBS = -L/usr/lib/arm-linux-gnueabihf/engines-1.1/ -ltpm2tss
+RPI_TSSLIBS = -L/usr/lib/arm-linux-gnueabihf/engines-1.1/ -ltpm2tss
 # The following TSSLIBS definition is for a linux machine
 TSSLIBS = -ltpm2tss -L/usr/lib/x86_64-linux-gnu/engines-1.1/
 DEFINES = 
@@ -41,26 +41,24 @@ release: ${RELEASEOBS} ${JSONOBS} ${COMMONOBS}
 		${FAILURE} \
 	fi
 
-tpmrelease: DEFINES += -D __TPM__ -D __RPI__
-tpmrelease: ${RELEASEOBS} ${JSONOBS} ${COMMONOBS} ${RPIOBS}
-	@if ${CC} -o agent $^ ${LIBS} ${TSSLIBS}; then\
+rpirelease: DEFINE += -D __RPI__
+rpirelease: ${RELEASEOBS} ${JSONOBS} ${COMMONOBS}
+	@if ${CC} -o agent $^ ${LIBS}; then\
 		${SUCCESS} \
 	else \
 		${FAILURE} \
 	fi
 
-tpm: tpmrelease
-
-agent: release
-
-wolf: ${WOLF}
-	@if ${CC} -D __WOLF_SSL__ -o agent ${WOLF} ${WOLFLIBS}; then\
-		echo "Built agent using wolfssl"; \
+rpitpmrelease: DEFINES += -D __TPM__ -D __RPI__
+rpitpmrelease: ${RELEASEOBS} ${JSONOBS} ${COMMONOBS} ${RPIOBS}
+	@if ${CC} -o agent $^ ${LIBS} ${RPI_TSSLIBS}; then\
 		${SUCCESS} \
 	else \
 		${FAILURE} \
 	fi
 
+tpm: rpitpmrelease
+rpi: rpirelease
 
 engine-test: ${ENGINETESTOBS}
 	@if ${CC} -o $@ $^ ${ENGINETESTLIBS}; then\
@@ -148,14 +146,15 @@ deleteallobs:
 	@for i in *.o; do \
 		if [ -f $$i ]; then $(info deleting intermediate object files) rm $$i; fi; \
 	done;
-	@if [ -f agent ]; then $(info deleting agent) rm agent; fi;
-	@if [ -f verify_test ]; then $(info deleting verify_test) rm verify_test; fi;
-	@if [ -f encryption_test ]; then $(info deleting encryption_test) rm encryption_test; fi;
-	@if [ -f symmetric_test ]; then $(info deleting symmetric_test) rm symmetric_test; fi;
-	@if [ -f symmetric_standalone ]; then $(info deleting symmetric_standalone) rm symmetric_standalone; fi;
-	@if [ -f generate_selfsigned ]; then $(info deleting generate_selfsigned) rm generate_selfsigned; fi;
-	@if [ -f ecdh_test ]; then $(info deleting ecdh_test) rm ecdh_test; fi;
-	@if [ -f engine-test ]; then $(info deleting engine-test) rm engine-test; fi;
+	$(info deleting executable files)
+	@if [ -f agent ]; then rm agent; fi;
+	@if [ -f verify_test ]; then rm verify_test; fi;
+	@if [ -f encryption_test ]; then rm encryption_test; fi;
+	@if [ -f symmetric_test ]; then rm symmetric_test; fi;
+	@if [ -f symmetric_standalone ]; then rm symmetric_standalone; fi;
+	@if [ -f generate_selfsigned ]; then rm generate_selfsigned; fi;
+	@if [ -f ecdh_test ]; then rm ecdh_test; fi;
+	@if [ -f engine-test ]; then rm engine-test; fi;
 	$(info *** All objects removed successfully ***)
 
 cleanall: deleteallobs

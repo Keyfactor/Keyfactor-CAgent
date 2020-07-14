@@ -214,7 +214,7 @@ int http_post_json(const char* url, const char* username,
 #ifdef __HTTP_1_1__
     // Some version of openSSL default to v2.0.  If the platform is set for
     // v1.1, curl will not failover to v1.1.  So, force V1.1
-    curl_easy_setopt(curl, CURLOPT_VERSION, CURLOPT_VERSION_1_1);
+    curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 #endif
 
     /***************************************************************************
@@ -319,7 +319,7 @@ int http_post_json(const char* url, const char* username,
 		else
 		{
 			log_verbose("%s%s%lu bytes retrieved -- allocating memory for response",
-                        MODULE, FUNCTION, chunk.size);
+                        MODULE, FUNCTION, (unsigned long)chunk.size);
       //TODO: - Following might not be portable, currently compiling with GNU99?
 			*pRespData = strdup(chunk.memory);
       if ( NULL == *pRespData )
