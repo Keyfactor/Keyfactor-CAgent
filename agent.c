@@ -1,12 +1,11 @@
 /** @file agent.c */
-/*
-* Copyright 2018, Certified Security Solutions
-* All Rights Reserved.
-* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Certified Security Solutions;
-* the contents of this file may not be disclosed to third parties, copied
-* or duplicated in any form, in whole or in part, without the prior
-* written permission of Certified Security Solutions.
-*/
+/************************************************************************************************
+ * Usage of this file and the SDK is subject to the SOFTWARE DEVELOPMENT KIT LICENSE 
+ * included here as README-LICENSE.txt.  Additionally, this C Agent Reference Implementation 
+ * uses the OpenSSL encryption libraries, which are not included as a part of this distribution.  
+ * For hardware key storage or TPM support, libraries such as WolfSSL may also be used in place 
+ * of OpenSSL.
+ **********************************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -61,7 +60,7 @@
 
 /* Versioning Information */
 /* 1.1.0.0 = Initial version */
-/* 1.1.0.1 = Added engine support (e.g., tpm2tss) */
+/* 1.1.0.1 = Added engine support (e.g., tpm2tss) & updated logging & created global header file*/
 /* 1.1.0.2 = Added auto UUID and Serialization support */
 /* 1.1.0.3 = Added wolfSSL */
 #define AGENT_VERSION 0x0001000100000003

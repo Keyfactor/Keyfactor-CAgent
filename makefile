@@ -7,9 +7,9 @@ C_STD = -std=gnu99
 # Use the following LIBS for a standard curl build
 LIBS = -lcrypto -lcurl
 # The following TSSLIBS definition is for the Raspberry Pi
-TSSLIBS = -L/usr/lib/arm-linux-gnueabihf/engines-1.1/ -ltpm2tss
+#TSSLIBS = -L/usr/lib/arm-linux-gnueabihf/engines-1.1/ -ltpm2tss
 # The following TSSLIBS definition is for a linux machine
-#TSSLIBS = -ltpm2tss -L/usr/lib/x86_64-linux-gnu/engines-1.1/
+TSSLIBS = -ltpm2tss -L/usr/lib/x86_64-linux-gnu/engines-1.1/
 DEFINES = 
 TESTLIBS = -lcrypto
 ENGINETESTLIBS = -L/usr/lib/arm-linux-gnueabihf/engines-1.1/ -lcrypto -ltpm2tss
