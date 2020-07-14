@@ -211,12 +211,15 @@ int http_post_json(const char* url, const char* username,
     curl_easy_setopt(curl, CURLOPT_USERNAME, username);
     curl_easy_setopt(curl, CURLOPT_PASSWORD, password);
     curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT);
+#ifdef __HTTP_1_1__
+    // Some version of openSSL default to v2.0.  If the platform is set for
+    // v1.1, curl will not failover to v1.1.  So, force V1.1
+    curl_easy_setopt(curl, CURLOPT_VERSION, CURLOPT_VERSION_1_1);
+#endif
 
     /***************************************************************************
         If the passed files exist in the system, then use them for additional
         trusted certificates, and certs to create the TLS connection.
-
-        //TODO: Add error checking
     ***************************************************************************/
 		if( check_file_exists(trustStore) )
 		{

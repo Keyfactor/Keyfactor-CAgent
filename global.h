@@ -10,10 +10,14 @@
   Global header file for things like global defines, variables, etc.
   History:
       2019-Nov-07 R.Lillback Created initial version
+      2020-Jul-14 R.Lillback Added HTTP version switch
  */
 
 #ifndef _GLOBAL_H_
 #define _GLOBAL_H_
+
+/* Undefine this for HTTP version 2.0 */
+#define __HTTP_1_1__
 
 #undef __DEBUG__
 #undef __PLATFORM_FIXED__
