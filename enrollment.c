@@ -52,7 +52,8 @@ static int get_enroll_config(const char* sessionToken, const char* jobId, const 
 
 	url = config_build_url(config, endpoint, true);
 	int res = http_post_json(url, config->Username, config->Password, config->TrustStore, config->ClientCert, \
-		config->ClientKey, config->ClientKeyPassword, jsonReq, &jsonResp);
+		config->ClientKey, config->ClientKeyPassword, jsonReq, &jsonResp
+		,config->httpRetries,config->retryInterval); // BL-20654
 	if(res == 0)
 	{
 		*pManConf = EnrollmentConfigResp_fromJson(jsonResp);
@@ -88,7 +89,8 @@ static int send_enrollment(const char* sessionToken, const char* jobId, const ch
 
 	url = config_build_url(config, endpoint, true);
 	int res = http_post_json(url, config->Username, config->Password, config->TrustStore, config->ClientCert, \
-		config->ClientKey, config->ClientKeyPassword, jsonReq, &jsonResp);
+		config->ClientKey, config->ClientKeyPassword, jsonReq, &jsonResp
+		,config->httpRetries,config->retryInterval); // BL-20654
 	if(res == 0)
 	{
 		*pEnrResp = EnrollmentEnrollResp_fromJson(jsonResp);
@@ -125,7 +127,8 @@ static int send_enroll_job_complete(const char* sessionToken, const char* jobId,
 
 	url = config_build_url(config, endpoint, true);
 	int res = http_post_json(url, config->Username, config->Password, config->TrustStore, config->ClientCert, \
-		config->ClientKey, config->ClientKeyPassword, jsonReq, &jsonResp);
+		config->ClientKey, config->ClientKeyPassword, jsonReq, &jsonResp
+		,config->httpRetries,config->retryInterval); // BL-20654
 	if(res == 0)
 	{
 		*pEnrComp = EnrollmentCompleteResp_fromJson(jsonResp);

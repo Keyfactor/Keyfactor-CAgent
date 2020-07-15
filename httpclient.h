@@ -11,6 +11,9 @@
 #define CONNECTION_TIMEOUT 60
 
 int http_post_json(const char* url, const char* username, const char* password, const char* trustStore, const char* clientCert, \
-	const char* clientKey, const char* clientKeyPass, char* postData, char** pRespData);
+	const char* clientKey, const char* clientKeyPass, char* postData, char** pRespData, 
+	// BL-20654
+	int retryCount,
+	int retryInterval);
 
 #endif
