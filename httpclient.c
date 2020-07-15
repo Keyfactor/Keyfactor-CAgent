@@ -13,6 +13,7 @@
 #include "logging.h"
 #include "httpclient.h"
 #include "global.h"
+#include <time.h> // BL-20654
 
 #define MODULE "httpclient-"
 
@@ -82,6 +83,8 @@ int check_file_exists( const char *fileName )
                        data gets set.  NOTE: This memory gets DYNAMICALLY
                        allocated here!  You need to properly dispose of it in
                        the calling function.
+    @param retryCount = The number of times to try the http session
+    @param retryInterval = The time (in seconds) between retries
     @retval 0 on successfull completion
     @retval 1-99 corresponding to the failed cURL response code
     @retval 255 if the dynamic memory allocation for pRespData fails
@@ -93,7 +96,9 @@ int http_post_json(const char* url, const char* username,
                    const char* clientCert, const char* clientKey,
                    const char* clientKeyPass,
                    char* postData,
-                   char** pRespData)
+                   char** pRespData,
+                   int retryCount, // BL-20654
+                   int retryInterval) // BL-20654
 {
 	#undef FUNCTION
 	#define FUNCTION "http_post_json-"
@@ -275,11 +280,11 @@ int http_post_json(const char* url, const char* username,
 		list = curl_slist_append(list, clBuf);
 
     /**************************************************************************
-        Now add the header & data to the HTTP POST request & execute it.
+        Now add the header & data to the HTTP POST request.
     ***************************************************************************/
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData);
-		int res = curl_easy_perform(curl);
+    
 
     /***************************************************************************
         Make sure the cURL operation succeeded and the HTTP response code
@@ -288,7 +293,29 @@ int http_post_json(const char* url, const char* username,
         If the HTTP response is an error, return the HTTP failure code.
     ***************************************************************************/
 		long httpCode = 0;
-		curl_easy_getinfo(curl, CURLINFO_HTTP_CODE, &httpCode);
+    int res;
+    int tries = retryCount;
+    /* Begin BL-20654 */
+    while (0 < tries)
+    {
+      res = curl_easy_perform(curl);
+      curl_easy_getinfo(curl, CURLINFO_HTTP_CODE, &httpCode);
+      // if there was an error & we still have tries left to do
+      tries--;
+      log_verbose("%s%s-curl resp = %d, httpCode = %ld, tries left = %d",
+                  MODULE,FUNCTION,res, httpCode, tries);
+      if(((CURLE_OK != res) || (httpCode >= 300)) && (0 < tries))
+      {
+        log_verbose("%s%s-Failed curl post. Sleeping %d seconds before retry",
+                   MODULE,FUNCTION,retryInterval);
+        sleep(retryInterval);
+      }
+      else
+      {
+        tries = 0; // exit the loop
+      }
+    }
+    /* End BL-20654 */
 		if(res != CURLE_OK)
 		{
 			/* When tracing, dump the error buffer to stderr */
