@@ -45,6 +45,8 @@ static void print_config( struct ConfigData *config )
 									config->AutoGenerateId ? "true" : "false");
 	printf("          Serialize = %s\n", config->Serialize ? "true" : "false");
 	printf("          SerialFile = %s\n", config->SerialFile);
+	printf("          httpRetries = %d\n", config->httpRetries);		// BL-20654
+	printf("          retryInterval = %d\n", config->retryInterval);	// BL-20654
 	printf("\n\n");
 	return;
 } // print_config
@@ -103,6 +105,12 @@ struct ConfigData* config_load()
 					json_get_member_bool(jsonRoot, "Serialize", false);
 			config->SerialFile = json_get_member_string(jsonRoot, "SerialFile");
 			config->LogFile = json_get_member_string(jsonRoot, "LogFile");
+			config->httpRetries = json_get_member_number(jsonRoot, "httpRetries", 1);     // BL20654
+			if(1 > config->httpRetries) // BL20654 - verify minimum value
+			{
+				config->httpRetries = 1;
+			}
+			config->retryInterval = json_get_member_number(jsonRoot, "retryInterval", 1); // BL20564
 
 			json_delete(jsonRoot);
 
@@ -228,6 +236,16 @@ void config_save(struct ConfigData* config)
 	{
 		json_append_member(jsonRoot, "LogFile", json_mkstring(config->LogFile));
 	}
+	/* Begin BL-20654 */
+	if(config->httpRetries)
+	{
+		json_append_member(jsonRoot, "httpRetries", json_mknumber(config->httpRetries));
+	}
+	if(config->retryInterval)
+	{
+		json_append_member(jsonRoot, "retryInterval", json_mknumber(config->retryInterval));
+	}
+	/* End BL-20654 */
 
 	FILE* fp = fopen(CONFIG_LOCATION, "w");
 	if(fp)
@@ -378,6 +396,19 @@ void ConfigData_free(struct ConfigData* config)
 			free(config->LogFile);
 			config->LogFile = NULL;
 		}
+
+		/* Begin BL-20654 */
+		if(config->httpRetries)
+		{
+			free(config->httpRetries);
+			config->httpRetries = NULL;
+		}
+		if(config->retryInterval)
+		{
+			free(config->retryInterval);
+			config->retryInterval = NULL;
+		}
+		/* End BL-20654 */
 
 		free(config);
 	}

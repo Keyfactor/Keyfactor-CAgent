@@ -126,7 +126,8 @@ int register_session(struct ConfigData* config, struct SessionInfo* session, str
 #else
 	char* respString = NULL;
 	int httpRes = http_post_json(url, config->Username, config->Password, config->TrustStore, config->ClientCert, \
-		config->ClientKey, config->ClientKeyPassword, reqString, &respString);
+		config->ClientKey, config->ClientKeyPassword, reqString, &respString
+		,config->httpRetries,config->retryInterval); // BL-20654
 
 	log_verbose("session-register_session-Session Response:");
 	log_verbose("%s",respString);
@@ -251,7 +252,8 @@ int heartbeat_session(struct ConfigData* config, struct SessionInfo* session, st
 
 	char* respString = NULL;
 	int httpRes = http_post_json(url, config->Username, config->Password, config->TrustStore, config->ClientCert, \
-		config->ClientKey, config->ClientKeyPassword, reqString, &respString);
+		config->ClientKey, config->ClientKeyPassword, reqString, &respString
+		,config->httpRetries,config->retryInterval); // BL-20654
 	if(httpRes == 0)
 	{
 		struct SessionHeartbeatResp* resp = SessionHeartbeatResp_fromJson(respString);

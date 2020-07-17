@@ -14,26 +14,28 @@
 
 struct ConfigData
 {
-	char* Hostname;
-	char* VirtualDirectory;
-	bool  UseSsl;
-	char* AgentId;
-	char* AgentName;
-	char* ClientParameterPath;
-	char* Username;
-	char* Password;
-	char* TrustStore;
-	char* ClientCert;
-	char* ClientKey;
-	char* ClientKeyPassword;
-	char* CSRKeyType;
-	char* CSRSubject;
-	int   CSRKeySize;
-	bool  EnrollOnStartup;
-	bool  AutoGenerateId;
-	bool  Serialize;
-	char* SerialFile;
-	char* LogFile;
+	char*  Hostname;
+	char*  VirtualDirectory;
+	bool   UseSsl;
+	char*  AgentId;
+	char*  AgentName;
+	char*  ClientParameterPath;
+	char*  Username;
+	char*  Password;
+	char*  TrustStore;
+	char*  ClientCert;
+	char*  ClientKey;
+	char*  ClientKeyPassword;
+	char*  CSRKeyType;
+	char*  CSRSubject;
+	int    CSRKeySize;
+	bool   EnrollOnStartup;
+	bool   AutoGenerateId;
+	bool   Serialize;
+	char*  SerialFile;
+	int    httpRetries; 	// Backlog Item 20654
+	int    retryInterval;   // Backlog Item 20654 
+	char*  LogFile;
 };
 
 struct ConfigData* config_load();

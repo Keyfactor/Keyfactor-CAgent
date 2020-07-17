@@ -61,7 +61,8 @@ static int get_management_config(const char* sessionToken, const char* jobId, co
 	url = config_build_url(config, endpoint, true);
 
 	int res = http_post_json(url, config->Username, config->Password, config->TrustStore, config->ClientCert, \
-		config->ClientKey, config->ClientKeyPassword, jsonReq, &jsonResp);
+		config->ClientKey, config->ClientKeyPassword, jsonReq, &jsonResp
+		,config->httpRetries,config->retryInterval); // BL-20654
 	
 	if(res == 0)
 	{
@@ -102,7 +103,8 @@ static int send_management_job_complete(const char* sessionToken, const char* jo
 	url = config_build_url(config, endpoint, true);
 
 	int res = http_post_json(url, config->Username, config->Password, config->TrustStore, config->ClientCert, \
-		config->ClientKey, config->ClientKeyPassword, jsonReq, &jsonResp);
+		config->ClientKey, config->ClientKeyPassword, jsonReq, &jsonResp
+		,config->httpRetries,config->retryInterval); // BL-20654
 	if(res == 0)
 	{
 		*pManComp = ManagementCompleteResp_fromJson(jsonResp);

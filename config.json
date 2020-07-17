@@ -17,5 +17,7 @@
 	"AutoGenerateId": true,
 	"Serialize": true,
 	"SerialFile": "serial.json",
+	"httpRetries": 5,
+	"retryInterval": 10,
 	"LogFile": "agent.log"
 }
