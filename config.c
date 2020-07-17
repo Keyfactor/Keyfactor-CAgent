@@ -102,6 +102,7 @@ struct ConfigData* config_load()
 			config->Serialize = 
 					json_get_member_bool(jsonRoot, "Serialize", false);
 			config->SerialFile = json_get_member_string(jsonRoot, "SerialFile");
+			config->LogFile = json_get_member_string(jsonRoot, "LogFile");
 
 			json_delete(jsonRoot);
 
@@ -221,6 +222,11 @@ void config_save(struct ConfigData* config)
 	{
 		json_append_member(jsonRoot, "SerialFile", 
 							json_mkstring(config->SerialFile));
+	}
+
+	if(config->LogFile)
+	{
+		json_append_member(jsonRoot, "LogFile", json_mkstring(config->LogFile));
 	}
 
 	FILE* fp = fopen(CONFIG_LOCATION, "w");
@@ -366,6 +372,11 @@ void ConfigData_free(struct ConfigData* config)
 		{
 			free(config->SerialFile);
 			config->SerialFile = NULL;
+		}
+		if(config->LogFile)
+		{
+			free(config->LogFile);
+			config->LogFile = NULL;
 		}
 
 		free(config);

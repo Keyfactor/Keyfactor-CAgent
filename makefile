@@ -18,7 +18,7 @@ COMMONOBS =  logging.o utils.o base64.o
 RPIOBS = rpi_gpio.o
 JSONOBS = json.o csr.o
 RELEASEOBS = agent.o httpclient.o dto.o inventory.o management.o schedule.o \
-             enrollment.o config.o encryption.o session.o serialize.o
+             enrollment.o config.o encryption.o session.o serialize.o fetchlogs.o
 VERIFYOBS = verify.o verify_test.o
 ENCRYPTIONTESTOBS = encryption.o encryption_test.o
 ENCRYPTIONTESTSTANDALONEOBS = encryption.o encryption_standalone.o
@@ -32,7 +32,7 @@ FAILURE = echo "*** Build FAILED ***"; \
 		  echo " ";
 
 WOLFLIBS = -I/usr/local/include/wolfssl -I/usr/local/include/curl -L/usr/local/lib -lcurl -lwolfssl
-WOLF = agent.c session.c csr.c lib/json.c httpclient.c lib/base64.c dto.c inventory.c management.c utils.c schedule.c enrollment.c logging.c config.c serialize.c
+WOLF = agent.c session.c csr.c lib/json.c httpclient.c lib/base64.c dto.c inventory.c management.c utils.c schedule.c enrollment.c logging.c config.c serialize.c fetchlogs.c
 
 release: ${RELEASEOBS} ${JSONOBS} ${COMMONOBS}
 	@if ${CC} -o agent $^ ${LIBS}; then\

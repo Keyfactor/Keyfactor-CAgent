@@ -33,6 +33,7 @@ struct ConfigData
 	bool  AutoGenerateId;
 	bool  Serialize;
 	char* SerialFile;
+	char* LogFile;
 };
 
 struct ConfigData* config_load();

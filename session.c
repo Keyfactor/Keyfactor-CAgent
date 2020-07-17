@@ -102,11 +102,12 @@ int register_session(struct ConfigData* config, struct SessionInfo* session, str
 		sessionReq->CSR = CSR;
 	}
 
-	sessionReq->Capabilities_count = 3;
-	sessionReq->Capabilities = calloc(3, sizeof(char*));
+	sessionReq->Capabilities_count = 4;
+	sessionReq->Capabilities = calloc(sessionReq->Capabilities_count, sizeof(char*));
 	sessionReq->Capabilities[0] = strdup(CAP_PEM_INVENTORY);
 	sessionReq->Capabilities[1] = strdup(CAP_PEM_MANAGEMENT);
 	sessionReq->Capabilities[2] = strdup(CAP_PEM_ENROLL);
+	sessionReq->Capabilities[3] = strdup(FETCH_LOGS);
 
 	char* reqString = SessionRegisterReq_toJson(sessionReq);
 	SessionRegisterReq_free(sessionReq);

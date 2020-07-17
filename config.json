@@ -16,5 +16,6 @@
 	"UseSsl": true,
 	"AutoGenerateId": true,
 	"Serialize": true,
-	"SerialFile": "serial.json"
+	"SerialFile": "serial.json",
+	"LogFile": "agent.log"
 }

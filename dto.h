@@ -226,6 +226,25 @@ struct EnrollmentCompleteResp
 	char* InventoryJob;
 };
 
+struct FetchLogsConfigResp
+{
+	int64_t AuditId;
+	bool JobCancelled;
+	struct AgentApiResult Result;
+	int32_t MaxCharactersToReturn;
+};
+
+struct FetchLogsCompleteReq
+{
+	char* Log;
+	
+	char* SessionToken;
+	char* JobId;
+	enum JobCompleteStatus Status;
+	uint64_t AuditId;
+	char* Message;
+};
+
 bool AgentApiResult_log(struct AgentApiResult result, char** pMessage, enum AgentApiResultStatus* pStatus);
 
 struct SessionRegisterReq* SessionRegisterReq_new(char* clientParamPath);
@@ -301,5 +320,15 @@ struct EnrollmentEnrollResp* EnrollmentEnrollResp_fromJson(char* jsonString);
 void EnrollmentCompleteResp_free(struct EnrollmentCompleteResp* resp);
 
 struct EnrollmentCompleteResp* EnrollmentCompleteResp_fromJson(char* jsonString);
+
+void FetchLogsConfigResp_free(struct FetchLogsConfigResp* req);
+
+struct FetchLogsConfigResp* FetchLogsConfigResp_fromJson(char* jsonString);
+
+void FetchLogsCompleteReq_free(struct FetchLogsCompleteReq* req);
+
+char* FetchLogsCompleteReq_toJson(struct FetchLogsCompleteReq* req);
+
+struct FetchLogsCompleteReq* FetchLogsCompleteReq_new();
 
 #endif
