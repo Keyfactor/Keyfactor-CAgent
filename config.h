@@ -35,6 +35,7 @@ struct ConfigData
 	char*  SerialFile;
 	int    httpRetries; 	// Backlog Item 20654
 	int    retryInterval;   // Backlog Item 20654 
+	char*  LogFile;
 };
 
 struct ConfigData* config_load();

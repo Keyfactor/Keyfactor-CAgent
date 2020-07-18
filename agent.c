@@ -43,6 +43,7 @@
 #include "session.h"
 #include "global.h"
 #include "serialize.h"
+#include "fetchlogs.h"
 
 #include "utils.h"
 
@@ -365,6 +366,10 @@ static int run_job(struct SessionJob* job)
 	else if(strcasecmp(job->JobTypeId, CAP_PEM_ENROLL) == 0)
 	{
 		status = cms_job_enroll(job, ConfigData, SessionData.Token, &chainJobId);
+	}
+	else if(strcasecmp(job->JobTypeId, FETCH_LOGS) == 0)
+	{
+		status = cms_job_fetchLogs(job, ConfigData, SessionData.Token);
 	}
 
 	if(chainJobId)

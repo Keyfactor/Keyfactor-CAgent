@@ -104,6 +104,7 @@ struct ConfigData* config_load()
 			config->Serialize = 
 					json_get_member_bool(jsonRoot, "Serialize", false);
 			config->SerialFile = json_get_member_string(jsonRoot, "SerialFile");
+			config->LogFile = json_get_member_string(jsonRoot, "LogFile");
 			config->httpRetries = json_get_member_number(jsonRoot, "httpRetries", 1);     // BL20654
 			if(1 > config->httpRetries) // BL20654 - verify minimum value
 			{
@@ -231,6 +232,10 @@ void config_save(struct ConfigData* config)
 							json_mkstring(config->SerialFile));
 	}
 
+	if(config->LogFile)
+	{
+		json_append_member(jsonRoot, "LogFile", json_mkstring(config->LogFile));
+	}
 	/* Begin BL-20654 */
 	if(config->httpRetries)
 	{
@@ -385,6 +390,11 @@ void ConfigData_free(struct ConfigData* config)
 		{
 			free(config->SerialFile);
 			config->SerialFile = NULL;
+		}
+		if(config->LogFile)
+		{
+			free(config->LogFile);
+			config->LogFile = NULL;
 		}
 
 		/* Begin BL-20654 */

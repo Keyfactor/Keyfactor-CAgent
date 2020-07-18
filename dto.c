@@ -1525,3 +1525,135 @@ struct EnrollmentCompleteResp* EnrollmentCompleteResp_fromJson(char* jsonString)
 
 	return resp;
 }
+
+void FetchLogsConfigResp_free(struct FetchLogsConfigResp* resp)
+{
+    #undef FUNCTION
+    #define FUNCTION "FetchLogsConfigResp_fromJson-"
+    if(resp){
+        AgentApiResult_free(resp->Result);
+
+        free(resp);
+    }
+}
+
+struct FetchLogsConfigResp* FetchLogsConfigResp_fromJson(char* jsonString)
+{
+    #undef FUNCTION
+    #define FUNCTION "FetchLogsConfigResp_free-"
+    log_verbose("%s%sjsonString: %s", MODULE, FUNCTION, jsonString);
+    struct FetchLogsConfigResp* resp = NULL;
+
+    if(jsonString)
+    {
+        JsonNode* jsonRoot = json_decode(jsonString);
+        if(jsonRoot)
+        {
+            resp = calloc(1, sizeof(struct FetchLogsConfigResp));
+
+            JsonNode* jsonResult = json_find_member(jsonRoot, "Result");
+            if(jsonResult)
+            {
+                resp->Result = AgentApiResult_fromJsonNode(jsonResult);
+            }
+			resp->AuditId = json_get_member_number(jsonRoot, "AuditId", 0);
+			resp->MaxCharactersToReturn = json_get_member_number(jsonRoot, "MaxCharactersToReturn", 0);
+
+            json_delete(jsonResult);
+        }
+
+        json_delete(jsonRoot);
+    }
+
+    return resp;
+}
+
+void FetchLogsCompleteReq_free(struct FetchLogsCompleteReq* req)
+{
+    #undef FUNCTION
+	#define FUNCTION "FetchLogsCompleteReq_free-"
+    if(req)
+    {
+		if(req->JobId)
+		{
+			free(req->JobId);
+			req->JobId = NULL;
+		}
+		if(req->SessionToken)
+		{
+			free(req->SessionToken);
+			req->SessionToken = NULL;
+		}
+		if(req->Message)
+		{
+			free(req->Message);
+			req->Message = NULL;
+		}
+        if(req->Log)
+        {
+            free(req->Log);
+            req->Log = NULL;
+        }
+        free(req);
+    }
+}
+
+char* FetchLogsCompleteReq_toJson(struct FetchLogsCompleteReq* req)
+{
+    #undef FUNCTION
+	#define FUNCTION "FetchLogsCompleteReq_toJson-"
+    char* jsonString = NULL;
+
+    if(req)
+    {
+        JsonNode* jsonRoot = json_mkobject();
+        json_append_member(jsonRoot, "Status", json_mknumber((double)req->Status));
+		json_append_member(jsonRoot, "AuditId", json_mknumber((double)req->AuditId));
+		if(req->JobId)
+		{
+			json_append_member(jsonRoot, "JobId", json_mkstring(req->JobId));
+		}
+		else
+		{
+			json_append_member(jsonRoot, "JobId", json_mknull());
+		}
+		if(req->Message)
+		{
+			json_append_member(jsonRoot, "Message", json_mkstring(req->Message));
+		}
+		else
+		{
+			json_append_member(jsonRoot, "Message", json_mknull());
+		}
+
+		if(req->SessionToken)
+		{
+			json_append_member(jsonRoot, "SessionToken", json_mkstring(req->SessionToken));
+		}
+		else
+		{
+			json_append_member(jsonRoot, "SessionToken", json_mknull());
+		}
+
+        if(req->Log)
+        {
+            json_append_member(jsonRoot, "Log", json_mkstring(req->Log));
+        }
+        else
+        {
+            json_append_member(jsonRoot, "Log", json_mknull());
+        }
+
+		jsonString = json_encode(jsonRoot);
+		json_delete(jsonRoot);
+    }
+
+    return jsonString;
+}
+
+struct FetchLogsCompleteReq* FetchLogsCompleteReq_new()
+{
+    #undef FUNCTION
+	#define FUNCTION "FetchLogsCompleteReq_new-"
+	return calloc(1, sizeof(struct FetchLogsCompleteReq));
+}
