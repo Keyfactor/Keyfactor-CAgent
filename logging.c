@@ -239,6 +239,35 @@ static void log_me( const char* fmt, ... )
 }
 
 /******************************************************************************/
+/** @fn log_at_level
+        @brief takes a logging level and logs at that level
+        @returns none
+*/
+/******************************************************************************/
+void log_at_level(enum LOG_LEVEL level, char* message)
+{
+	switch (level)
+	{
+		case ERROR:
+			log_error("%s",message);
+			break;
+		case INFO:
+			log_info("%s",message);
+			break;
+		case VERBOSE:
+			log_verbose("%s",message);
+			break;
+		case DEBUG:
+			log_debug("%s",message);
+			break;
+		case TRACE:
+			log_trace("%s",message);
+			break;
+	}
+
+}
+
+/******************************************************************************/
 /** @fn log_set_trace
 	@brief Turn on the trace & all lower logging levels
 	@returns none

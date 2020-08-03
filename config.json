@@ -1,8 +1,8 @@
 {
-	"AgentId": "dd2adafb-6a60-4e70-9079-1868d7c01b8a",
-	"AgentName": "ToBeReplaced",
+	"AgentId": "e4d1344c-94f7-4f80-ac80-8a653429ea4at",
+	"AgentName": "IoT-1",
 	"Hostname": "control.thedemodrive.com",
-	"Password": "K3yfact0r",
+	"Password": "xxx",
 	"Username": "thedemodrive\\lillback",
 	"VirtualDirectory": "proxy",
 	"TrustStore": "/home/keyfactor/Keyfactor-CAgent/certs/trust.store",
@@ -11,13 +11,13 @@
 	"ClientKeyPassword": "P@ssw0rd",
 	"CSRKeyType": "ECC",
 	"CSRKeySize": 256,
-	"CSRSubject": "CN=ToBeReplaced",
+	"CSRSubject": "CN=1",
 	"EnrollOnStartup": true,
 	"UseSsl": true,
-	"AutoGenerateId": true,
-	"Serialize": true,
+	"AutoGenerateId": false,
+	"Serialize": false,
 	"SerialFile": "serial.json",
+	"LogFile": "agent.log",
 	"httpRetries": 5,
-	"retryInterval": 10,
-	"LogFile": "agent.log"
+	"retryInterval": 10
 }

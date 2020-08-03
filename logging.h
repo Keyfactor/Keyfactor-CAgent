@@ -10,6 +10,14 @@
 
 #include <stdbool.h>
 
+enum LOG_LEVEL{
+	ERROR=0,
+	INFO,
+	VERBOSE,
+	DEBUG,
+	TRACE
+};
+	
 void log_error(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
 
 void log_info(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
@@ -19,6 +27,8 @@ void log_verbose(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
 void log_debug(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
 
 void log_trace(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
+
+void log_at_level(enum LOG_LEVEL level, char* message);
 
 void log_set_trace(bool param);
 void log_set_debug(bool param);
