@@ -41,6 +41,14 @@ release: ${RELEASEOBS} ${JSONOBS} ${COMMONOBS}
 		${FAILURE} \
 	fi
 
+wolfbuild: ${WOLF}
+	@if ${CC} -D __WOLF_SSL__ -o agent ${WOLF} ${WOLFLIBS}; then\
+		echo "Built agent using wolfssl"; \
+		${SUCCESS} \
+	else \
+		${FAILURE} \
+	fi
+
 rpirelease: DEFINE += -D __RPI__
 rpirelease: ${RELEASEOBS} ${JSONOBS} ${COMMONOBS}
 	@if ${CC} -o agent $^ ${LIBS}; then\
