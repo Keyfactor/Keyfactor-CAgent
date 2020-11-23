@@ -57,8 +57,8 @@ It is possible to build both the openSSL and the wolfSSL version of the agent by
 	make clean <----- do this to clean all objects and rebuild all
 Only build one of these not both:
 
-	make release -j$(nproc) <----- Build the openssl build 
-	make wolf -j$(nproc) <-------- Build the wolfssl build 
+	make opentest -j$(nproc) <----- Build the openssl build 
+	make wolftest -j$(nproc) <-------- Build the wolfssl build 
 	
 # Running the agent
 
