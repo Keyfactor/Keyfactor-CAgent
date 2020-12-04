@@ -31,14 +31,14 @@
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 
-#include "../openssl_compat.h" // Took this out of utils.c
+#include "../openssl_compat.h" 
 
 #ifndef SSL_SUCCESS
 #define SSL_SUCCESS 1
 #endif
 
 #define RSA_DEFAULT_EXP 65537
-#define MAX_CSR_SIZE 1024 // shouldn't get longer than this
+#define MAX_CSR_SIZE 1024 
 #define SHA1LEN 20
 
 /******************************************************************************/
@@ -75,6 +75,13 @@ typedef struct PrivKeyList PrivKeyList;
 /* Once the certificate is received from the platform, this gets stored to */
 /* The file system */
 EVP_PKEY* keyPair = NULL;
+
+/* The following keys must be locally global & freed upon exiting the program */
+/* If these keys are freed, then the global variable above (keyPair) becomes */
+/* corrupted.  Therefore, we must make these global variables. */
+RSA* newRsa = NULL;
+EC_KEY* newEcc = NULL;
+
 
 /******************************************************************************/
 /************************ LOCAL FUNCTION DEFINITIONS **************************/
@@ -1424,7 +1431,6 @@ bool ssl_generate_rsa_keypair(int keySize)
 {
 	char errBuf[120];
 	BIGNUM* exp = NULL;
- 	RSA* newRsa = NULL;
 	unsigned long errNum = 0;
 	int setWordResult = 0;
 	bool bResult = false;
@@ -1448,6 +1454,7 @@ bool ssl_generate_rsa_keypair(int keySize)
 		return NULL;
 	}
 
+	if (newRsa) OPENSSL_free(newRsa);
 	newRsa = RSA_new();
 
 	if (!newRsa)
@@ -1490,7 +1497,7 @@ bool ssl_generate_rsa_keypair(int keySize)
 
 exit:
 	if ( exp ) BN_free(exp); 
-	if ( newRsa ) OPENSSL_free(newRsa); 
+	/* NOTE: Do NOT free newRsa, it will corrupt EVP_PKEY */
 	return bResult;
 } /* generate_rsa_keypair */
 
@@ -1505,7 +1512,6 @@ bool ssl_generate_ecc_keypair(int keySize)
 {
 	char errBuf[120];
 	int eccNid = -1;
-	EC_KEY* newEcc = NULL;
 	unsigned long errNum = 0;
 	bool bResult = false;
 
@@ -1538,6 +1544,7 @@ bool ssl_generate_ecc_keypair(int keySize)
 		 * Create keypair using standard openSSL engine
 		 **********************************************************************/
 
+		if (newEcc) OPENSSL_free(newEcc);
 		newEcc = EC_KEY_new_by_curve_name(eccNid);
 		EC_KEY_set_asn1_flag(newEcc, OPENSSL_EC_NAMED_CURVE);
 		if(EC_KEY_generate_key(newEcc))
@@ -2214,6 +2221,9 @@ void ssl_cleanup(void)
 {
 	log_trace("%s::%s(%d) : Cleaning up openssl", \
 		__FILE__, __FUNCTION__, __LINE__);
+	if (keyPair) EVP_PKEY_free(keyPair);
+	if (newRsa) OPENSSL_free(newRsa);
+	if (newEcc) OPENSSL_free(newEcc);
     EVP_cleanup();
     CRYPTO_cleanup_all_ex_data();
     ERR_free_strings();

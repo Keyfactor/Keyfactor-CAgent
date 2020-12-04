@@ -590,7 +590,7 @@ static bool PemInventoryItem_populate(PemInventoryItem* pem, WOLFSSL_X509* cert)
 		pThumb = compute_thumbprint(cert);
 		if ( NULL == pThumb )
 		{
-			pThumb = "NULL";
+			pThumb = strdup("NULL");
 		}
 		log_verbose("%s::%s(%d) : Thumbprint: %s", \
 			__FILE__, __FUNCTION__, __LINE__, pThumb );
