@@ -164,7 +164,11 @@ static int register_agent(const struct ConfigData* config, \
 		config->EnrollOnStartup ? "true" : "false");
 	
 	/* Generate the temporary keypair & store it in the ssl wrapper layer */
+#if defined(__TPM__)
+	if ( !generate_keypair(config->CSRKeyType, config->CSRKeySize, config->AgentKey) )
+#else
 	if ( !generate_keypair(config->CSRKeyType, config->CSRKeySize) )
+#endif
 	{
 		log_error("%s::%s(%d) : Error generating keypair", \
 			__FILE__, __FUNCTION__, __LINE__);

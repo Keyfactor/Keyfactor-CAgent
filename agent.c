@@ -20,9 +20,13 @@
 	#include "wolfssl_wrapper/wolfssl_wrapper.h"
 #else
 	#ifdef __OPEN_SSL__
+		#include <openssl/engine.h>
 		#include "openssl_wrapper/openssl_wrapper.h"
 	#else
 		#ifdef __TPM__
+			#include <tss2/tss2_mu.h>
+			#include <tss2/tss2_esys.h>
+			#include <tpm2-tss-engine.h>
 		#else
 		#endif
 	#endif
@@ -46,9 +50,21 @@
 #define JOB_CHECK_SECONDS 10
 
 /******************************************************************************/
+/***************************** GLOBAL VARIABLES *******************************/
+/******************************************************************************/
+struct SessionInfo SessionData;
+struct ScheduledJob* JobList;
+struct ConfigData* ConfigData;
+#if defined(__OPEN_SSL__)
+char engine_id[21]; // 20 Characters should be enough
+#endif
+#if defined(__TPM__)
+ENGINE* e = NULL;
+#endif
+
+/******************************************************************************/
 /************************** LOCAL GLOBAL VARIABLES ****************************/
 /******************************************************************************/
-char *engine_id;
 static bool curlLoaded = false;
 static bool exit_if_inventory_only = false;
 static bool inventory_ran = false;
@@ -67,6 +83,10 @@ static bool inventory_ran = false;
  */
 static int parse_parameters( int argc, char *argv[] )
 {
+	#ifdef __TPM__
+		int foundEngine = 0;
+		const char* default_engine = "dynamic"; // the default engine to choose
+	#endif
 	for(int i = 1; i < argc; ++i) {
 		if(strcmp(argv[i], "-v") == 0) {
 			log_set_verbosity(true);
@@ -108,6 +128,17 @@ static int parse_parameters( int argc, char *argv[] )
 				}
 			} // else argc
 		} // else -l
+#ifdef __TPM__
+		else if ( strcmp(argv[i], "-e") == 0 )
+		{
+			if ( argc > i )
+			{
+				char* eng = &engine_id[0];
+				eng = strncpy( eng, argv[++i], 20 );
+				foundEngine = 1;
+			}
+		}
+#endif
 		else if (strcmp(argv[i], "-d") == 0) {
 			/* Use this for debugging memory leaks */
 			exit_if_inventory_only = true;
@@ -117,8 +148,111 @@ static int parse_parameters( int argc, char *argv[] )
 				__FILE__, __FUNCTION__, __LINE__, argv[i] );
 		}
 	}
+
+#ifdef __TPM__
+	if ( !foundEngine )
+	{
+		// no -e switch means use the default engine
+		char* eng = &engine_id[0];
+		eng = strncpy( eng, default_engine, 20 );
+	}
+#endif
 	return 1;
 } // parse_parameters
+
+#ifdef __TPM__
+/***************************************************************************//**
+    @fn ENGINE* intitialize_engine( const char* engine_id )
+    Tries to initialize and open the engine passed to it.
+    It also sets the engine as the default engine for all functions
+    @param engine_id The name of the engine to use e.g., default, tpm2tss
+    @retval Pointer to the initialized engine ENGINE*
+    @retval NULL on failure
+*/
+/******************************************************************************/
+static ENGINE* initialize_engine( const char *engine_id )
+{
+    ENGINE *e = NULL;
+    ENGINE_load_builtin_engines();
+
+    // Set the engine pointer to an instance of the engine
+    if ( !( e = ENGINE_by_id( engine_id ) ) )
+    {
+        log_error("%s::%s(%d) : Unable to find Engine: %s", \
+        	__FILE__, __FUNCTION__, __LINE__, engine_id);
+        return NULL;
+    }
+    log_verbose("%s::%s(%d) : Found Engine: %s", \
+        __FILE__, __FUNCTION__, __LINE__, engine_id);
+
+    // Initialize the engine for use
+    if ( !ENGINE_init(e) )
+    {
+        log_error("%s::%s(%d) : Unable to initialize Engine: %s", \
+        	__FILE__, __FUNCTION__, __LINE__, engine_id);
+        return NULL;
+    }
+    log_verbose("%s::%s(%d) : Initialized Engine: %s", \
+        __FILE__, __FUNCTION__, __LINE__, engine_id);
+
+    // Register the engine for use with all algorithms
+    if ( !ENGINE_set_default( e, ENGINE_METHOD_ALL ) )
+    {
+        log_error("%s::%s(%d) : Unable to set %s as the default engine", \
+        	__FILE__, __FUNCTION__, __LINE__, engine_id);
+        return NULL;
+    }
+    log_verbose("%s::%s(%d) : Sucessfully set %s as the default engine", \
+        __FILE__, __FUNCTION__, __LINE__, engine_id);
+
+    ENGINE_register_complete( e );
+    return e;
+} // initialize_engine
+#endif // __TPM__
+
+/**
+ * Serialize the AgentName and CSR Subject using a json file.  In practice this
+ * is a file that is held on a common data store (i.e. network drive)
+ *	@param  - [Input] config = a reference to the ConfigData structure
+ *	@return - success = 1
+ *		      failure = 0
+ */
+static int do_serialization( struct ConfigData* config )
+{
+	struct SerializeData* serial = serialize_load(config->SerialFile);
+	if(!serial)
+	{
+		log_error("%s::%s(%d) : Unable to load Serialization file: %s",
+			__FILE__, __FUNCTION__, __LINE__,config->SerialFile);
+		return 0;
+	}
+	log_trace("%s::%s(%d) : Freeing AgentName & CSRSubject",\
+		__FILE__, __FUNCTION__, __LINE__);
+	free(config->AgentName);
+	free(config->CSRSubject);
+	config->AgentName = (char *)malloc(50);
+	config->CSRSubject = (char *)malloc(50);
+	if (!config->AgentName || !config->CSRSubject) {
+		log_error("%s::%s(%d) : Out of memory for",
+			__FILE__, __FUNCTION__, __LINE__);
+		return 0;
+	}
+	sprintf(config->AgentName, "%s-%d", serial->ModelName, serial->NextNumber);
+	log_trace("%s::%s(%d) : config->AgentName set to: %s",
+		__FILE__, __FUNCTION__, __LINE__,config->AgentName);
+	sprintf(config->CSRSubject, "CN=%d", serial->NextNumber);
+	log_trace("%s::%s(%d) : config->CSRSubject set to: %s",
+		__FILE__, __FUNCTION__, __LINE__,config->CSRSubject);
+	serial->NextNumber++;
+	config->Serialize = false;
+	config_save(ConfigData);
+	if ( !(serialize_save(serial, config->SerialFile)) ) {
+		log_error("%s::%s(%d) : Failed saving the serialization file", \
+			__FILE__, __FUNCTION__, __LINE__);
+		return 0;
+	}
+	return 1;
+} /* do_serialization */
 
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
@@ -175,50 +309,6 @@ int run_job(struct SessionJob* job)
 } /* run_job */
 
 /**
- * Serialize the AgentName and CSR Subject using a json file.  In practice this
- * is a file that is held on a common data store (i.e. network drive)
- *	@param  - [Input] config = a reference to the ConfigData structure
- *	@return - success = 1
- *		      failure = 0
- */
-static int do_serialization( struct ConfigData* config )
-{
-	struct SerializeData* serial = serialize_load(config->SerialFile);
-	if(!serial)
-	{
-		log_error("%s::%s(%d) : Unable to load Serialization file: %s",
-			__FILE__, __FUNCTION__, __LINE__,config->SerialFile);
-		return 0;
-	}
-	log_trace("%s::%s(%d) : Freeing AgentName & CSRSubject",\
-		__FILE__, __FUNCTION__, __LINE__);
-	free(config->AgentName);
-	free(config->CSRSubject);
-	config->AgentName = (char *)malloc(50);
-	config->CSRSubject = (char *)malloc(50);
-	if (!config->AgentName || !config->CSRSubject) {
-		log_error("%s::%s(%d) : Out of memory for",
-			__FILE__, __FUNCTION__, __LINE__);
-		return 0;
-	}
-	sprintf(config->AgentName, "%s-%d", serial->ModelName, serial->NextNumber);
-	log_trace("%s::%s(%d) : config->AgentName set to: %s",
-		__FILE__, __FUNCTION__, __LINE__,config->AgentName);
-	sprintf(config->CSRSubject, "CN=%d", serial->NextNumber);
-	log_trace("%s::%s(%d) : config->CSRSubject set to: %s",
-		__FILE__, __FUNCTION__, __LINE__,config->CSRSubject);
-	serial->NextNumber++;
-	config->Serialize = false;
-	config_save(ConfigData);
-	if ( !(serialize_save(serial, config->SerialFile)) ) {
-		log_error("%s::%s(%d) : Failed saving the serialization file", \
-			__FILE__, __FUNCTION__, __LINE__);
-		return 0;
-	}
-	return 1;
-} /* do_serialization */
-
-/**
  *	Initialize the data structures, ssl, the configuration, etc.
  *
  *	@param  - [Input] argc the # of command line arguments
@@ -240,7 +330,23 @@ int init_platform( int argc, char* argv[] )
 	}
 
 	/***************************************************************************
-	 * 1. Initalize the SSL wrapper and curl
+	  1. If we are using a TPM, then initialize it & set it to be the source for
+	     all cryptographic calls to openSSL
+	 **************************************************************************/
+#ifdef __TPM__
+  log_trace("%s::%s(%d) : Initializing TPM engine", \
+  	__FILE__, __FUNCTION__, __LINE__);
+	e = initialize_engine( engine_id );
+	if ( !e )
+	{
+		log_error( "%s::%s(%d) : ERROR getting engine %s", \
+			__FILE__, __FUNCTION__, __LINE__, engine_id);
+		return 0;
+	}
+#endif
+
+	/***************************************************************************
+	 * 2. Initalize the SSL wrapper and curl
 	 **************************************************************************/
 	ssl_init();
 
@@ -254,9 +360,9 @@ int init_platform( int argc, char* argv[] )
 	curlLoaded = true;
 
 	/***************************************************************************
-	* 2. Load the configuration data
+	* 3. Load the configuration data
 	***************************************************************************/
-	log_trace("%s::%s(%d) : Loading configuration data from config.json",
+	log_trace("%s::%s(%d) : Loading configuration data",
 		__FILE__, __FUNCTION__, __LINE__);
 	ConfigData = config_load();
 	if(!ConfigData)	{
@@ -266,7 +372,7 @@ int init_platform( int argc, char* argv[] )
 	}
 
 	/***************************************************************************
-	 * 3. If required, serialize the agent
+	 * 4. If required, serialize the agent
 	 **************************************************************************/
 	if (ConfigData->Serialize) {
 		log_trace("%s::%s(%d) : Serialize -> true",  \
@@ -306,6 +412,10 @@ bool release_platform(void)
 		curl_global_cleanup();
 		curlLoaded = false;
 	}
+
+#ifdef __TPM__
+	if ( e ) ENGINE_free( e );
+#endif
 
 	ssl_cleanup(); 
 

@@ -33,13 +33,15 @@ WOLFLIBS = -I ./ -I/usr/local/include/wolfssl -I/usr/local/include/curl \
            -L/usr/local/lib -L/usr/local/include/wolfssl/wolfcrypt \
            -L/usr/local/include/wolfssl 
 WOLFLIBS += -lcurl -lwolfssl
-#WOLFLIBS += -fsanitize=address
-#WOLFLIBS += -static-libasan
 WOLFLIBS += -no-pie 
-#WOLFLIBS += -Wl,-Bstatic 
 
 OPENLIBS = -I ./ -I/usr/local/include/curl -L/usr/local/lib 
 OPENLIBS = -lcrypto -lcurl
+
+# The following TSSLIBS definition is for the Raspberry Pi
+RPI_TSSLIBS = -L/usr/lib/arm-linux-gnueabihf/engines-1.1/ -ltpm2tss
+# The following TSSLIBS definition is for a linux machine
+TSSLIBS = -ltpm2tss -L/usr/lib/x86_64-linux-gnu/engines-1.1/
 
 vpath %.c ./ ./lib ./wolfssl_wrapper ./DRCode
 SRC := $(wildcard *.c) \
@@ -60,7 +62,11 @@ opentest: DEFINES += -D __OPEN_SSL__ -D __KEYFACTOR_LOCAL_TESTING__ -D _DEBUG
 opentest: ${OOBJ}
 	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${OPENLIBS}
 
-test: wolftest
+rpi9670test: DEFINES += -D __OPEN_SSL__ -D __KEYFACTOR_LOCAL_TESTING__ -D _DEBUG -D __TPM__
+rpi9670test: ${OOBJ}
+	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${OPENLIBS} ${RPI_TSSLIBS}
+
+test: rpi9670test
 
 # define the builds
 %.o: %.c

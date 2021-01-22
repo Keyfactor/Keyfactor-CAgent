@@ -33,6 +33,14 @@
 
 #include "../openssl_compat.h" 
 
+#if defined(__TPM__)
+	#include "../agent.h"
+	#include <openssl/engine.h>
+	#include <tss2/tss2_mu.h>
+	#include <tss2/tss2_esys.h>
+	#include <tpm2-tss-engine.h>
+#endif
+
 #ifndef SSL_SUCCESS
 #define SSL_SUCCESS 1
 #endif
@@ -444,7 +452,7 @@ static bool PemInventoryItem_populate(PemInventoryItem* pem, X509* cert)
 	{
 		thumb = compute_thumbprint(cert);
 		log_verbose("%s::%s(%d) : Thumbprint: %s", \
-			__FILE__, __FUNCTION__, __LINE__, thumb);
+			__FILE__, __FUNCTION__, __LINE__, NULL == thumb ? "" : thumb);
 		contLen = i2d_X509(cert, &certContent);
 
 		if (0 < contLen)
@@ -1388,6 +1396,58 @@ static int store_append_cert(const char* storePath, X509* cert)
 	return ret;
 } /* store_append_cert */
 
+#if defined(__TPM__)
+/***************************************************************************//**
+  Generate an RSA key using the TPM module
+
+  This function calls out to generate an RSA key using the TPM.
+  @param exp exponent for key
+	@param rsa the rsa key structure
+	@param keySize the size of the keyBIO
+	@param tpm2Data a pointer to the tpm2Data structure
+  @retval EVP_PKEY * for use with the SSL engine
+	@retval NULL if an error is encountered
+ */
+/******************************************************************************/
+static EVP_PKEY* genkey_rsa_using_TPM( BIGNUM *exp,  RSA *rsa,
+									   int keySize, TPM2_DATA *tpm2Data )
+{
+	log_verbose("%s::%s(%d) : Generating RSA key using TPM", \
+		__FILE__, __FUNCTION__, __LINE__);
+	char *password = "";
+	TPM2_HANDLE parent = 0;
+
+	log_trace("%s::%s(%d) : Calling tpm2tss_rsa_genkey", \
+		__FILE__, __FUNCTION__, __LINE__);
+    if ( !tpm2tss_rsa_genkey(rsa, keySize, exp, password, parent) ) {
+        log_error("%s::%s(%d) : Error: RSA key generation failed", \
+        	__FILE__, __FUNCTION__, __LINE__);
+        return NULL;
+    }
+
+    /* export the encrypted BLOB into a tpm2Data structure */
+	log_trace("%s::%s(%d) : Copy rsa into tpm2Data format", \
+		__FILE__, __FUNCTION__, __LINE__);
+    memcpy(tpm2Data, RSA_get_app_data(rsa), sizeof(*tpm2Data));
+
+	log_verbose("%s::%s(%d) : Key generated converting BLOB to openSSL format",\
+		__FILE__, __FUNCTION__, __LINE__);
+	/* convert the encrypted BLOB into something the openSSL engine can use */
+	EVP_PKEY *keyPair = NULL;
+	log_trace("%s::%s(%d) : Calling tpm2tss_rsa_makekey", \
+		__FILE__, __FUNCTION__, __LINE__);
+    keyPair = tpm2tss_rsa_makekey( tpm2Data ); // documentation wrong this is **
+    if ( NULL == keyPair ) {
+        log_error("%s::%s(%d) : Error: tpm2tss_rsa_makekey.", \
+        	__FILE__, __FUNCTION__, __LINE__);
+        return NULL;
+    }
+    log_verbose("%s::%s(%d) : Successfully created openSSL compatible "
+    	"keyPair in memory.", __FILE__, __FUNCTION__, __LINE__);
+    return keyPair;
+} //genkey_rsa
+#endif
+
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
@@ -1424,10 +1484,15 @@ int ssl_seed_rng(const char* b64entropy)
  * Generate an RSA keypair & store it into tempKeypair
  *
  * @param  - [Input] : keySize = the size of the RSA key
+ * @param  - [Input] : path = path to the keyfile (if we are using a TPM)
  * @return - success : true
  *         - failure : false
  */
+#if defined(__TPM__)
+bool ssl_generate_rsa_keypair(int keySize, const char* path)
+#else
 bool ssl_generate_rsa_keypair(int keySize)
+#endif
 {
 	char errBuf[120];
 	BIGNUM* exp = NULL;
@@ -1437,8 +1502,7 @@ bool ssl_generate_rsa_keypair(int keySize)
 
 	exp = BN_new();
 
-	if (!exp)
-    {
+	if (!exp) {
         log_error(\
         	"%s::%s(%d) : out of memory when creating exponent in genkey_rsa",
 											__FILE__, __FUNCTION__, __LINE__);
@@ -1447,8 +1511,7 @@ bool ssl_generate_rsa_keypair(int keySize)
 
 	setWordResult = BN_set_word(exp, RSA_DEFAULT_EXP);
 
-	if ( 0 == setWordResult )
-	{
+	if ( 0 == setWordResult ) {
 		log_error("%s::%s(%d) : Failed assigning exp for RSA keygen",
 			__FILE__, __FUNCTION__, __LINE__);
 		return NULL;
@@ -1457,17 +1520,55 @@ bool ssl_generate_rsa_keypair(int keySize)
 	if (newRsa) OPENSSL_free(newRsa);
 	newRsa = RSA_new();
 
-	if (!newRsa)
-    {
+	if (!newRsa) {
         log_error(\
         "%s::%s(%d) : out of memory when creating RSA variable in genkey_rsa",
 											__FILE__, __FUNCTION__, __LINE__);
-        if ( exp ) 
-        { 
+        if ( exp ) { 
         	BN_free(exp); 
         }
         return NULL;
     }
+
+#ifdef __TPM__
+	/***************************************************************************
+	 * Create RSA keypair using TPM
+	 **************************************************************************/
+    if (NULL == path) {
+    	log_error("%s::%s(%d) : Defaulting Cert to /home/pi/temp.blob", \
+    		__FILE__, __FUNCTION__, __LINE__);
+    	ConfigData->AgentCert = strdup("/home/pi/temp.blob");
+    }
+	TPM2_DATA *tpm2Data = calloc(1, sizeof(*tpm2Data));
+	if ( NULL == tpm2Data ) {
+	     log_error("%s::%s(%d) : out of memory for tpm2Data", \
+	     	__FILE__, __FUNCTION__, __LINE__);
+	     return NULL;
+	}
+	keyPair = genkey_rsa_using_TPM( exp, newRsa, keySize, tpm2Data );
+	if ( NULL == keyPair ) {
+	 char errBuf[120];
+	 unsigned long errNum = ERR_peek_last_error();
+		 ERR_error_string(errNum, errBuf);
+		 log_error("%s::%s(%d) : Unable to generate key pair: %s", \
+			__FILE__, __FUNCTION__, __LINE__, errBuf);
+	 return NULL;
+	}
+
+	log_verbose("%s::%s(%d) : Write encrypted BLOB to disk - %s",
+		__FILE__, __FUNCTION__, __LINE__, path);
+	if ( !tpm2tss_tpm2data_write(tpm2Data, path) ) {
+	log_error("%s::%s(%d) : Error writing file %s",
+		__FILE__, __FUNCTION__, __LINE__, path);
+	return NULL;
+	}
+	log_verbose("%s::%s(%d) : Successfully wrote BLOB to disk", \
+		__FILE__, __FUNCTION__, __LINE__);
+	bResult = true;
+	/**************************************************************************
+	* END Create RSA keypair using TPM
+	**************************************************************************/
+#else // __TPM__ not defined, so use standard engine
 	/***************************************************************************
 	 * Create keypair using standard openSSL engine
 	 **************************************************************************/
@@ -1494,6 +1595,7 @@ bool ssl_generate_rsa_keypair(int keySize)
 		log_error("%s::%s(%d) : Unable to generate key pair: %s",
 					__FILE__, __FUNCTION__, __LINE__, errBuf);
 	}
+#endif
 
 exit:
 	if ( exp ) BN_free(exp); 
@@ -1514,6 +1616,12 @@ bool ssl_generate_ecc_keypair(int keySize)
 	int eccNid = -1;
 	unsigned long errNum = 0;
 	bool bResult = false;
+
+#if defined(__TPM__)
+	log_error("%s::%s(%d) : Infineon SLB9670 on a Raspberry Pi currently does "
+		"not support ECC key generation", __FILE__, __FUNCTION__, __LINE__);
+	return false;
+#endif
 
 	switch(keySize)
 		{
@@ -1759,22 +1867,19 @@ unsigned long ssl_save_cert_key(const char* storePath, const char* keyPath,	\
 	log_verbose("%s::%s(%d) : Entering function %s", 
 		__FILE__, __FUNCTION__, __LINE__, __FUNCTION__);
 	err = backup_file(storePath);
-	if(err != 0 && err != ENOENT)
-	{
+	if(err != 0 && err != ENOENT) {
 		char* errStr = strerror(err);
 		log_error("%s::%s(%d) : Unable to backup store at %s: %s\n",
 			__FILE__, __FUNCTION__, __LINE__, storePath, errStr);
 		append_linef(pMessage, "Unable to open store at %s: %s", storePath, \
 			errStr);
-	}
-	else
-	{
+	} else {
+		/* Write the cert as a full PEM into memory */
 		certBIO = BIO_new(BIO_s_mem());
 		keyBIO = NULL;
 
 		err = write_cert_bio(certBIO, cert);
-		if(err)
-		{
+		if(err)	{
 			ERR_error_string(err, errBuf);
 			log_error("%s::%s(%d) : Unable to write certificate to BIO: %s", \
 				__FILE__, __FUNCTION__, __LINE__, errBuf);
@@ -1782,35 +1887,35 @@ unsigned long ssl_save_cert_key(const char* storePath, const char* keyPath,	\
 				errBuf);
 		}
 	}
+
+#ifndef __TPM__
+	/* If there isn't a TPM store the key from memory into a file */
+	/* If there is a TPM, this got stored to a file during key creation */
 	if(!err)
 	{
-		if(keyPath)
-		{
+		if(keyPath)	{
 			keyBIO = BIO_new(BIO_s_mem());
 			err = write_key_bio(keyBIO, password, NULL); // save keyPair
 		}
-		else
-		{
+		else {
 			err = write_key_bio(certBIO, password, NULL); // save keyPair
 		}
 
-		if(err)
-		{
+		if(err)	{
 			ERR_error_string(err, errBuf);
 			log_error("%s::%s(%d) : Unable to write key to BIO: %s", \
 				__FILE__, __FUNCTION__, __LINE__, errBuf);
 			append_linef(pMessage, "Unable to write key to BIO: %s", errBuf);
 		}
 	}
+#endif
 
-	if(!err)
-	{
+	if(!err) {
 		char* data = NULL;
 		long len = BIO_get_mem_data(certBIO, &data);
 		err = replace_file(storePath, data, len, true);
 
-		if(err)
-		{
+		if(err)	{
 			char* errStr = strerror(err);
 			log_error("%s::%s(%d) : Unable to write store at %s: %s",\
 				__FILE__, __FUNCTION__, __LINE__, storePath, errStr);
@@ -1819,6 +1924,7 @@ unsigned long ssl_save_cert_key(const char* storePath, const char* keyPath,	\
 		}
 	}
 
+#ifndef __TPM__
 	if(!err && keyPath)
 	{
 		char* data = NULL;
@@ -1834,6 +1940,7 @@ unsigned long ssl_save_cert_key(const char* storePath, const char* keyPath,	\
 				keyPath, errStr);
 		}
 	}
+#endif
 
 	if ( certBIO ) BIO_free(certBIO);
 	if ( keyBIO  ) BIO_free(keyBIO);

@@ -22,12 +22,20 @@ bool release_platform( void );
 /******************************************************************************/
 /************************* SYSTEM GLOBAL VARIABLES ****************************/
 /******************************************************************************/
-struct SessionInfo SessionData;
-struct ScheduledJob* JobList;
-struct ConfigData* ConfigData;
+extern struct SessionInfo SessionData;
+extern struct ScheduledJob* JobList;
+extern struct ConfigData* ConfigData;
+#if defined(__OPEN_SSL__)
+extern char engine_id[21];
+#endif
+#if defined(__TPM__)
+#include <tpm2-tss-engine.h>
+extern ENGINE* e;
+#endif
 
 /* Versioning Information */
 /* 2.0.0.0 = Created wrapper class */
-#define AGENT_VERSION 0x0002000000000000
+/* 2.1.0.0 = Added TPM for raspberry pi into version */
+#define AGENT_VERSION 0x0002000100000000
 
 #endif // AGENT_H_

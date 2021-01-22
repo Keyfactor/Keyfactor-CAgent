@@ -307,8 +307,7 @@ static bool naked_PEM_to_PEM(const char* in, char** pem, int type)
 		__FILE__, __FUNCTION__, __LINE__);
 	bResult = true;
 exit:
-	if (!bResult)
-	{
+	if (!bResult) {
 		if (*pem) free(*pem);
 	}
 	if (der) free(der);
@@ -1226,6 +1225,8 @@ static unsigned long write_cert_bio(WOLFSSL_BIO* pBio, const char* pB64cert)
 		errNum = -1;
 		goto cleanup;
 	}
+	log_trace("%s::%s(%d) : Successfully converted naked PEM to PEM", \
+		__FILE, __FUNCTION__, __LINE__);
 	
 	wolfSSL_BIO_puts(pBio, pem);
 	log_verbose("%s::%s(%d) : Cert written to BIO", 

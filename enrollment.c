@@ -277,7 +277,19 @@ int cms_job_enroll(struct SessionJob* jobInfo, struct ConfigData* config, \
 			{
 				/* Generate the keypair and store it in a temp location in */
 				/* the SSL wrapper function */
+			#if defined(__TPM__)
+				if ( (NULL == enrConf->PrivateKeyPath) ||
+				     (0 == strcasecmp("",enrConf->PrivateKeyPath)) ) {
+					log_error("%s::%s(%d) : A TPM requires a PrivateKeyPath", \
+						__FILE__, __FUNCTION__, __LINE__);
+					status = STAT_ERR;
+					append_linef(&statusMessage, "%s::%s(%d) : A TPM requires a PrivateKeyPath", \
+						__FILE__, __FUNCTION__, __LINE__);
+				}
+				if ( !(generate_keypair(enrConf->KeyType, enrConf->KeySize, enrConf->PrivateKeyPath)) )
+			#else
 				if( !(generate_keypair(enrConf->KeyType, enrConf->KeySize)) )
+			#endif
 				{
 					log_error("%s::%s(%d) : Unable to generate key pair "
 						      "with type %s and length %d", \

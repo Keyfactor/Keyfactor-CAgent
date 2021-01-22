@@ -18,6 +18,16 @@
 #include "httpclient.h"
 #include "global.h"
 
+#if defined(__TPM__)
+  #include "agent.h"
+  #include <tss2/tss2_mu.h>
+  #include <tss2/tss2_esys.h>
+  #include <tpm2-tss-engine.h>
+  const char* bootstrapCert = "certs/Boostrap.cer";
+  const char* bootstrapKey = "certs/Bootstrap.pem";
+  const char* bootstrapPW = "P@ssw0rd";
+#endif
+
 /**
  * The memory structure used by curl in its callback function
  * memory holds the curl response data (our callback NULL terminates this data)
@@ -120,11 +130,8 @@ static bool check_file_exists( const char *fileName )
 int http_post_json(const char* url, const char* username,
                    const char* password, const char* trustStore,
                    const char* clientCert, const char* clientKey,
-                   const char* clientKeyPass,
-                   char* postData,
-                   char** pRespData,
-                   int retryCount, // BL-20654
-                   int retryInterval) // BL-20654
+                   const char* clientKeyPass, char* postData,
+                   char** pRespData, int retryCount, int retryInterval) 
 {
   log_trace("%s::%s(%d) : Preparing to POST to Platform", \
     __FILE__, __FUNCTION__, __LINE__);
@@ -143,6 +150,94 @@ int http_post_json(const char* url, const char* username,
       curl_easy_cleanup(curl);
       return CURLE_FAILED_INIT;
     }
+
+#if  defined(__TPM__)
+    if (ConfigData->EnrollOnStartup) {
+      log_info("%s::%s(%d) : Skipping TPM - enroll on startup is turned on.", \
+        __FILE__, __FUNCTION__, __LINE__);
+      goto skipTPM;
+    }
+    /***************************************************************************
+        When a TPM is used, the clientKey is an encrypted BLOB.  The BLOB can
+        only be decoded inside the TPM.  Tell cURL that this is the case &
+        use the engine_id global variable.  This is usually the tpm2tss engine.
+    ***************************************************************************/
+    log_verbose("%s::%s(%d) : Setting cURL to use TPM as SSL Engine %s", \
+      __FILE__, __FUNCTION__, __LINE__, engine_id);
+    int errNum = curl_easy_setopt(curl, CURLOPT_SSLENGINE, engine_id);
+    if ( CURLE_OK != errNum ) {
+      /* When tracing, dump the error buffer to stderr */
+      if ( is_log_trace() ) {
+        size_t len = strlen( errBuff );
+        log_trace( "%s::%s-libcurl: (%d) ", \
+          __FILE__, __FUNCTION__, __LINE__, errNum );
+        if ( len ) {
+          log_trace( "%s::%s(%d) : %s%s", __FILE__, __FUNCTION__, __LINE__,
+                  errBuff, ((errBuff[len-1] != '\n') ? "\n" : ""));
+
+        } else {
+          log_trace("%s::%s(%d) : %s", \
+            __FILE__, __FUNCTION__, __LINE__, curl_easy_strerror(errNum) );
+        }
+      }
+      log_error("%s::%s(%d) : http-http_post_json-%s", \
+        __FILE__, __FUNCTION__, __LINE__, curl_easy_strerror(errNum));
+
+      curl_easy_cleanup(curl);
+      return errNum;
+    }
+
+    log_verbose("%s::%s(%d) : Setting cURL to use TPM as the default SSL Engine %s", \
+      __FILE__, __FUNCTION__, __LINE__, engine_id);
+    errNum = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
+    if ( CURLE_OK != errNum ) {
+      /* When tracing, dump the error buffer to stderr */
+      if ( is_log_trace() ) {
+        size_t len = strlen( errBuff );
+        log_trace( "%s::%s-libcurl: (%d) ", \
+          __FILE__, __FUNCTION__, __LINE__, errNum );
+        if ( len )  {
+          log_trace( "%s::%s(%d) : %s%s", __FILE__, __FUNCTION__, __LINE__,
+                  errBuff, ((errBuff[len-1] != '\n') ? "\n" : ""));
+
+        } else {
+          log_trace("%s::%s(%d) : %s", \
+            __FILE__, __FUNCTION__, __LINE__, curl_easy_strerror(errNum) );
+        }
+      }
+      log_error("%s::%s(%d) : http-http_post_json-%s", \
+        __FILE__, __FUNCTION__, __LINE__, curl_easy_strerror(errNum));
+
+      curl_easy_cleanup(curl);
+      return errNum;
+    }
+
+    log_verbose("%s::%s(%d) : Setting cURL to have keytype as engine",\
+      __FILE__, __FUNCTION__, __LINE__);
+    errNum = curl_easy_setopt(curl, CURLOPT_SSLKEYTYPE, "ENG");
+    if ( CURLE_OK != errNum ) {
+      /* When tracing, dump the error buffer to stderr */
+      if ( is_log_trace() ) {
+        size_t len = strlen( errBuff );
+        log_trace( "%s::%s-libcurl: (%d) ", \
+          __FILE__, __FUNCTION__, __LINE__, errNum );
+        if ( len )  {
+          log_trace( "%s::%s(%d) : %s%s", __FILE__, __FUNCTION__, __LINE__,
+                  errBuff, ((errBuff[len-1] != '\n') ? "\n" : ""));
+
+        } else {
+          log_trace("%s::%s(%d) : %s", \
+            __FILE__, __FUNCTION__, __LINE__, curl_easy_strerror(errNum) );
+        }
+      }
+      log_error("%s::%s(%d) : http-http_post_json-%s", \
+        __FILE__, __FUNCTION__, __LINE__, curl_easy_strerror(errNum));
+
+      curl_easy_cleanup(curl);
+      return errNum;
+    }
+skipTPM:
+#endif
 
     /***************************************************************************
         Set up curl to POST to a url using the username and Password
@@ -166,25 +261,63 @@ int http_post_json(const char* url, const char* username,
         trusted certificates, and certs to create the TLS connection.
     ***************************************************************************/
 		if( check_file_exists(trustStore) )	{
-      log_trace("%s::%s(%d): Setting trustStore to %s",
+      log_trace("%s::%s(%d) : Setting trustStore to %s",
                     __FILE__, __FUNCTION__, __LINE__,trustStore);
 			(void)curl_easy_setopt(curl, CURLOPT_CAINFO, trustStore);
 		}
+
+#if defined(__TPM__)
+    /* Set the cert based on enroll on startup */
+    if( ConfigData->EnrollOnStartup ) {
+      log_trace("%s::%s(%d) : Use the bootstrap cert and key", \
+        __FILE__, __FUNCTION__, __LINE__);
+      log_trace("%s::%s(%d) : Setting clientCert to %s",
+        __FILE__, __FUNCTION__, __LINE__, bootstrapCert);
+      (void)curl_easy_setopt(curl, CURLOPT_SSLCERT, bootstrapCert);
+      log_trace("%s::%s(%d) : Setting bootstrapKey to %s",
+        __FILE__, __FUNCTION__, __LINE__, bootstrapKey);
+      (void)curl_easy_setopt(curl, CURLOPT_SSLKEY, bootstrapKey);
+      if ( bootstrapPW ) {
+        log_trace("%s::%s(%d) : Setting clientPassword to %s",
+        __FILE__, __FUNCTION__, __LINE__,bootstrapPW);
+        (void)curl_easy_setopt(curl, CURLOPT_KEYPASSWD, bootstrapPW);
+      }
+    } else {
+      log_trace("%s::%s(%d) : Use the Agent cert and key", \
+        __FILE__, __FUNCTION__, __LINE__);
+      if( check_file_exists(clientCert) ) {
+      log_trace("%s::%s(%d) : Setting clientCert to %s",
+        __FILE__, __FUNCTION__, __LINE__,clientCert);
+      (void)curl_easy_setopt(curl, CURLOPT_SSLCERT, clientCert);
+      }
+      if( check_file_exists(clientKey) ) {
+        log_trace("%s::%s(%d) : Setting clientKey to %s",
+          __FILE__, __FUNCTION__, __LINE__,clientKey);
+        (void)curl_easy_setopt(curl, CURLOPT_SSLKEY, clientKey);
+      }
+      if( check_file_exists(clientKey) && clientKeyPass ) {
+      log_trace("%s::%s(%d) : Setting clientPassword to %s",
+        __FILE__, __FUNCTION__, __LINE__,clientKeyPass);
+      (void)curl_easy_setopt(curl, CURLOPT_KEYPASSWD, clientKeyPass);
+      }
+    }   
+#else
 		if( check_file_exists(clientCert) )	{
-      log_trace("%s::%s(%d): Setting clientCert to %s",
-                    __FILE__, __FUNCTION__, __LINE__,clientCert);
+      log_trace("%s::%s(%d) : Setting clientCert to %s",
+        __FILE__, __FUNCTION__, __LINE__,clientCert);
 			(void)curl_easy_setopt(curl, CURLOPT_SSLCERT, clientCert);
 		}
 		if( check_file_exists(clientKey) ) {
-      log_trace("%s::%s(%d): Setting clientKey to %s",
-                    __FILE__, __FUNCTION__, __LINE__,clientKey);
+      log_trace("%s::%s(%d) : Setting clientKey to %s",
+        __FILE__, __FUNCTION__, __LINE__,clientKey);
 			(void)curl_easy_setopt(curl, CURLOPT_SSLKEY, clientKey);
 		}
 		if( check_file_exists(clientKey) && clientKeyPass )	{
-      log_trace("%s::%s(%d): Setting clientPassword to %s",
-                    __FILE__, __FUNCTION__, __LINE__,clientKeyPass);
+      log_trace("%s::%s(%d) : Setting clientPassword to %s",
+        __FILE__, __FUNCTION__, __LINE__,clientKeyPass);
 			(void)curl_easy_setopt(curl, CURLOPT_KEYPASSWD, clientKeyPass);
 		}
+#endif
 
 		/* Turn on verbose output for tracing */
 		if ( is_log_trace() )	{
@@ -264,14 +397,11 @@ int http_post_json(const char* url, const char* username,
 				size_t len = strlen( errBuff );
 				log_trace( "%s::%s(%d): libcurl: (%d) ", \
           __FILE__, __FUNCTION__, __LINE__, res );
-				if ( 0 != len ) /* len is size_t which is unsigned */
-				{
+				if ( 0 != len ) {
 					log_trace( "%s::%s(%d): %s%s", __FILE__, __FUNCTION__, __LINE__,
 									errBuff, ((errBuff[len-1] != '\n') ? "\n" : ""));
 
-				}
-				else
-				{
+				}	else {
 					log_trace("%s::%s(%d): %s\n", \
             __FILE__, __FUNCTION__, __LINE__, curl_easy_strerror(res) );
 				}
@@ -279,30 +409,22 @@ int http_post_json(const char* url, const char* username,
 			log_error("%s::%s(%d): %s", \
         __FILE__, __FUNCTION__, __LINE__, curl_easy_strerror(res));
 			toReturn = res;
-		}
-		else if(httpCode >= 300)
-		{
+		}	else if(httpCode >= 300) {
 			log_error("%s::%s(%d): HTTP Response: %ld", \
         __FILE__, __FUNCTION__, __LINE__, httpCode);
 			toReturn = (int)httpCode;
-		}
-		else
-		{
+		}	else {
 			log_verbose("%s::%s(%d): %lu bytes retrieved -- "
                   "allocating memory for response",\
                   __FILE__, __FUNCTION__, __LINE__, (unsigned long)chunk.size);
-      //TODO: - Following might not be portable, currently compiling with GNU99?
 			*pRespData = strdup(chunk.memory);
       log_trace("%s::%s(%d): Response is:\n%s",
         __FILE__, __FUNCTION__, __LINE__, *pRespData);
-      if ( NULL == *pRespData )
-      {
+      if ( NULL == *pRespData ) {
         log_error("%s::%s(%d): Out of memory", \
           __FILE__, __FUNCTION__, __LINE__);
         toReturn = 255;
-      }
-      else
-      {
+      } else {
 			  toReturn = 0;
       }
 		}
@@ -310,7 +432,6 @@ int http_post_json(const char* url, const char* username,
 		// Cleanup, de-allocate, etc.
 		if (list) { curl_slist_free_all(list); }
 		if (curl) { curl_easy_cleanup(curl); }
-
 		if (chunk.memory) { free(chunk.memory); }
 	}
 

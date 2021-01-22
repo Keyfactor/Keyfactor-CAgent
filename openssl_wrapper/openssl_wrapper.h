@@ -83,7 +83,11 @@ int ssl_seed_rng(const char* b64entropy);
  * The variable can be saved to the file system via the save_keypair function
  * described below.                          
  */
+#if defined(__TPM__)
+bool ssl_generate_rsa_keypair(int keySize, const char* file);
+#else
 bool ssl_generate_rsa_keypair(int keySize);
+#endif
 bool ssl_generate_ecc_keypair(int keySize);
 
 /**

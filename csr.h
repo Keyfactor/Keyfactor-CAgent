@@ -22,7 +22,11 @@
  * @return - success: true
  *           failure: false
  */
+#if defined(__TPM__)
+bool generate_keypair(const char* keyType, int keySize, const char* path);
+#else
 bool generate_keypair(const char* keyType, int keySize);
+#endif
 
 /**
  * Request the crypto layer to generate a new CSR using the subject provided.

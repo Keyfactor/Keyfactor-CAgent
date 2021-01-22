@@ -33,7 +33,11 @@
  * @return - success: true
  *           failure: false
  */
+#if defined(__TPM__)
+bool generate_keypair(const char* keyType, int keySize, const char* path)
+#else
 bool generate_keypair(const char* keyType, int keySize)
+#endif
 {
 	bool bResult = false;
 
@@ -42,7 +46,16 @@ bool generate_keypair(const char* keyType, int keySize)
 	
 	if(strcasecmp(keyType, "RSA") == 0)
 	{
+	#if defined(__TPM__)
+		if ( (NULL == path) || (0 == strcasecmp("",path)) ) {
+			log_error("%s::%s(%d) : Error, you must specify a private key path"
+				"when using a TPM", __FILE__, __FUNCTION__, __LINE__);
+			return false;
+		}
+		bResult = ssl_generate_rsa_keypair(keySize, path);
+	#else
 		bResult = ssl_generate_rsa_keypair(keySize);
+	#endif
 	}
 	else if(strcasecmp(keyType, "ECC") == 0)
 	{

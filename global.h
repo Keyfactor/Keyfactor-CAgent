@@ -21,7 +21,7 @@
 #undef __PLATFORM_FIXED__
 
 #ifdef __TPM__
-extern char *engine_id;
+extern char engine_id[21];
 #endif
 
 #define UUID_LEN 37 // 36 char per RFC 4122 + 1 for \0
