@@ -23,9 +23,6 @@
   #include <tss2/tss2_mu.h>
   #include <tss2/tss2_esys.h>
   #include <tpm2-tss-engine.h>
-  const char* bootstrapCert = "certs/Boostrap.cer";
-  const char* bootstrapKey = "certs/Bootstrap.pem";
-  const char* bootstrapPW = "P@ssw0rd";
 #endif
 
 /**
@@ -269,19 +266,8 @@ skipTPM:
 #if defined(__TPM__)
     /* Set the cert based on enroll on startup */
     if( ConfigData->EnrollOnStartup ) {
-      log_trace("%s::%s(%d) : Use the bootstrap cert and key", \
+      log_info("%s::%s(%d) : Bypassing client certificates on initial startup", \
         __FILE__, __FUNCTION__, __LINE__);
-      log_trace("%s::%s(%d) : Setting clientCert to %s",
-        __FILE__, __FUNCTION__, __LINE__, bootstrapCert);
-      (void)curl_easy_setopt(curl, CURLOPT_SSLCERT, bootstrapCert);
-      log_trace("%s::%s(%d) : Setting bootstrapKey to %s",
-        __FILE__, __FUNCTION__, __LINE__, bootstrapKey);
-      (void)curl_easy_setopt(curl, CURLOPT_SSLKEY, bootstrapKey);
-      if ( bootstrapPW ) {
-        log_trace("%s::%s(%d) : Setting clientPassword to %s",
-        __FILE__, __FUNCTION__, __LINE__,bootstrapPW);
-        (void)curl_easy_setopt(curl, CURLOPT_KEYPASSWD, bootstrapPW);
-      }
     } else {
       log_trace("%s::%s(%d) : Use the Agent cert and key", \
         __FILE__, __FUNCTION__, __LINE__);
