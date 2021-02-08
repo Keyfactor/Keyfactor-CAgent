@@ -1226,7 +1226,7 @@ static unsigned long write_cert_bio(WOLFSSL_BIO* pBio, const char* pB64cert)
 		goto cleanup;
 	}
 	log_trace("%s::%s(%d) : Successfully converted naked PEM to PEM", \
-		__FILE, __FUNCTION__, __LINE__);
+		__FILE__, __FUNCTION__, __LINE__);
 	
 	wolfSSL_BIO_puts(pBio, pem);
 	log_verbose("%s::%s(%d) : Cert written to BIO", 
