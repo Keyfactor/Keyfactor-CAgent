@@ -59,7 +59,7 @@ bool AgentApiResult_log(struct AgentApiResult result, \
 	char buf[MAX_BUF_LEN];
 
 	log_trace("%s::%s(%d) : Decoding agent api result", 
-		     __FILE__, __FUNCTION__, __LINE__);
+		     LOG_INF);
 	if(pStatus && *pStatus < result.Status)
 	{
 		*pStatus = result.Status;
@@ -82,12 +82,12 @@ bool AgentApiResult_log(struct AgentApiResult result, \
 		
 		snprintf(buf, (size_t)messageLen, "%s: %s (%s)\n", \
 			introBuf, result.Error.Message, result.Error.CodeString);
-		log_error("%s::%s(%d) : %s", __FILE__, __FUNCTION__, __LINE__, buf);
+		log_error("%s::%s(%d) : %s", LOG_INF, buf);
 
 		if(pMessage)
 		{
 			log_trace("%s::%s(%d) : reallocating pMessage", 
-				__FILE__, __FUNCTION__, __LINE__);
+				LOG_INF);
 			*pMessage = realloc(*pMessage, strlen(*pMessage) + messageLen);
 			strcat(*pMessage, buf);
 		}
@@ -144,13 +144,13 @@ bool SessionRegisterReq_addNewClientParameter(struct SessionRegisterReq* req, \
 
 	req->ClientParameters_count++; 
 	log_trace("%s::%s(%d) Increasing parameter count to %d",
-		__FILE__, __FUNCTION__, __LINE__, req->ClientParameters_count);
+		LOG_INF, req->ClientParameters_count);
 	req->ClientParameters = realloc(req->ClientParameters, \
 		(req->ClientParameters_count * sizeof(struct ClientParameter*))); 
 	if ( NULL == req->ClientParameters )
 	{
 		log_error("%s::%s(%d) : Out of memory error", 
-			__FILE__, __FUNCTION__, __LINE__);
+			LOG_INF);
 		return false;
 	}
 
@@ -160,14 +160,14 @@ bool SessionRegisterReq_addNewClientParameter(struct SessionRegisterReq* req, \
 	{
 		log_trace(\
 "%s::%s(%d) : Successfully added key= %s with value= %s to ClientParameters",
-			      __FILE__, __FUNCTION__, __LINE__, key, value);
+			      LOG_INF, key, value);
 		bResult = true;
 	}
 	else
 	{
 		log_error(\
 "%s::%s(%d) : Error adding new client parameters to SessionRegisterRequest",
-			      __FILE__, __FUNCTION__, __LINE__);
+			      LOG_INF);
 		bResult = false;
 		// Reset things
 		free(req->ClientParameters[index]);
@@ -193,7 +193,7 @@ struct SessionRegisterReq* SessionRegisterReq_new(char* clientParamPath)
 	{
 		log_trace(\
 	"%s::%s(%d) : Found client parameters -- adding them to the session", 
-			__FILE__, __FUNCTION__, __LINE__);
+			LOG_INF);
 		FILE* fp = fopen(clientParamPath, "r");
 		if(fp)
 		{
@@ -233,7 +233,7 @@ struct SessionRegisterReq* SessionRegisterReq_new(char* clientParamPath)
 			else
 			{
 				log_error("%s::%s(%d) : Contents of %s are not valid JSON", 
-					__FILE__, __FUNCTION__, __LINE__, clientParamPath);
+					LOG_INF, clientParamPath);
 			}
 			(void)fclose(fp); /* Deallocate memory associated with this file */
 		}
@@ -242,7 +242,7 @@ struct SessionRegisterReq* SessionRegisterReq_new(char* clientParamPath)
 			int err = errno;
 			log_error(\
 				"%s::%s(%d) : Unable to open client parameter file %s: %s", 
-				__FILE__, __FUNCTION__, __LINE__, clientParamPath,\
+				LOG_INF, clientParamPath,\
 				strerror(err));
 		}
 	}
@@ -517,7 +517,7 @@ struct SessionRegisterResp* SessionRegisterResp_fromJson(char* jsonString)
 	if ( NULL == resp )
 	{
 		log_error("%s::%s(%d) : Out of memory allocating Session Response", 
-			__FILE__, __FUNCTION__, __LINE__);
+			LOG_INF);
 		return NULL;
 	} 
 
@@ -549,7 +549,7 @@ struct SessionRegisterResp* SessionRegisterResp_fromJson(char* jsonString)
 				{
 					log_error(\
 						"%s::%s(%d) : Out of memory allocating Session.Jobs", 
-						__FILE__, __FUNCTION__, __LINE__);
+						LOG_INF);
 
 					if ( resp )
 					{
@@ -581,7 +581,7 @@ struct SessionRegisterResp* SessionRegisterResp_fromJson(char* jsonString)
 					{
 						log_error(\
 					"%s::%s(%d) : Out of memory allocating ClientParameters", 
-							__FILE__, __FUNCTION__, __LINE__);
+							LOG_INF);
 						if ( resp )
 						{
 							/* Free any allocated memory before returning */
@@ -1476,7 +1476,7 @@ struct EnrollmentConfigResp* EnrollmentConfigResp_fromJson(char* jsonString)
 			if(resp->Properties && (jsonProps = json_decode(resp->Properties)))
 			{
 				log_verbose("%s::%s(%d) : \"Properties\": %s", 
-					__FILE__, __FUNCTION__, __LINE__, resp->Properties);
+					LOG_INF, resp->Properties);
 
 /* NOTE: The platform is not sending the separatePrivateKey down as  */
 /*       a boolean.  Instead it sends it down as a text value        */
@@ -1497,14 +1497,14 @@ struct EnrollmentConfigResp* EnrollmentConfigResp_fromJson(char* jsonString)
 #endif
 
 				log_verbose("%s::%s(%d) : Separate Private Key = %s",\
-					__FILE__, __FUNCTION__, __LINE__, \
+					LOG_INF, \
 					theBool ? "true" : "false");
 				if(theBool) {
 					resp->PrivateKeyPath = \
 						json_get_member_string(jsonProps, "privateKeyPath");
 
 					log_verbose("%s::%s(%d) : privateKeyPath: %s", \
-						__FILE__, __FUNCTION__, __LINE__, \
+						LOG_INF, \
 						resp->PrivateKeyPath);
 				}
 				else resp->PrivateKeyPath = NULL;
@@ -1680,7 +1680,7 @@ void FetchLogsConfigResp_free(struct FetchLogsConfigResp* resp)
 struct FetchLogsConfigResp* FetchLogsConfigResp_fromJson(char* jsonString)
 {
     log_verbose("%s::%s(%d) : jsonString: %s", 
-    	__FILE__, __FUNCTION__, __LINE__, jsonString);
+    	LOG_INF, jsonString);
     struct FetchLogsConfigResp* resp = NULL;
 
     if(jsonString)

@@ -41,6 +41,16 @@ struct ConfigData
 	char*  LogFile; /**< File where agent logs are stored. */
 };
 
+/******************************************************************************/
+/***************************** GLOBAL VARIABLES *******************************/
+/******************************************************************************/
+extern struct ConfigData* ConfigData;
+extern bool config_loaded;
+
+/******************************************************************************/
+/***************************** GLOBAL FUNCTIONS *******************************/
+/******************************************************************************/
+
 /**
  * Convert a configuration json string into a configuration structure.  Call
  * this function directly if you are not using the config_load() function
@@ -71,7 +81,7 @@ struct ConfigData* config_decode(const char* buf);
  * @param  - none
  * @return - a reference to a filled out ConfigData element
  */
-struct ConfigData* config_load();
+struct ConfigData* config_load( void );
 
 /**
  * Convert the configuration data structure into a json string. Call
@@ -82,10 +92,9 @@ struct ConfigData* config_load();
  * You are using a securely encoded file & need to encode it before saving
  * the file to disk.  
  *
- * @param  - [Input] config = a reference to a filled out ConfigData element
  * @return - A json encoded string
  */
-char* config_to_json(struct ConfigData* config);
+char* config_to_json( void );
 
 /**
  * Save the configuration structure to "config.json" on the file system
@@ -94,7 +103,7 @@ char* config_to_json(struct ConfigData* config);
  * @return - success : true
  *           failure : false
  */
-bool config_save(struct ConfigData* config);
+bool config_save( void );
 
 /**
  * Build the url from information in the config data and the relative 
@@ -109,15 +118,13 @@ bool config_save(struct ConfigData* config);
  * @return - success : a completed URL
  *           failure : NULL
  */
-char* config_build_url(struct ConfigData* config, const char* relPath, \
-	bool vdirFromConfig);
+char* config_build_url(const char* relPath, bool vdirFromConfig);
 
 /**
  * Release memory associated with the ConfigData element
  *
- * @param  - [Input] : config = a reference to a ConfigData element
  * @returns none
  */
-void ConfigData_free(struct ConfigData* config);
+void ConfigData_free( void );
 
 #endif /* __CONFIG_H__ */

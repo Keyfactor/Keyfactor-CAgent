@@ -20,6 +20,8 @@
 #include "schedule.h"
 #include "session.h"
 #include "utils.h"
+#include "agent.h"
+#include "config.h"
 
 #ifdef __WOLF_SSL__
 	#include "wolfssl_wrapper/wolfssl_wrapper.h"
@@ -61,47 +63,40 @@
  *
  * Examples of persistent variables are EnrollOnStartup and AgentId.
  *
- * @param  [Input] : config = the (possibly) modified Config Data Structure
  * @param  [Input] : sessionResp = the Platform's response
  * @returns none
  */
-static void update_agentid_from_session(struct ConfigData* config,
-	struct SessionRegisterResp* sessionResp)
+static void update_agentid_from_session(struct SessionRegisterResp* sessionResp)
 {
 	bool isChanged = false;
 
-	if ( !config || !sessionResp )
+	if ( !ConfigData || !sessionResp )
 	{
 		return;
 	}
 
-	if(	sessionResp->Session.AgentId && config->EnrollOnStartup )
+	if(	sessionResp->Session.AgentId && ConfigData->EnrollOnStartup )
 	{
-		if(config->AgentId)
+		if(ConfigData->AgentId)
 		{
-			if(strcmp(sessionResp->Session.AgentId, config->AgentId) != 0)
+			if(strcmp(sessionResp->Session.AgentId, ConfigData->AgentId) != 0)
 			{
-				log_trace("%s::%s(%d) : Received new AgentId.  "
-					      "Updating AgentId in configuration", 
-					__FILE__, __FUNCTION__, __LINE__);
-				free(config->AgentId);
-				config->AgentId = strdup(sessionResp->Session.AgentId);
+				log_info("%s::%s(%d) : Received new AgentId. Updating AgentId in configuration", LOG_INF);
+				free(ConfigData->AgentId);
+				ConfigData->AgentId = strdup(sessionResp->Session.AgentId);
 				isChanged = true;
 			}
 		}
 		else
 		{
-			log_trace("%s::%s(%d) : No AgentId assinged in config.  "
-				      "Not modifying AgentId", 
-				__FILE__, __FUNCTION__, __LINE__);
+			log_trace("%s::%s(%d) : No AgentId assinged in config. Not modifying AgentId", LOG_INF);
 		}
 	}
 
 	if(isChanged)
 	{
-		log_trace("%s::%s(%d) : Saving configuration to file system", 
-			__FILE__, __FUNCTION__, __LINE__);
-		config_save(config);
+		log_verbose("%s::%s(%d) : Saving configuration to file system", LOG_INF);
+		config_save();
 	}
 	return;
 } /* update_agentid_from_session */
@@ -113,32 +108,27 @@ static void update_agentid_from_session(struct ConfigData* config,
  *
  * Examples of persistent variables are EnrollOnStartup and AgentId.
  *
- * @param  [Input] : config = the (possibly) modified Config Data Structure
  * @param  [Input] : sessionResp = the Platform's response
  * @returns none
  */
-static void update_config_from_session(struct ConfigData* config,
-	struct SessionRegisterResp* sessionResp)
+static void update_config_from_session(struct SessionRegisterResp* sessionResp)
 {
 	bool isChanged = false;
 
-	if ( !config || !sessionResp ) return;
-	if ( !config->EnrollOnStartup )	return;
+	if ( !ConfigData || !sessionResp ) return;
+	if ( !ConfigData->EnrollOnStartup )	return;
 
-	if(sessionResp->Session.Certificate && config->EnrollOnStartup)
+	if(sessionResp->Session.Certificate && ConfigData->EnrollOnStartup)
 	{
-		log_trace("%s::%s(%d) : Received Agent Certificate.  "
-			      "Turning off EnrollOnStartup.", 
-			__FILE__, __FUNCTION__, __LINE__);
+		log_info("%s::%s(%d) : Received Agent Certificate.  Turning off EnrollOnStartup.", LOG_INF);
 		isChanged = true;
-		config->EnrollOnStartup = false;
+		ConfigData->EnrollOnStartup = false;
 	}
 
 	if(isChanged)
 	{
-		log_trace("%s::%s(%d) : Saving configuration to file system", 
-			__FILE__, __FUNCTION__, __LINE__);
-		config_save(config);
+		log_trace("%s::%s(%d) : Saving configuration to file system", LOG_INF);
+		config_save();
 	}
 	return;
 } /* update_config_from_session */
@@ -146,32 +136,27 @@ static void update_config_from_session(struct ConfigData* config,
 /**
  * Configure the registration request to ask for Agent Registration
  *
- * @param  - [Input] : config = the configuration for the agent
  * @param  - [Output] : sessionReq = the session where we need to add the 
  *                                   registration information
  * @return - success : 1
  *         - failure : anything else but 1
  */
-static int register_agent(const struct ConfigData* config, \
-	struct SessionRegisterReq* sessionReq)
+static int register_agent(struct SessionRegisterReq* sessionReq)
 {
 	size_t csrLen = 0;
 	char* message = strdup("");
 	enum AgentApiResultStatus status = STAT_SUCCESS;
 
-	log_verbose("%s::%s(%d): EnrollOnStartup = %s", \
-		__FILE__, __FUNCTION__, __LINE__, \
-		config->EnrollOnStartup ? "true" : "false");
+	log_info("%s::%s(%d) : Registering agent with the platform for the first time", LOG_INF);
 	
 	/* Generate the temporary keypair & store it in the ssl wrapper layer */
 #if defined(__TPM__)
-	if ( !generate_keypair(config->CSRKeyType, config->CSRKeySize, config->AgentKey) )
+	if ( !generate_keypair(ConfigData->CSRKeyType, ConfigData->CSRKeySize, ConfigData->AgentKey) )
 #else
-	if ( !generate_keypair(config->CSRKeyType, config->CSRKeySize) )
+	if ( !generate_keypair(ConfigData->CSRKeyType, ConfigData->CSRKeySize) )
 #endif
 	{
-		log_error("%s::%s(%d) : Error generating keypair", \
-			__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Error generating keypair", LOG_INF);
 		return 999;
 	}
 
@@ -181,12 +166,13 @@ static int register_agent(const struct ConfigData* config, \
 	/*    3. Sign the request using the temporary private key in the 
 				ssl wrapper*/
 	/*    4. Convert the signed request into an ASCII string & return it */
-	sessionReq->CSR = generate_csr(config->CSRSubject, &csrLen,\
-		&message, &status);
+	sessionReq->CSR = generate_csr(ConfigData->CSRSubject, &csrLen,	&message, &status);
 	if ( message )
 	{
 		free(message); // right now, we don't do anything with this structure
 	}
+
+	log_verbose("%s::%s(%d) : Keypair & CSR generated for the Agent", LOG_INF);
 
 	return 1;
 } // register_agent
@@ -205,14 +191,12 @@ static int register_agent(const struct ConfigData* config, \
  * @param  [Input] : a session response
  * @return none
  */
-static void prioritize_jobs(struct ScheduledJob** pJobList, \
-	struct SessionRegisterResp* response)
+static void prioritize_jobs(struct ScheduledJob** pJobList, struct SessionRegisterResp* response)
 {
 	int i;
 	struct SessionJob* job_to_schedule = NULL;
 
-	log_verbose("%s::%s(%d) : Prioritizing jobs", \
-		__FILE__, __FUNCTION__, __LINE__);
+	log_verbose("%s::%s(%d) : Prioritizing jobs", LOG_INF);
 
 	/* Store management ADD jobs */
 	for ( i = 0; response->Session.Jobs_count > i; i++ )
@@ -220,8 +204,7 @@ static void prioritize_jobs(struct ScheduledJob** pJobList, \
 		job_to_schedule = response->Session.Jobs[i];
 		if ( 0 == strcasecmp(CAP_PEM_MANAGEMENT, job_to_schedule->JobTypeId) ) {
 			if (MANAGEMENT_ADD_PRIORITY == job_to_schedule->Priority) {
-				log_trace("%s::%s(%d) : Adding management ADD job %s", \
-					__FILE__, __FUNCTION__, __LINE__, job_to_schedule->JobId);
+				log_trace("%s::%s(%d) : Adding management ADD job %s", LOG_INF, job_to_schedule->JobId);
 				schedule_job(pJobList, job_to_schedule, time(NULL));
 			}
 		}
@@ -231,8 +214,7 @@ static void prioritize_jobs(struct ScheduledJob** pJobList, \
 	{
 		job_to_schedule = response->Session.Jobs[i];
 		if (0 == strcasecmp(CAP_PEM_REENROLLMENT, job_to_schedule->JobTypeId)) {
-			log_trace("%s::%s(%d) : Adding reenrollment job %s", \
-				__FILE__, __FUNCTION__, __LINE__, job_to_schedule->JobId);
+			log_trace("%s::%s(%d) : Adding reenrollment job %s", LOG_INF, job_to_schedule->JobId);
 			schedule_job(pJobList, job_to_schedule, time(NULL));
 		}
 	}
@@ -242,8 +224,7 @@ static void prioritize_jobs(struct ScheduledJob** pJobList, \
 		job_to_schedule = response->Session.Jobs[i];
 		if ( 0 == strcasecmp(CAP_PEM_MANAGEMENT, job_to_schedule->JobTypeId) ) {
 			if (MANAGEMENT_ADD_PRIORITY != job_to_schedule->Priority) {
-				log_trace("%s::%s(%d) : Adding management non-ADD job %s", \
-					__FILE__, __FUNCTION__, __LINE__, job_to_schedule->JobId);
+				log_trace("%s::%s(%d) : Adding management non-ADD job %s", LOG_INF, job_to_schedule->JobId);
 				schedule_job(pJobList, job_to_schedule, time(NULL));
 			}
 		}
@@ -253,8 +234,7 @@ static void prioritize_jobs(struct ScheduledJob** pJobList, \
 	{
 		job_to_schedule = response->Session.Jobs[i];
 		if ( 0 == strcasecmp(CAP_PEM_INVENTORY, job_to_schedule->JobTypeId) ) {
-			log_trace("%s::%s(%d) : Adding inventory job %s", \
-				__FILE__, __FUNCTION__, __LINE__, job_to_schedule->JobId);
+			log_trace("%s::%s(%d) : Adding inventory job %s", LOG_INF, job_to_schedule->JobId);
 			schedule_job(pJobList, job_to_schedule, time(NULL));
 		}
 	}
@@ -263,8 +243,7 @@ static void prioritize_jobs(struct ScheduledJob** pJobList, \
 	{
 		job_to_schedule = response->Session.Jobs[i];
 		if ( 0 == strcasecmp(CAP_FETCH_LOGS, job_to_schedule->JobTypeId) ) {
-			log_trace("%s::%s(%d) : Adding log retrieval job %s", \
-				__FILE__, __FUNCTION__, __LINE__, job_to_schedule->JobId);
+			log_trace("%s::%s(%d) : Adding log retrieval job %s", LOG_INF, job_to_schedule->JobId);
 			schedule_job(pJobList, job_to_schedule, time(NULL));
 		}
 	}
@@ -282,8 +261,7 @@ static bool register_add_capabilities(struct SessionRegisterReq* sessionReq)
 {
 	bool bResult = false;
 	sessionReq->Capabilities_count = 4;
-	sessionReq->Capabilities = calloc(sessionReq->Capabilities_count, \
-		sizeof(char*));
+	sessionReq->Capabilities = calloc(sessionReq->Capabilities_count, sizeof(char*));
 	if ( sessionReq->Capabilities )
 	{
 		sessionReq->Capabilities[0] = strdup(CAP_PEM_INVENTORY);
@@ -294,11 +272,119 @@ static bool register_add_capabilities(struct SessionRegisterReq* sessionReq)
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Out of memory",
-			__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Out of memory",	LOG_INF);
 	}
 	return bResult;
 }
+
+/**
+ * Re-register the agent's cert with the platform..
+ *
+ * @param  [Output] : session (allocated before calling) a session data
+ *                    structure in which we populate the Token, AgentId,
+ *                    and other information associated with the session
+ * @param  [Output] : pJobList = a pointer to a job list structure (allocated
+ *                    before calling this function)
+ * @param  [Input] : agentVersion = the version of the Agent
+ * @param  [Input] : needNewAgentName = true to regen new agent
+ * @return failure : 998 or a failed http code
+ *         success : 200 
+ */
+static int re_register_agent(struct SessionInfo* session, struct ScheduledJob** pJobList, uint64_t agentVersion, bool needNewAgentName)
+{
+	char* url = NULL;
+	char* reqString = NULL;
+	char* respString = NULL;
+	int httpRes = 998;
+	struct SessionRegisterResp* resp = NULL;
+	char* status;
+	enum AgentApiResultStatus statusCode;
+	char schedule[10];
+	struct SessionRegisterReq* sessionReq = SessionRegisterReq_new(ConfigData->ClientParameterPath);
+
+	log_info("%s::%s(%d): Re-registering the agent", LOG_INF);
+
+	/* Set up the common session information */
+	if (ConfigData->AgentName) sessionReq->ClientMachine = strdup(ConfigData->AgentName);
+	if(ConfigData->AgentId)    sessionReq->AgentId = strdup(ConfigData->AgentId);
+	sessionReq->AgentPlatform = PLAT_NATIVE;
+	sessionReq->AgentVersion = agentVersion;
+	register_add_capabilities(sessionReq);
+
+	/* Set up the registration specific session information */
+	httpRes = register_agent(sessionReq);
+	if ( 1 != httpRes )	{
+		log_error("%s::%s(%d) : Error re-registering agent", LOG_INF);
+		if ( sessionReq ) SessionRegisterReq_free( sessionReq );
+		return 998;
+	}
+
+	/* Send the request up to the platform */
+	reqString = SessionRegisterReq_toJson(sessionReq);
+	SessionRegisterReq_free(sessionReq);
+
+	log_verbose("%s::%s(%d): Session Request:", LOG_INF);
+	log_verbose("%s",reqString);
+	url = config_build_url("/Session/Register", true);
+
+	httpRes = http_post_json(url, ConfigData->Username, ConfigData->Password, \
+			ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey, \
+			ConfigData->AgentKeyPassword, reqString, &respString, \
+			ConfigData->httpRetries,ConfigData->retryInterval); 
+
+	if ( 0 == httpRes ) 
+	{
+		log_trace("%s::%s(%d): decoding json response", LOG_INF);
+		resp = SessionRegisterResp_fromJson(respString);
+		log_trace("%s::%s(%d): response decoded.  Now parsing response.", LOG_INF);
+
+		if(resp->Session.Token) 
+		{
+			if(resp->Session.Certificate) 
+			{
+				log_trace("%s::%s(%d): Found certificate.  Saving Agent Specific Keypair and Agent Specific Cert.", LOG_INF);
+				save_cert_key(ConfigData->AgentCert, ConfigData->AgentKey, ConfigData->AgentKeyPassword, resp->Session.Certificate, &status, &statusCode);
+				if (needNewAgentName) 
+				{
+					update_config_from_session(resp);
+				}
+			} 
+			else 
+			{
+				log_trace("%s::%s(%d): Certificate not found", LOG_INF);
+			}
+			/* download & shcedule jobs */
+			log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF, resp->Session.Token, resp->Session.Jobs_count);
+
+			strcpy(session->AgentId, resp->Session.AgentId);
+			strcpy(session->Token, resp->Session.Token);
+			session->UnreachableCount = 0;
+			sprintf(schedule, "I_%d", resp->Session.HeartbeatInterval);
+			session->NextExecution = next_execution(schedule, time(NULL));  
+			clear_job_schedules(pJobList);
+
+			/* Schedule the jobs based on priority */
+			prioritize_jobs(pJobList, resp);
+		} 
+		else 
+		{
+			log_error("%s::%s(%d): Agent re-registration did not succeed with error %s", LOG_INF, resp->Result.Error.Message);
+			sprintf(schedule, "I_%d", session->Interval);
+			session->NextExecution = next_execution(schedule, session->NextExecution);
+		}
+	} 
+	else 
+	{
+		log_error("%s::%s(%d): Agent re-registration failed with error code %d", LOG_INF, httpRes);
+	}
+
+	if (resp) SessionRegisterResp_free(resp);
+	free(reqString);
+	free(respString);
+	free(url);
+
+	return httpRes;
+} /* re_register_agent */
 
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
@@ -309,7 +395,6 @@ static bool register_add_capabilities(struct SessionRegisterReq* sessionReq)
  * the agent connects to the platform, then generate a keyPair and CSR to 
  * send up to the platform.
  *
- * @param  [Input] : config = Config.json converted to a data structure
  * @param  [Output] : session (allocated before calling) a session data
  *                    structure in which we populate the Token, AgentId,
  *                    and other information associated with the session
@@ -319,8 +404,7 @@ static bool register_add_capabilities(struct SessionRegisterReq* sessionReq)
  * @return failure : 998 or a failed http code
  *         success : 200 
  */
-int register_session(struct ConfigData* config, struct SessionInfo* session, \
-	struct ScheduledJob** pJobList, uint64_t agentVersion)
+int register_session(struct SessionInfo* session, struct ScheduledJob** pJobList, uint64_t agentVersion)
 {
 	char* url = NULL;
 	char* reqString = NULL;
@@ -330,27 +414,28 @@ int register_session(struct ConfigData* config, struct SessionInfo* session, \
 	char* status;
 	enum AgentApiResultStatus statusCode;
 	char schedule[10];
-	struct SessionRegisterReq* sessionReq = \
-					SessionRegisterReq_new(config->ClientParameterPath);
+	struct SessionRegisterReq* sessionReq = SessionRegisterReq_new(ConfigData->ClientParameterPath);
 
-	log_info("%s::%s(%d): Registering new session", \
-		__FILE__, __FUNCTION__, __LINE__);
+	log_info("%s::%s(%d): Registering new session", LOG_INF);
 
-	if(config->AgentName) {
-		sessionReq->ClientMachine = strdup(config->AgentName);
+	if(ConfigData->AgentName) 
+	{
+		sessionReq->ClientMachine = strdup(ConfigData->AgentName);
 	}
-	if(config->AgentId) {
-		sessionReq->AgentId = strdup(config->AgentId);
+	if(ConfigData->AgentId) 
+	{
+		sessionReq->AgentId = strdup(ConfigData->AgentId);
 	}
 
 	sessionReq->AgentPlatform = PLAT_NATIVE;
 	sessionReq->AgentVersion = agentVersion;
-	if(config->EnrollOnStartup)	{
+	if(ConfigData->EnrollOnStartup)	
+	{
 		/* Generate a keypair and a CSR to send up with this request */
-		httpRes = register_agent(config, sessionReq);
-		if ( 1 != httpRes )	{
-			log_error("%s::%s(%d) : Error setting up agent registration", 
-				__FILE__, __FUNCTION__, __LINE__);
+		httpRes = register_agent( sessionReq );
+		if ( 1 != httpRes )	
+		{
+			log_error("%s::%s(%d) : Error setting up agent registration", LOG_INF);
 			if ( sessionReq ) SessionRegisterReq_free( sessionReq );
 			return 998;
 		}
@@ -363,115 +448,92 @@ int register_session(struct ConfigData* config, struct SessionInfo* session, \
 	reqString = SessionRegisterReq_toJson(sessionReq);
 	SessionRegisterReq_free(sessionReq);
 
-	log_verbose("%s::%s(%d): Session Request:", \
-		__FILE__, __FUNCTION__, __LINE__);
+	log_verbose("%s::%s(%d): Session Request:", LOG_INF);
 	log_verbose("%s",reqString);
-	url = config_build_url(config, "/Session/Register", true);
+	url = config_build_url("/Session/Register", true);
 
 #ifdef __DEBUG__
-	log_info("%s::%s(%d): Skipping http POST command", \
-		__FILE__, __FUNCTION__, __LINE__);
+	log_info("%s::%s(%d): Skipping http POST command", LOG_INF);
 	free(url);
 	free(reqString);
 	return 0;
 #else // Run HTTP POST if we aren't in __DEBUG__
-	httpRes = http_post_json(url, config->Username, config->Password, \
-		config->TrustStore, config->AgentCert, config->AgentKey, \
-		config->AgentKeyPassword, reqString, &respString, \
-		config->httpRetries,config->retryInterval); // BL-20654
+	httpRes = http_post_json(url, ConfigData->Username, ConfigData->Password, \
+		ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey, \
+		ConfigData->AgentKeyPassword, reqString, &respString, \
+		ConfigData->httpRetries,ConfigData->retryInterval); 
 
 	if(0 == httpRes)
 	{
-		log_trace("%s::%s(%d): decoding json response", \
-			__FILE__, __FUNCTION__, __LINE__);
+		log_trace("%s::%s(%d): decoding json response", LOG_INF);
 		resp = SessionRegisterResp_fromJson(respString);
-		log_trace("%s::%s(%d): response decoded.  Now parsing response.", \
-			__FILE__, __FUNCTION__, __LINE__);
+		log_trace("%s::%s(%d): response decoded.  Now parsing response.", LOG_INF);
 		if(resp->Session.Token)
-		{
-			
+		{			
 			if(resp && AgentApiResult_log(resp->Result, NULL, NULL))
 			{
-				if(config->EnrollOnStartup) {
+				if(ConfigData->EnrollOnStartup) {
 					/* Check to see if we should update the AgentId */
-					log_trace("%s::%s(%d): Updating config from session", \
-						__FILE__, __FUNCTION__, __LINE__);
-					update_agentid_from_session(config, resp);
+					log_trace("%s::%s(%d): Updating config from session", LOG_INF);
+					update_agentid_from_session(resp);
 				}
 
 				if(resp->Session.Certificate) {
-					log_trace("%s::%s(%d): Found certificate.  Saving Agent "
-						      "Specific Keypair and Agent Specific Cert.", \
-						      __FILE__, __FUNCTION__, __LINE__);
-					save_cert_key(config->AgentCert, config->AgentKey, \
-						config->AgentKeyPassword, resp->Session.Certificate, \
+					log_info("%s::%s(%d): Agent certificate recieved from platform.  Saving Agent Specific Keypair and Agent Specific Cert.", LOG_INF);
+					save_cert_key(ConfigData->AgentCert, ConfigData->AgentKey, ConfigData->AgentKeyPassword, resp->Session.Certificate, \
 						&status, &statusCode);
-					update_config_from_session(config, resp);
+					update_config_from_session(resp);
 				}
 				else
 				{
-					log_trace("%s::%s(%d): Certificate not found", \
-						__FILE__, __FUNCTION__, __LINE__);
+					log_verbose("%s::%s(%d): Certificate not found", LOG_INF);
  				}
 
-				log_info("%s::%s(%d): New session %s contains %d jobs", \
-					__FILE__, __FUNCTION__, __LINE__, resp->Session.Token, \
-					resp->Session.Jobs_count);
+				log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF, resp->Session.Token, resp->Session.Jobs_count);
 
 				strcpy(session->AgentId, resp->Session.AgentId);
 				strcpy(session->Token, resp->Session.Token);
 				session->UnreachableCount = 0;
 
 				sprintf(schedule, "I_%d", resp->Session.HeartbeatInterval);
-				// TODO - Use time that was passed down
 				session->NextExecution = next_execution(schedule, time(NULL));  
 				clear_job_schedules(pJobList);
 
 				/* Schedule the jobs based on priority */
 				prioritize_jobs(pJobList, resp);
 			}
-
 			else if(resp && 
 				    resp->Result.Status == STAT_ERR	&& 
 					resp->Result.Error.CodeString && 
 					strcasecmp("A0100007", resp->Result.Error.CodeString))
 			{
-				log_info("%s::%s(%d): Re-enrolling for authentication "
-					     "certificate", __FILE__, __FUNCTION__, __LINE__);
+				log_info("%s::%s(%d): Re-enrolling Agent authentication certificate", LOG_INF);
+				httpRes = re_register_agent(session, pJobList, agentVersion, false);
 			}
-
 			else
 			{
 				sprintf(schedule, "I_%d", session->Interval);
-				session->NextExecution = next_execution(schedule, \
-					session->NextExecution);
+				session->NextExecution = next_execution(schedule, session->NextExecution);
 			}
 		}
 		else
 		{
-			log_error("%s::%s(%d): Session registration did not succeed "
-				      "with error %s", __FILE__, __FUNCTION__, __LINE__, \
-				      resp->Result.Error.Message);
+			log_error("%s::%s(%d): Session registration did not succeed with error %s", LOG_INF, resp->Result.Error.Message);
 			sprintf(schedule, "I_%d", session->Interval);
-			session->NextExecution = next_execution(schedule, \
-						session->NextExecution);
+			session->NextExecution = next_execution(schedule, session->NextExecution);
 		}
 		if (resp) {
-			log_trace("%s::%s(%d): Freeing session response", \
-				__FILE__, __FUNCTION__, __LINE__);
+			log_trace("%s::%s(%d): Freeing session response", LOG_INF);
 			SessionRegisterResp_free(resp);
 			resp = NULL;
 		}
 	}
 	else
 	{
-		log_error("%s::%s(%d): Session registration failed with error code %d",\
-				 __FILE__, __FUNCTION__, __LINE__, httpRes);
-
+		log_error("%s::%s(%d): Session registration failed with error code %d", LOG_INF, httpRes);
 		char schedule[10];
 		sprintf(schedule, "I_%d", session->Interval);
-		session->NextExecution = next_execution(schedule, \
-			session->NextExecution);
+		session->NextExecution = next_execution(schedule, session->NextExecution);
 	}
 
 	free(reqString);
@@ -482,12 +544,12 @@ int register_session(struct ConfigData* config, struct SessionInfo* session, \
 #endif   // If debug was defined, don't run HTTP POST
 } /* register_session */
 
+#if defined(__INFINITE_AGENT__)
 /**
  * A heartbeat session periodically contacts the Platform to determine if
  * any jobs have been scheduled, or if the session has expired, been 
  * abandoned, etc.
  *
- * @param  [Input] : config = Config.json converted to a data structure
  * @param  [Output] : session (allocated before calling) a session data
  *                    structure in which we populate the Token, AgentId,
  *                    and other information associated with the session
@@ -497,79 +559,72 @@ int register_session(struct ConfigData* config, struct SessionInfo* session, \
  * @return failure : a failed http code
  *         success : 200 http response
  */
-int heartbeat_session(struct ConfigData* config, struct SessionInfo* session, \
-	struct ScheduledJob** pJobList, uint64_t agentVersion)
+int heartbeat_session(struct SessionInfo* session, struct ScheduledJob** pJobList, uint64_t agentVersion)
 {
-	char* url = NULL;
-	struct SessionHeartbeatReq* heartbeatReq = SessionHeartbeatReq_new();
+  char* url = NULL;
+  struct SessionHeartbeatReq* heartbeatReq = SessionHeartbeatReq_new();
 
-	log_info("%s::%s(%d)- Heartbeating current session", \
-		__FILE__, __FUNCTION__, __LINE__);
+  log_info("%s::%s(%d)- Heartbeating current session", LOG_INF);
 
-	heartbeatReq->AgentPlatform = PLAT_NATIVE;
-	heartbeatReq->ClientMachine = strdup(config->AgentName);
-	heartbeatReq->SessionToken = strdup(session->Token);
+  heartbeatReq->AgentPlatform = PLAT_NATIVE;
+  heartbeatReq->ClientMachine = strdup(ConfigData->AgentName);
+  heartbeatReq->SessionToken = strdup(session->Token);
 
-	char* reqString = SessionHeartbeatReq_toJson(heartbeatReq);
-	SessionHeartbeatReq_free(heartbeatReq);
+  char* reqString = SessionHeartbeatReq_toJson(heartbeatReq);
+  SessionHeartbeatReq_free(heartbeatReq);
 
-	url = config_build_url(config, "/Session/Heartbeat", true);
+  url = config_build_url("/Session/Heartbeat", true);
 
-	char* respString = NULL;
+  char* respString = NULL;
 
-	int httpRes = http_post_json(url, config->Username, config->Password, \
-		config->TrustStore, config->AgentCert, config->AgentKey, \
-		config->AgentKeyPassword, reqString, &respString, \
-		config->httpRetries,config->retryInterval); // BL-20654
+  int httpRes = http_post_json(url, ConfigData->Username, ConfigData->Password, \
+    ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey, \
+    ConfigData->AgentKeyPassword, reqString, &respString, \
+    ConfigData->httpRetries,ConfigData->retryInterval); // BL-20654
 
-	if(httpRes == 0)
-	{
-		struct SessionHeartbeatResp* resp = \
-				SessionHeartbeatResp_fromJson(respString);
+  if(httpRes == 0)
+  {
+    struct SessionHeartbeatResp* resp = SessionHeartbeatResp_fromJson(respString);
 
-		if(resp && AgentApiResult_log(resp->Result, NULL, NULL))
-		{
-			if(resp->SessionValid)
-			{
-				char schedule[10];
-				sprintf(schedule, "I_%d", resp->HeartbeatInterval);
-				session->NextExecution = next_execution(schedule, \
-					session->NextExecution);
-				session->UnreachableCount = 0;
-			}
-			else
-			{
-				log_info("%s::%s(%d): session is invalid. Re-registering\n",\
-					 __FILE__, __FUNCTION__, __LINE__);
-				strcpy(session->Token, "");
-				register_session(config, session, pJobList, agentVersion);
-			}
-		}
-		else
-		{
-			char schedule[10];
-			sprintf(schedule, "I_%d", session->Interval);
-			session->NextExecution = next_execution(schedule, \
-				session->NextExecution);
-		}
+    if(resp && AgentApiResult_log(resp->Result, NULL, NULL))
+    {
+      if(resp->SessionValid)
+      {
+        char schedule[10];
+        sprintf(schedule, "I_%d", resp->HeartbeatInterval);
+        session->NextExecution = next_execution(schedule, session->NextExecution);
+        session->UnreachableCount = 0;
+      }
+      else
+      {
+        log_info("%s::%s(%d): session is invalid. Re-registering", LOG_INF);
+        strcpy(session->Token, "");
+        register_session(session, pJobList, agentVersion);
+      }
+    }
+    else
+    {
+      char schedule[10];
+      sprintf(schedule, "I_%d", session->Interval);
+      session->NextExecution = next_execution(schedule, session->NextExecution);
+    }
 
-		SessionHeartbeatResp_free(resp);
-	}
-	else
-	{
-		log_error("%s::%s(%d):  heartbeat failed with error code %d", \
-			__FILE__, __FUNCTION__, __LINE__, httpRes);
-		session->UnreachableCount++; // TODO - Use UnreachableCount
+    SessionHeartbeatResp_free(resp);
+  }
+  else
+  {
+    log_error("%s::%s(%d):  heartbeat failed with error code %d", LOG_INF, httpRes);
+    session->UnreachableCount++; 
 
-		char schedule[10];
-		sprintf(schedule, "I_%d", session->Interval);
-		session->NextExecution = next_execution(schedule, \
-			session->NextExecution);
-	}
+    char schedule[10];
+    sprintf(schedule, "I_%d", session->Interval);
+    session->NextExecution = next_execution(schedule, session->NextExecution);
+  }
 
-	free(reqString);
-	free(respString);
-	free(url);
+  free(reqString);
+  free(respString);
+  free(url);
 
-	return httpRes;
+  return httpRes;
 } /* heartbeat_session */
+#endif

@@ -127,15 +127,14 @@ static char* compute_thumbprint(X509* cert)
 static PrivKeyList* PrivKeyList_new(void)
 {
 	PrivKeyList* list = (PrivKeyList*)calloc(1,sizeof(*list));
-	if (list)
+	if (list) 
 	{
 		list->key_count = 0;
 		list->keys = NULL;
-	}
-	else
+	} 
+	else 
 	{
-		log_error("%s::%s(%d) : Out of memory", \
-			__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Out of memory", LOG_INF);
 	}
 	return list;
 } /* PrivKeyList_new */
@@ -148,22 +147,19 @@ static PrivKeyList* PrivKeyList_new(void)
  */
 static void PrivKeyList_free(PrivKeyList* pList)
 {
-	if (0 < pList->key_count)
+	if (0 < pList->key_count) 
 	{
-		for(int i = 0; pList->key_count > i; i++)
+		for(int i = 0; pList->key_count > i; i++) 
 		{
-			log_trace("%s::%s(%d) : Freeing PrivKey #%d from PrivKeyList", \
-				__FILE__, __FUNCTION__, __LINE__, i);
-			if ( pList->keys[i] )
-			{
+			log_trace("%s::%s(%d) : Freeing PrivKey #%d from PrivKeyList", LOG_INF, i);
+			if ( pList->keys[i] ) {
 				EVP_PKEY_free(pList->keys[i]);
 			}
 		}
 		pList->key_count = 0;
 	}
 
-	log_trace("%s::%s(%d) : Freeing the PrivKeyList", \
-		__FILE__, __FUNCTION__, __LINE__);
+	log_trace("%s::%s(%d) : Freeing the PrivKeyList", LOG_INF);
 	if (pList->keys) free(pList->keys);
 	if (pList) free(pList);
 	pList = NULL;
@@ -184,26 +180,22 @@ static bool PrivKeyList_add(PrivKeyList* list, EVP_PKEY* key)
 	bool bResult = false;
 	if(list && key)
 	{
-		list->keys = realloc(list->keys, \
-			(1 + list->key_count) * sizeof(key));
-		if (list->keys)
+		list->keys = realloc(list->keys, (1 + list->key_count) * sizeof(key));
+		if (list->keys)	
 		{
-			log_trace("%s::%s(%d) : Added EVP_PKEY #%d to PrivKeyList", \
-				__FILE__, __FUNCTION__, __LINE__, list->key_count);
+			log_trace("%s::%s(%d) : Added EVP_PKEY #%d to PrivKeyList", LOG_INF, list->key_count);
 			list->keys[list->key_count] = key;
 			list->key_count++;
 			bResult = true;
-		}
-		else
+		} 
+		else 
 		{
-			log_error("%s::%s(%d) : Out of memory",
-				__FILE__, __FUNCTION__, __LINE__);
+			log_error("%s::%s(%d) : Out of memory",	LOG_INF);
 		}
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Either the list or key was NULL", \
-			__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Either the list or key was NULL", LOG_INF);
 	}
 	return bResult;
 } /* PrivKeyList_add */
@@ -241,15 +233,13 @@ static void PEMx509List_free(PEMx509List* pList)
 	{
 		for(int i = 0; pList->item_count > i; i++)
 		{
-			log_trace("%s::%s(%d) Freeing cert #%d from PEMx509List",\
-				__FILE__, __FUNCTION__, __LINE__, i);
+			log_trace("%s::%s(%d) Freeing cert #%d from PEMx509List", LOG_INF, i);
 			X509_free(pList->certs[i]);
 		}
 		pList->item_count = 0;
 	}
 
-	log_trace("%s::%s(%d) : Freeing the PEMx509List", \
-		__FILE__, __FUNCTION__, __LINE__);
+	log_trace("%s::%s(%d) : Freeing the PEMx509List", LOG_INF);
 	if (pList ->certs) free(pList->certs);
 	if (pList) free(pList);
 	pList = NULL;
@@ -274,8 +264,7 @@ static bool PEMx509List_add(PEMx509List* list, X509* cert)
 			(1 + list->item_count) * sizeof(cert));
 		if (list->certs)
 		{
-			log_trace("%s::%s(%d) : Adding X509 cert #%d to PEMx509List", \
-				__FILE__, __FUNCTION__, __LINE__, list->item_count);
+			log_trace("%s::%s(%d) : Adding X509 cert #%d to PEMx509List", LOG_INF, list->item_count);
 			list->certs[list->item_count] = cert;
 			list->item_count++;
 			bResult = true;
@@ -283,13 +272,12 @@ static bool PEMx509List_add(PEMx509List* list, X509* cert)
 		else
 		{
 			log_error("%s::%s(%d) : Out of memory",
-				__FILE__, __FUNCTION__, __LINE__);
+				LOG_INF);
 		}
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Either the list or cert was NULL", \
-			__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Either the list or cert was NULL", LOG_INF);
 	}
 	return bResult;
 } /* PEMx509List_add */
@@ -318,7 +306,7 @@ static PemInventoryItem* PemInventoryItem_new()
 	else
 	{
 		log_error("%s::%s(%d) : Out of memory",
-			__FILE__, __FUNCTION__, __LINE__);
+			LOG_INF);
 	}
 	return pem;
 } /* PemInventoryItem_new */
@@ -332,8 +320,7 @@ static PemInventoryItem* PemInventoryItem_new()
  */
 static PemInventoryList* PemInventoryList_new()
 {
-	PemInventoryList* list = \
-		(PemInventoryList*)malloc(sizeof(PemInventoryList));
+	PemInventoryList* list = (PemInventoryList*)malloc(sizeof(PemInventoryList));
 	if(list)
 	{
 		list->item_count = 0;
@@ -352,12 +339,10 @@ void PemInventoryList_free(PemInventoryList* list)
 {
 	if(list && list->items)	{
 		for(int i = 0; list->item_count > i; i++) {
-			log_trace("%s::%s(%d) : Freeing PemInventoryItem #%d",\
-				__FILE__, __FUNCTION__, __LINE__, i);
+			log_trace("%s::%s(%d) : Freeing PemInventoryItem #%d", LOG_INF, i);
 			PemInventoryItem_free(list->items[i]);
 		}		
-		log_trace("%s::%s(%d) : Freeing PemInventoryList", \
-			__FILE__, __FUNCTION__, __LINE__);
+		log_trace("%s::%s(%d) : Freeing PemInventoryList", LOG_INF);
 		if (list->items) free(list->items);
 		if (list) free(list);
 		list = NULL;
@@ -378,27 +363,23 @@ static bool PemInventoryList_add(PemInventoryList* list, PemInventoryItem* item)
 	bool bResult = false;
 	if(list && item)
 	{
-		list->items = realloc(list->items, \
-			(1 + list->item_count) * sizeof(item));
+		list->items = realloc(list->items, (1 + list->item_count) * sizeof(item));
 		if (list->items)
 		{
 			list->items[list->item_count] = item;
 			list->item_count++;
 			log_trace(\
-			"%s::%s(%d) : Added cert with thumbprint %s to local inventory",\
-				__FILE__, __FUNCTION__, __LINE__, item->thumbprint_string);
+			"%s::%s(%d) : Added cert with thumbprint %s to local inventory", LOG_INF, item->thumbprint_string);
 			bResult = true;
 		}
 		else
 		{
-			log_error("%s::%s(%d) : Out of memory",
-				__FILE__, __FUNCTION__, __LINE__);
+			log_error("%s::%s(%d) : Out of memory",	LOG_INF);
 		}
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Either the list or item was NULL",
-			__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Either the list or item was NULL", LOG_INF);
 	}
 	return bResult;
 } /* PemInventoryList_add */
@@ -416,14 +397,12 @@ void PemInventoryItem_free(PemInventoryItem* pem)
 	if(pem)
 	{
 		if (pem->cert) {
-			log_trace("%s::%s(%d) : Freeing pem inventory item cert",\
-				__FILE__, __FUNCTION__, __LINE__);
+			log_trace("%s::%s(%d) : Freeing pem inventory item cert", LOG_INF);
 			 free(pem->cert);
 			 pem->cert = NULL;
 		}
 		if (pem->thumbprint_string) {
-			log_trace("%s::%s(%d) : Freeing pem inventory item thumbprint",\
-				__FILE__, __FUNCTION__, __LINE__);
+			log_trace("%s::%s(%d) : Freeing pem inventory item thumbprint", LOG_INF);
 			free(pem->thumbprint_string);
 			pem->thumbprint_string = NULL;
 		}		
@@ -451,8 +430,7 @@ static bool PemInventoryItem_populate(PemInventoryItem* pem, X509* cert)
 	if (pem && cert)
 	{
 		thumb = compute_thumbprint(cert);
-		log_verbose("%s::%s(%d) : Thumbprint: %s", \
-			__FILE__, __FUNCTION__, __LINE__, NULL == thumb ? "" : thumb);
+		log_verbose("%s::%s(%d) : Thumbprint: %s", LOG_INF, NULL == thumb ? "" : thumb);
 		contLen = i2d_X509(cert, &certContent);
 
 		if (0 < contLen)
@@ -465,14 +443,12 @@ static bool PemInventoryItem_populate(PemInventoryItem* pem, X509* cert)
 		}
 		else
 		{
-			log_error("%s::%s:(%d) : Error decoding cert i2d_X509\n%s",
-				__FILE__, __FUNCTION__, __LINE__, certContent);
+			log_error("%s::%s:(%d) : Error decoding cert i2d_X509\n%s",	LOG_INF, certContent);
 		}
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Bad pem, cert, or certString",
-			__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Bad pem, cert, or certString", LOG_INF);
 	}
 	if ( thumb )
 	{
@@ -573,13 +549,11 @@ static bool is_cert_key_match(X509* cert, EVP_PKEY* key)
 					 * for y.
 					 *
 					 */
-					privPubBytes = EC_POINT_point2hex(privGroup, privPoint, \
-						POINT_CONVERSION_UNCOMPRESSED, NULL);
+					privPubBytes = EC_POINT_point2hex(privGroup, privPoint, POINT_CONVERSION_UNCOMPRESSED, NULL);
 					/* get EC_POINT public key */
 					certPoint = EC_KEY_get0_public_key(ecCert); 
 					certGroup = EC_KEY_get0_group(ecCert); // get EC_GROUP 
-					certPubBytes = EC_POINT_point2hex(certGroup, certPoint, \
-						POINT_CONVERSION_UNCOMPRESSED, NULL);
+					certPubBytes = EC_POINT_point2hex(certGroup, certPoint, POINT_CONVERSION_UNCOMPRESSED, NULL);
 
 					/* Now that we have the point on the curve compare them, 
 					 * they should be equal if the keys match */
@@ -593,7 +567,7 @@ static bool is_cert_key_match(X509* cert, EVP_PKEY* key)
 				break;
 			default:
 				log_error("%s::%s(%d) : Unknown algorithm: %d", 
-					__FILE__, __FUNCTION__, __LINE__, certBaseId);
+					LOG_INF, certBaseId);
 				break;
 			}
 		}
@@ -743,33 +717,39 @@ static char* strip_blanks(char* string, const unsigned long strSz)
  */
 static void populate_subject(X509_NAME* nm, char* key, char* value)
 {
-	if ( 0 == (strcasecmp(key,"C")) ) {
-		log_trace("%s::%s(%d) : Setting Country to %s", \
-			__FILE__, __FUNCTION__, __LINE__, value);
+	if ( 0 == (strcasecmp(key,"C")) ) 
+	{
+		log_trace("%s::%s(%d) : Setting Country to %s", LOG_INF, value);
 		X509_NAME_add_entry_by_txt(nm, "C", MBSTRING_UTF8, value, -1, -1, 0);
-	} else if ( 0 == (strcasecmp(key,"S")) ) {
-		log_trace("%s::%s(%d) : Setting State to %s", \
-			__FILE__, __FUNCTION__, __LINE__, value);
+	} 
+	else if ( 0 == (strcasecmp(key,"S")) ) 
+	{
+		log_trace("%s::%s(%d) : Setting State to %s", LOG_INF, value);
 		X509_NAME_add_entry_by_txt(nm, "S", MBSTRING_UTF8, value, -1, -1, 0);
-	} else if ( 0 == (strcasecmp(key,"L")) ) {
-		log_trace("%s::%s(%d) : Setting locality to %s", \
-			__FILE__, __FUNCTION__, __LINE__, value);
+	} 
+	else if ( 0 == (strcasecmp(key,"L")) ) 
+	{
+		log_trace("%s::%s(%d) : Setting locality to %s", LOG_INF, value);
 		X509_NAME_add_entry_by_txt(nm, "L", MBSTRING_UTF8, value, -1, -1, 0);
-	} else if ( 0 == (strcasecmp(key,"O")) ) {
-		log_trace("%s::%s(%d) : Setting Organization to %s", \
-			__FILE__, __FUNCTION__, __LINE__, value);
+	} 
+	else if ( 0 == (strcasecmp(key,"O")) ) 
+	{
+		log_trace("%s::%s(%d) : Setting Organization to %s", LOG_INF, value);
 		X509_NAME_add_entry_by_txt(nm, "O", MBSTRING_UTF8, value, -1, -1, 0);
-	} else if ( 0 == (strcasecmp(key,"OU")) ) {
-		log_trace("%s::%s(%d) : Setting Organizational Unit to %s", \
-			__FILE__, __FUNCTION__, __LINE__, value);
+	} 
+	else if ( 0 == (strcasecmp(key,"OU")) ) 
+	{
+		log_trace("%s::%s(%d) : Setting Organizational Unit to %s", LOG_INF, value);
 		X509_NAME_add_entry_by_txt(nm, "OU", MBSTRING_UTF8, value, -1, -1, 0);
-	} else if ( 0 == (strcasecmp(key,"CN")) ) {
-		log_trace("%s::%s(%d) : Setting Common Name to %s", \
-			__FILE__, __FUNCTION__, __LINE__, value);
+	} 
+	else if ( 0 == (strcasecmp(key,"CN")) ) 
+	{
+		log_trace("%s::%s(%d) : Setting Common Name to %s", LOG_INF, value);
 		X509_NAME_add_entry_by_txt(nm, "CN", MBSTRING_UTF8, value, -1, -1, 0);
-	} else {
-		log_info("%s::%s(%d) : key = %s is unknown, skipping", \
-			__FILE__, __FUNCTION__, __LINE__, key);
+	} 
+	else 
+	{
+		log_info("%s::%s(%d) : key = %s is unknown, skipping", LOG_INF, key);
 	}
 	return;
 } /* populate_subject */
@@ -800,19 +780,15 @@ static X509_NAME* parse_subject(const char* subject)
 
 	subjName = X509_NAME_new();
 	if(NULL == subjName) {
-		log_error("%s::%s(%d) : Out of memory", \
-			__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Out of memory", LOG_INF);
 		goto cleanup;
 	}
 
 	localSubjectPtr = strdup(subject);
 	curPtr = localSubjectPtr;
-	log_debug("%s::%s(%d) : Subject \"%s\" is %ld characters long", \
-		__FILE__, __FUNCTION__, __LINE__, curPtr, strlen(curPtr));
+	log_debug("%s::%s(%d) : Subject \"%s\" is %ld characters long", LOG_INF, curPtr, strlen(curPtr));
 
-	log_trace("%s::%s(%d) : hasError = %s endOfSubject = %s",\
-		__FILE__, __FUNCTION__, __LINE__, \
-		hasError ? "true" : "false", endOfSubject ? "true" : "false");
+	log_trace("%s::%s(%d) : hasError = %s endOfSubject = %s", LOG_INF, hasError ? "true" : "false", endOfSubject ? "true" : "false");
 
 	while(!hasError && !endOfSubject)
 	{
@@ -822,22 +798,19 @@ static X509_NAME* parse_subject(const char* subject)
 		keyBytes = calloc(allocateMemorySize,sizeof(*keyBytes));
 		if (NULL == keyBytes)
 		{
-			log_error("%s::%s(%d) : Out of memory", \
-				__FILE__, __FUNCTION__, __LINE__);
+			log_error("%s::%s(%d) : Out of memory", LOG_INF);
 			goto cleanup;
 		}		
 		strncpy(keyBytes, curPtr, (int)keyLen);
 		
 		strippedKey = strip_blanks(keyBytes, keyLen);   
-		log_verbose("%s::%s(%d) : Key: \"%s\" is %ld characters long", \
-			__FILE__, __FUNCTION__, __LINE__, strippedKey, strlen(strippedKey));
+		log_verbose("%s::%s(%d) : Key: \"%s\" is %ld characters long", LOG_INF, strippedKey, strlen(strippedKey));
 
 		/* Now get the value for the key */
 		curPtr += (keyLen+1); // Advance past the equals character
 		if( *curPtr != '\0' )
 		{
-			log_trace("%s::%s(%d) : localSubject is now \"%s\"",\
-				__FILE__,__FUNCTION__,__LINE__,curPtr);
+			log_trace("%s::%s(%d) : localSubject is now \"%s\"", LOG_INF, curPtr);
 			valLen = read_subject_value(curPtr, NULL);
 			if(valLen != 0)
 			{
@@ -845,16 +818,13 @@ static X509_NAME* parse_subject(const char* subject)
 				valBytes = calloc(allocateMemorySize,sizeof(*valBytes));
 				if (NULL == valBytes)
 				{
-					log_error("%s::%s(%d) : Out of memory",\
-						 __FILE__, __FUNCTION__, __LINE__);
+					log_error("%s::%s(%d) : Out of memory", LOG_INF);
 					goto cleanup;
 				}			
 				read_subject_value(curPtr, valBytes);
 				curPtr += (valLen+1); // advance past the comma
 				strippedVal = strip_blanks(valBytes, strlen(valBytes));
-			   log_verbose("%s::%s(%d) : Value: \"%s\" is %ld characters long",\
-					__FILE__, __FUNCTION__, __LINE__, strippedVal, \
-					strlen(strippedVal));
+			   log_verbose("%s::%s(%d) : Value: \"%s\" is %ld characters long",	LOG_INF, strippedVal, strlen(strippedVal));
 
 				populate_subject(subjName, strippedKey, strippedVal);
 
@@ -865,38 +835,30 @@ static X509_NAME* parse_subject(const char* subject)
 					if ( *curPtr != '\0' )
 					{
 						/* Whitespace between RDNs should be ignored */
-						log_trace("%s::%s(%d) : Stripping leading whitespace "
-							      "from \"%s\"", __FILE__, __FUNCTION__, \
-							      __LINE__, curPtr);
+						log_trace("%s::%s(%d) : Stripping leading whitespace from \"%s\"", LOG_INF, curPtr);
 						curPtr = strip_blanks(curPtr, strlen(curPtr));
 					}
 					else
 					{
-						log_trace("%s::%s(%d) : Reached end of subject string",\
-						__FILE__, __FUNCTION__, __LINE__);
+						log_trace("%s::%s(%d) : Reached end of subject string",	LOG_INF);
 						endOfSubject = true;
 					}
 				}
 				else
 				{
-					log_trace("%s::%s(%d) : Reached end of subject string", \
-						__FILE__, __FUNCTION__, __LINE__);
+					log_trace("%s::%s(%d) : Reached end of subject string", LOG_INF);
 					endOfSubject = true;
 				}
 			}
 			else
 			{
-				log_error(\
-					"%s::%s(%d) : Input string '%s' is not a valid X500 name", \
-					__FILE__, __FUNCTION__, __LINE__, localSubjectPtr);
+				log_error("%s::%s(%d) : Input string '%s' is not a valid X500 name", LOG_INF, localSubjectPtr);
 				hasError = true;
 			}
 		}
 		else
 		{
-			log_error(\
-				"%s::%s(%d) : Input string '%s' is not a valid X500 name", \
-				__FILE__, __FUNCTION__, __LINE__, localSubjectPtr);
+			log_error("%s::%s(%d) : Input string '%s' is not a valid X500 name", LOG_INF, localSubjectPtr);
 			hasError = true;
 		}
 		if (keyBytes) free(keyBytes);
@@ -907,16 +869,13 @@ static X509_NAME* parse_subject(const char* subject)
 		valBytes = NULL;
 		strippedVal = NULL;
 		strippedKey = NULL;
-		log_trace("%s::%s(%d) : hasError = %s endOfSubject = %s",\
-			__FILE__, __FUNCTION__, __LINE__, \
-			hasError ? "true" : "false", endOfSubject ? "true" : "false");
+		log_trace("%s::%s(%d) : hasError = %s endOfSubject = %s", LOG_INF, hasError ? "true" : "false", endOfSubject ? "true" : "false");
 	}
 
 cleanup:
 	if (localSubjectPtr)
 	{
-		log_trace("%s::%s(%d) : Freeing localSubjectPtr", \
-			__FILE__, __FUNCTION__, __LINE__);
+		log_trace("%s::%s(%d) : Freeing localSubjectPtr", LOG_INF);
 		free(localSubjectPtr);
 		localSubjectPtr = NULL;
 	}
@@ -967,7 +926,7 @@ static unsigned long write_cert_bio(BIO* bio, const char* b64cert)
 
 	if(result)	{
 		log_verbose("%s::%s(%d) : Cert written to BIO", 
-			__FILE__, __FUNCTION__, __LINE__);
+			LOG_INF);
 	}
 	else {
 		errNum = ERR_peek_last_error();
@@ -996,24 +955,19 @@ static unsigned long write_cert_bio(BIO* bio, const char* b64cert)
  * @return - success : 0
  *         - failure : error code
  */
-static unsigned long write_key_bio(BIO* bio, const char* password, \
-	EVP_PKEY* key)
+static unsigned long write_key_bio(BIO* bio, const char* password, EVP_PKEY* key)
 {
 	unsigned long errNum = 0;
 
-	const char* tmpPass = \
-		(password && strcmp(password, "") != 0) ? password : NULL;
+	const char* tmpPass = (password && strcmp(password, "") != 0) ? password : NULL;
 
-	const EVP_CIPHER* tmpCiph = \
-		(password && strcmp(password, "") != 0) ? EVP_aes_256_cbc() : NULL;
+	const EVP_CIPHER* tmpCiph = (password && strcmp(password, "") != 0) ? EVP_aes_256_cbc() : NULL;
 
 	if ( NULL == key ) // We want to save the keyPair since no key was passed
 	{
-		if(PEM_write_bio_PKCS8PrivateKey(bio, keyPair,
-				tmpCiph, NULL, 0, 0, (char*)tmpPass))
+		if(PEM_write_bio_PKCS8PrivateKey(bio, keyPair, tmpCiph, NULL, 0, 0, (char*)tmpPass))
 		{
-			log_verbose("%s::%s(%d) : Key written to BIO", 
-				__FILE__, __FUNCTION__, __LINE__);
+			log_verbose("%s::%s(%d) : Key written to BIO", LOG_INF);
 		}
 		else
 		{
@@ -1022,11 +976,9 @@ static unsigned long write_key_bio(BIO* bio, const char* password, \
 	}
 	else
 	{
-		if(PEM_write_bio_PKCS8PrivateKey(bio, key,
-				tmpCiph, NULL, 0, 0, (char*)tmpPass))
+		if(PEM_write_bio_PKCS8PrivateKey(bio, key, tmpCiph, NULL, 0, 0, (char*)tmpPass))
 		{
-			log_verbose("%s::%s(%d) : Key written to BIO", 
-				__FILE__, __FUNCTION__, __LINE__);
+			log_verbose("%s::%s(%d) : Key written to BIO", LOG_INF);
 		}
 		else
 		{
@@ -1046,8 +998,7 @@ static unsigned long write_key_bio(BIO* bio, const char* password, \
  * @return - success = 0
  *           failure = Any other integer
  */
-static int get_key_inventory(const char* path, const char* password, \
-	PrivKeyList** keyList)
+static int get_key_inventory(const char* path, const char* password, PrivKeyList** keyList)
 {
 	int ret = 0;
 	FILE* fp = NULL;
@@ -1062,8 +1013,7 @@ static int get_key_inventory(const char* path, const char* password, \
 	*keyList = PrivKeyList_new();
 	if ( NULL == *keyList )
 	{
-		log_error("%s::%s(%d) : Out of memory", \
-			__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Out of memory", LOG_INF);
 		return -1;
 	}
 
@@ -1073,8 +1023,7 @@ static int get_key_inventory(const char* path, const char* password, \
 	{
 		ret = errno;
 		char* errStr = strerror(errno);
-		log_error("%s::%s(%d) : Unable to open store at %s: %s", \
-			__FILE__, __FUNCTION__, __LINE__, path, errStr);
+		log_error("%s::%s(%d) : Unable to open store at %s: %s", LOG_INF, path, errStr);
 		free(errStr);
 		goto cleanup;
 	}
@@ -1089,39 +1038,32 @@ static int get_key_inventory(const char* path, const char* password, \
 		if( (strcmp(name, "CERTIFICATE") == 0) )
 		{
 			log_error(\
-	"%s::%s(%d) WARNING: Certificate found in keystore -- skipping", \
-					__FILE__, __FUNCTION__, __LINE__);
+	"%s::%s(%d) WARNING: Certificate found in keystore -- skipping", LOG_INF);
 		}
-		else if( (strcmp(name, "PRIVATE KEY") == 0) && \
-			     (d2i_AutoPrivateKey(&key, &tempData, length)) )
+		else if( (strcmp(name, "PRIVATE KEY") == 0) && (d2i_AutoPrivateKey(&key, &tempData, length)) )
 		{
-			log_verbose("%s::%s(%d) : Entry is a private key", \
-				__FILE__, __FUNCTION__, __LINE__);
+			log_verbose("%s::%s(%d) : Entry is a private key", LOG_INF);
 			PrivKeyList_add(*keyList, key);
 		}
 		else if(strcmp(name, "ENCRYPTED PRIVATE KEY") == 0)
 		{
 			BIO* keyBio = BIO_new_mem_buf(data, length);
-			if(d2i_PKCS8PrivateKey_bio(keyBio, &key, NULL, \
-				(char*)(password ? password : "")))
+			if(d2i_PKCS8PrivateKey_bio(keyBio, &key, NULL, (char*)(password ? password : "")))
 			{
-				log_verbose("%s::%s(%d) : Entry is an encrypted private key", \
-					__FILE__, __FUNCTION__, __LINE__);
+				log_verbose("%s::%s(%d) : Entry is an encrypted private key", LOG_INF);
 				PrivKeyList_add(*keyList, key);
 			}
 			else
 			{
 				unsigned long errNum = ERR_peek_last_error();
 				ERR_error_string(errNum, errBuf);
-				log_error("%s::%s(%d) : Unable to decrypt private key: %s", \
-					__FILE__, __FUNCTION__, __LINE__, errBuf);
+				log_error("%s::%s(%d) : Unable to decrypt private key: %s", LOG_INF, errBuf);
 			}
 			BIO_free(keyBio);
 		}
 		else
 		{
-			log_verbose("%s::%s(%d) : Entry is not a key, and will be skipped",\
-				__FILE__, __FUNCTION__, __LINE__);
+			log_verbose("%s::%s(%d) : Entry is not a key, and will be skipped",	LOG_INF);
 		}
 
 		OPENSSL_free(name);
@@ -1178,15 +1120,13 @@ static int get_inventory(const char* path, const char* password, \
 	char errBuf[120];
 
 	/* Open the filestore */
-	log_trace("%s::%s(%d) : Opening %s", \
-		__FILE__, __FUNCTION__, __LINE__, path);
+	log_trace("%s::%s(%d) : Opening %s", LOG_INF, path);
 	FILE* fp = fopen(path, "r");
 	if(!fp)
 	{
 		ret = errno;
 		char* errStr = strerror(errno);
-		log_error("%s::%s(%d) : Unable to open store at %s: %s", \
-			__FILE__, __FUNCTION__, __LINE__, path, errStr);
+		log_error("%s::%s(%d) : Unable to open store at %s: %s", LOG_INF, path, errStr);
 		free(errStr);
 		return ret;
 	}
@@ -1207,7 +1147,7 @@ static int get_inventory(const char* path, const char* password, \
 		 (NULL == keyList) )
 	{
 		log_error("%s::%s(%d) : Out of memory",
-			__FILE__, __FUNCTION__, __LINE__);
+			LOG_INF);
 		ret = -1;
 		goto cleanup;
 	}
@@ -1224,8 +1164,7 @@ static int get_inventory(const char* path, const char* password, \
 		key = NULL;
 		tempData = data;
 
-		log_trace("%s::%s(%d) : found %s", \
-			__FILE__, __FUNCTION__, __LINE__, name);
+		log_trace("%s::%s(%d) : found %s", LOG_INF, name);
 		if( (strcmp(name, "CERTIFICATE") == 0) && \
 			(d2i_X509(&cert, &tempData, length)) )
 		{
@@ -1238,16 +1177,13 @@ static int get_inventory(const char* path, const char* password, \
 			}
 			else
 			{
-				log_error(\
-					"%s::%s(%d) Not adding cert to list of certs in store",\
-					__FILE__, __FUNCTION__, __LINE__);
+				log_error("%s::%s(%d) Not adding cert to list of certs in store", LOG_INF);
 			}		
 		}
 		else if( (strcmp(name, "PRIVATE KEY") == 0) && \
 			     (d2i_AutoPrivateKey(&key, &tempData, length)) )
 		{
-			log_verbose("%s::%s(%d) : Entry is a private key", \
-				__FILE__, __FUNCTION__, __LINE__);
+			log_verbose("%s::%s(%d) : Entry is a private key", LOG_INF);
 			PrivKeyList_add(keyList, key);
 		}
 		else if(strcmp(name, "ENCRYPTED PRIVATE KEY") == 0)
@@ -1256,24 +1192,20 @@ static int get_inventory(const char* path, const char* password, \
 			if(d2i_PKCS8PrivateKey_bio(keyBio, &key, NULL, \
 				(char*)(password ? password : "")))
 			{
-				log_verbose("%s::%s(%d) : Entry is an encrypted private key", \
-					__FILE__, __FUNCTION__, __LINE__);
+				log_verbose("%s::%s(%d) : Entry is an encrypted private key", LOG_INF);
 				PrivKeyList_add(keyList, key);
 			}
 			else
 			{
 				unsigned long errNum = ERR_peek_last_error();
 				ERR_error_string(errNum, errBuf);
-				log_error("%s::%s(%d) : Unable to decrypt private key: %s", \
-					__FILE__, __FUNCTION__, __LINE__, errBuf);
+				log_error("%s::%s(%d) : Unable to decrypt private key: %s", LOG_INF, errBuf);
 			}
 			BIO_free(keyBio);
 		}
 		else
 		{
-			log_verbose(\
-				"%s::%s(%d) : Entry is not a certificate, and will be skipped",\
-				__FILE__, __FUNCTION__, __LINE__);
+			log_verbose("%s::%s(%d) : Entry is not a certificate, and will be skipped",	LOG_INF);
 		}
 
 		OPENSSL_free(name);
@@ -1282,15 +1214,11 @@ static int get_inventory(const char* path, const char* password, \
 		length = 0;
 	}
 
-	log_verbose("%s::%s(%d) : %d items in PEM list", \
-		__FILE__, __FUNCTION__, __LINE__, (*pPemList)->item_count);
-	log_verbose("%s::%s(%d) : Checking for matching private keys", \
-		__FILE__, __FUNCTION__, __LINE__);
+	log_verbose("%s::%s(%d) : %d items in PEM list", LOG_INF, (*pPemList)->item_count);
+	log_verbose("%s::%s(%d) : Checking for matching private keys", LOG_INF);
 	for(int i = 0; i < (*pPemList)->item_count; ++i)
 	{
-		log_verbose("%s::%s(%d) : Thumbprint: %s", \
-			__FILE__, __FUNCTION__, __LINE__, \
-			(*pPemList)->items[i]->thumbprint_string);
+		log_verbose("%s::%s(%d) : Thumbprint: %s", LOG_INF, (*pPemList)->items[i]->thumbprint_string);
 
 		for(int k = 0; k < keyList->key_count; ++k)
 		{
@@ -1303,8 +1231,7 @@ static int get_inventory(const char* path, const char* password, \
 			 */
 			if(is_cert_key_match(x509array->certs[i], keyList->keys[k]))
 			{
-				log_verbose("%s::%s(%d) : Found matching cert and private key",\
-					 __FILE__, __FUNCTION__, __LINE__);
+				log_verbose("%s::%s(%d) : Found matching cert and private key", LOG_INF);
 				(*pPemList)->items[i]->has_private_key = true;
 			}
 		}
@@ -1316,8 +1243,7 @@ cleanup:
 	{
 		if ( !returnX509array || (0 != ret) )
 		{
-			log_trace("%s::%s(%d) : Freeing x509array",\
-				__FILE__, __FUNCTION__, __LINE__);
+			log_trace("%s::%s(%d) : Freeing x509array", LOG_INF);
 			// We no longer need the X509 cert versions
 			PEMx509List_free(x509array); 
 		}
@@ -1329,8 +1255,7 @@ cleanup:
 	}
 	if ( *pPemList && (0 != ret) )
 	{
-		log_trace("%s::%s(%d) : Freeing *pPemList",\
-				__FILE__, __FUNCTION__, __LINE__);
+		log_trace("%s::%s(%d) : Freeing *pPemList", LOG_INF);
 		PemInventoryList_free(*pPemList);
 		*pPemList = NULL;
 	}
@@ -1338,8 +1263,7 @@ cleanup:
 	{
 		if ( !returnKeyArray )
 		{
-			log_trace("%s::%s(%d) : Freeing keyList",\
-				__FILE__, __FUNCTION__, __LINE__);
+			log_trace("%s::%s(%d) : Freeing keyList", LOG_INF);
 			PrivKeyList_free(keyList);
 		}
 		else
@@ -1352,8 +1276,7 @@ cleanup:
 
 	if(fp)
 	{
-		log_trace("%s::%s(%d) : Closing fp",\
-				__FILE__, __FUNCTION__, __LINE__);
+		log_trace("%s::%s(%d) : Closing fp", LOG_INF);
 		fclose(fp);
 		fp = NULL;
 	}
@@ -1376,8 +1299,7 @@ static int store_append_cert(const char* storePath, X509* cert)
 	{
 		ret = errno;
 		char* errStr = strerror(errno);
-		log_error("%s::%s(%d) : Unable to open store at %s: %s", \
-			__FILE__, __FUNCTION__, __LINE__, storePath, errStr);
+		log_error("%s::%s(%d) : Unable to open store at %s: %s", LOG_INF, storePath, errStr);
 	}
 	else
 	{
@@ -1386,8 +1308,7 @@ static int store_append_cert(const char* storePath, X509* cert)
 			char errBuf[120];
 			unsigned long errNum = ERR_peek_last_error();
 			ERR_error_string(errNum, errBuf);
-			log_error("%s::%s(%d) : Unable to write certificate to store: %s", \
-				__FILE__, __FUNCTION__, __LINE__, errBuf);
+			log_error("%s::%s(%d) : Unable to write certificate to store: %s", LOG_INF, errBuf);
 			ret = -1;
 		}
 
@@ -1409,41 +1330,34 @@ static int store_append_cert(const char* storePath, X509* cert)
 	@retval NULL if an error is encountered
  */
 /******************************************************************************/
-static EVP_PKEY* genkey_rsa_using_TPM( BIGNUM *exp,  RSA *rsa,
-									   int keySize, TPM2_DATA *tpm2Data )
+static EVP_PKEY* genkey_rsa_using_TPM( BIGNUM *exp,  RSA *rsa, int keySize, TPM2_DATA *tpm2Data )
 {
-	log_verbose("%s::%s(%d) : Generating RSA key using TPM", \
-		__FILE__, __FUNCTION__, __LINE__);
+	log_verbose("%s::%s(%d) : Generating RSA key using TPM", LOG_INF);
 	char *password = "";
 	TPM2_HANDLE parent = 0;
 
-	log_trace("%s::%s(%d) : Calling tpm2tss_rsa_genkey", \
-		__FILE__, __FUNCTION__, __LINE__);
-    if ( !tpm2tss_rsa_genkey(rsa, keySize, exp, password, parent) ) {
-        log_error("%s::%s(%d) : Error: RSA key generation failed", \
-        	__FILE__, __FUNCTION__, __LINE__);
+	log_trace("%s::%s(%d) : Calling tpm2tss_rsa_genkey", LOG_INF);
+    if ( !tpm2tss_rsa_genkey(rsa, keySize, exp, password, parent) ) 
+    {
+        log_error("%s::%s(%d) : Error: RSA key generation failed", LOG_INF);
         return NULL;
     }
 
     /* export the encrypted BLOB into a tpm2Data structure */
-	log_trace("%s::%s(%d) : Copy rsa into tpm2Data format", \
-		__FILE__, __FUNCTION__, __LINE__);
+	log_trace("%s::%s(%d) : Copy rsa into tpm2Data format", LOG_INF);
     memcpy(tpm2Data, RSA_get_app_data(rsa), sizeof(*tpm2Data));
 
-	log_verbose("%s::%s(%d) : Key generated converting BLOB to openSSL format",\
-		__FILE__, __FUNCTION__, __LINE__);
+	log_verbose("%s::%s(%d) : Key generated converting BLOB to openSSL format", LOG_INF);
 	/* convert the encrypted BLOB into something the openSSL engine can use */
 	EVP_PKEY *keyPair = NULL;
-	log_trace("%s::%s(%d) : Calling tpm2tss_rsa_makekey", \
-		__FILE__, __FUNCTION__, __LINE__);
+	log_trace("%s::%s(%d) : Calling tpm2tss_rsa_makekey", LOG_INF);
     keyPair = tpm2tss_rsa_makekey( tpm2Data ); // documentation wrong this is **
-    if ( NULL == keyPair ) {
-        log_error("%s::%s(%d) : Error: tpm2tss_rsa_makekey.", \
-        	__FILE__, __FUNCTION__, __LINE__);
+    if ( NULL == keyPair ) 
+    {
+        log_error("%s::%s(%d) : Error: tpm2tss_rsa_makekey.", LOG_INF);
         return NULL;
     }
-    log_verbose("%s::%s(%d) : Successfully created openSSL compatible "
-    	"keyPair in memory.", __FILE__, __FUNCTION__, __LINE__);
+    log_verbose("%s::%s(%d) : Successfully created openSSL compatible keyPair in memory.", LOG_INF);
     return keyPair;
 } //genkey_rsa
 #endif
@@ -1503,17 +1417,14 @@ bool ssl_generate_rsa_keypair(int keySize)
 	exp = BN_new();
 
 	if (!exp) {
-        log_error(\
-        	"%s::%s(%d) : out of memory when creating exponent in genkey_rsa",
-											__FILE__, __FUNCTION__, __LINE__);
+        log_error("%s::%s(%d) : out of memory when creating exponent in genkey_rsa", LOG_INF);
         return NULL;
     }
 
 	setWordResult = BN_set_word(exp, RSA_DEFAULT_EXP);
 
 	if ( 0 == setWordResult ) {
-		log_error("%s::%s(%d) : Failed assigning exp for RSA keygen",
-			__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Failed assigning exp for RSA keygen", LOG_INF);
 		return NULL;
 	}
 
@@ -1521,10 +1432,9 @@ bool ssl_generate_rsa_keypair(int keySize)
 	newRsa = RSA_new();
 
 	if (!newRsa) {
-        log_error(\
-        "%s::%s(%d) : out of memory when creating RSA variable in genkey_rsa",
-											__FILE__, __FUNCTION__, __LINE__);
-        if ( exp ) { 
+        log_error("%s::%s(%d) : out of memory when creating RSA variable in genkey_rsa", LOG_INF);
+        if ( exp ) 
+        { 
         	BN_free(exp); 
         }
         return NULL;
@@ -1534,36 +1444,34 @@ bool ssl_generate_rsa_keypair(int keySize)
 	/***************************************************************************
 	 * Create RSA keypair using TPM
 	 **************************************************************************/
-    if (NULL == path) {
-    	log_error("%s::%s(%d) : Defaulting Cert to /home/pi/temp.blob", \
-    		__FILE__, __FUNCTION__, __LINE__);
+    if (NULL == path) 
+    {
+    	log_error("%s::%s(%d) : Defaulting Cert to /home/pi/temp.blob", LOG_INF);
     	ConfigData->AgentCert = strdup("/home/pi/temp.blob");
     }
 	TPM2_DATA *tpm2Data = calloc(1, sizeof(*tpm2Data));
-	if ( NULL == tpm2Data ) {
-	     log_error("%s::%s(%d) : out of memory for tpm2Data", \
-	     	__FILE__, __FUNCTION__, __LINE__);
+	if ( NULL == tpm2Data ) 
+	{
+	     log_error("%s::%s(%d) : out of memory for tpm2Data", LOG_INF);
 	     return NULL;
 	}
 	keyPair = genkey_rsa_using_TPM( exp, newRsa, keySize, tpm2Data );
-	if ( NULL == keyPair ) {
-	 char errBuf[120];
-	 unsigned long errNum = ERR_peek_last_error();
-		 ERR_error_string(errNum, errBuf);
-		 log_error("%s::%s(%d) : Unable to generate key pair: %s", \
-			__FILE__, __FUNCTION__, __LINE__, errBuf);
-	 return NULL;
+	if ( NULL == keyPair ) 
+	{
+		char errBuf[120];
+		unsigned long errNum = ERR_peek_last_error();
+		ERR_error_string(errNum, errBuf);
+		log_error("%s::%s(%d) : Unable to generate key pair: %s", LOG_INF, errBuf);
+		return NULL;
 	}
 
-	log_verbose("%s::%s(%d) : Write encrypted BLOB to disk - %s",
-		__FILE__, __FUNCTION__, __LINE__, path);
-	if ( !tpm2tss_tpm2data_write(tpm2Data, path) ) {
-	log_error("%s::%s(%d) : Error writing file %s",
-		__FILE__, __FUNCTION__, __LINE__, path);
-	return NULL;
+	log_verbose("%s::%s(%d) : Write encrypted BLOB to disk - %s", LOG_INF, path);
+	if ( !tpm2tss_tpm2data_write(tpm2Data, path) )
+	{
+		log_error("%s::%s(%d) : Error writing file %s",	LOG_INF, path);
+		return NULL;
 	}
-	log_verbose("%s::%s(%d) : Successfully wrote BLOB to disk", \
-		__FILE__, __FUNCTION__, __LINE__);
+	log_verbose("%s::%s(%d) : Successfully wrote BLOB to disk", LOG_INF);
 	bResult = true;
 	/**************************************************************************
 	* END Create RSA keypair using TPM
@@ -1573,15 +1481,16 @@ bool ssl_generate_rsa_keypair(int keySize)
 	 * Create keypair using standard openSSL engine
 	 **************************************************************************/
 	if(RSA_generate_key_ex(newRsa, keySize, exp, NULL))	{
-		if ( NULL != keyPair ) {
+		if ( NULL != keyPair ) 
+		{
 			EVP_PKEY_free(keyPair);
 			keyPair = NULL;
 		}
 		keyPair = EVP_PKEY_new();
 
-		if (!keyPair) {
-			log_error("%s::%s(%d) : Out of memory allocating keypair", \
-				__FILE__, __FUNCTION__, __LINE__);
+		if (!keyPair) 
+		{
+			log_error("%s::%s(%d) : Out of memory allocating keypair", LOG_INF);
 			goto exit;
 		}
 
@@ -1592,8 +1501,7 @@ bool ssl_generate_rsa_keypair(int keySize)
 	{
 		errNum = ERR_peek_last_error();
 		ERR_error_string(errNum, errBuf);
-		log_error("%s::%s(%d) : Unable to generate key pair: %s",
-					__FILE__, __FUNCTION__, __LINE__, errBuf);
+		log_error("%s::%s(%d) : Unable to generate key pair: %s", LOG_INF, errBuf);
 	}
 #endif
 
@@ -1618,32 +1526,26 @@ bool ssl_generate_ecc_keypair(int keySize)
 	bool bResult = false;
 
 #if defined(__TPM__)
-	log_error("%s::%s(%d) : Infineon SLB9670 on a Raspberry Pi currently does "
-		"not support ECC key generation", __FILE__, __FUNCTION__, __LINE__);
+	log_error("%s::%s(%d) : Infineon SLB9670 on a Raspberry Pi currently does not support ECC key generation", LOG_INF);
 	return false;
 #endif
 
 	switch(keySize)
 		{
 		case 256:
-			log_trace("%s::%s(%d) : Setting ECC curve to NID_X9_62_prime256v1",
-				__FILE__, __FUNCTION__, __LINE__);
+			log_trace("%s::%s(%d) : Setting ECC curve to NID_X9_62_prime256v1",	LOG_INF);
 			eccNid = NID_X9_62_prime256v1;
 			break;
 		case 384:
-			log_trace("%s::%s(%d) : Setting ECC curve to NID_secp384r1",
-				__FILE__, __FUNCTION__, __LINE__);
+			log_trace("%s::%s(%d) : Setting ECC curve to NID_secp384r1", LOG_INF);
 			eccNid = NID_secp384r1;
 			break;
 		case 521:
-			log_trace("%s::%s(%d) : Setting ECC curve to NID_secp521r1",
-				__FILE__, __FUNCTION__, __LINE__);
+			log_trace("%s::%s(%d) : Setting ECC curve to NID_secp521r1", LOG_INF);
 			eccNid = NID_secp521r1;
 			break;
 		default:
-		log_error(\
-	"%s::%s(%d) : Invalid ECC key length: %d. Falling back to default curve",
-						__FILE__, __FUNCTION__, __LINE__, keySize);
+			log_error("%s::%s(%d) : Invalid ECC key length: %d. Falling back to default curve", LOG_INF, keySize);
 			eccNid = NID_X9_62_prime256v1;
 			break;
 		}
@@ -1666,14 +1568,12 @@ bool ssl_generate_ecc_keypair(int keySize)
 			
 			if(0 == EVP_PKEY_assign_EC_KEY(keyPair, newEcc))
 			{
-				log_error("%s::%s(%d) : Error assigning keyPair", 
-					__FILE__, __FUNCTION__, __LINE__);
+				log_error("%s::%s(%d) : Error assigning keyPair", LOG_INF);
 				return NULL;
 			}
 			else
 			{
-				log_trace("%s::%s(%d) : Successfully assigned ECC keypair",
-					__FILE__, __FUNCTION__, __LINE__);
+				log_trace("%s::%s(%d) : Successfully assigned ECC keypair", LOG_INF);
 				bResult = true;
 			}
 		}
@@ -1681,8 +1581,7 @@ bool ssl_generate_ecc_keypair(int keySize)
 		{
 			errNum = ERR_peek_last_error();
 			ERR_error_string(errNum, errBuf);
-			log_error("%s::%s(%d) : Unable to generate key pair: %s",
-					__FILE__, __FUNCTION__, __LINE__, errBuf);
+			log_error("%s::%s(%d) : Unable to generate key pair: %s", LOG_INF, errBuf);
 		}
 		
 	return bResult;
@@ -1700,8 +1599,7 @@ bool ssl_generate_ecc_keypair(int keySize)
  * @return - success : the CSR string minus the header and footer
  *           failure : NULL
  */
-char* ssl_generate_csr(const char* asciiSubject, size_t* csrLen, \
-	char** pMessage)
+char* ssl_generate_csr(const char* asciiSubject, size_t* csrLen, char** pMessage)
 {
 	X509_REQ* req = NULL;
 	X509_NAME* subject = NULL;
@@ -1716,38 +1614,31 @@ char* ssl_generate_csr(const char* asciiSubject, size_t* csrLen, \
 	 *     then adding in the public key, setting the subject, and signing
 	 *     it with the private key.
 	 ************************************************************************/
-	log_verbose("%s::%s(%d) : Setting up a CSR", \
-		__FILE__, __FUNCTION__, __LINE__);
+	log_verbose("%s::%s(%d) : Setting up a CSR", LOG_INF);
 	req = X509_REQ_new();	// Ask for the new structure
 	if ( NULL == req )
 	{
-		log_error("%s::%s(%d) : Out of memory",
-			__FILE__, __FUNCTION__, __LINE__);
-		append_linef(pMessage, "%s::%s(%d) : Out of memory", \
-			__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Out of memory",	LOG_INF);
+		append_linef(pMessage, "%s::%s(%d) : Out of memory", LOG_INF);
 		return NULL;
 	}
 
 	result = X509_REQ_set_version(req, 1);
 	if ( SSL_SUCCESS != result )
 	{
-		log_error("%s::%s(%d) : Failed to set REQ version",
-			__FILE__, __FUNCTION__, __LINE__);
-		append_linef(pMessage, "%s::%s(%d) : Failed to set REQ version", \
-			__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Failed to set REQ version",	LOG_INF);
+		append_linef(pMessage, "%s::%s(%d) : Failed to set REQ version", LOG_INF);
 		X509_REQ_free(req);
 		return NULL;
 	}
 
-	log_trace("%s::%s(%d) : Converting subject %s into openSSL structure",
-		__FILE__, __FUNCTION__, __LINE__, asciiSubject);
+	log_trace("%s::%s(%d) : Converting subject %s into openSSL structure", LOG_INF, asciiSubject);
 	subject = parse_subject(asciiSubject); // Convert ascii to X509_NAME
 	/* Add the X509_NAME to the req */
 	result = X509_REQ_set_subject_name(req, subject); 
 	if ( SSL_SUCCESS == result )
 	{
-		log_trace("%s::%s(%d) : Adding the public key to the CSR",
-			__FILE__, __FUNCTION__, __LINE__);
+		log_trace("%s::%s(%d) : Adding the public key to the CSR", LOG_INF);
 		result = X509_REQ_set_pubkey(req, keyPair); // Add the public key
 		if ( SSL_SUCCESS == result )
 		{
@@ -1760,18 +1651,13 @@ char* ssl_generate_csr(const char* asciiSubject, size_t* csrLen, \
 			{
 				errNum = ERR_peek_last_error();
 				ERR_error_string(errNum, errBuf);
-				log_error(\
-					"%s::%s(%d) : CSR signing failed with code, 0x%X = %s", \
-					__FILE__, __FUNCTION__, __LINE__, result, errBuf);
-				append_linef(pMessage, \
-					"CSR signing failed with code, 0x%X = %s", \
-					result, errBuf);
+				log_error("%s::%s(%d) : CSR signing failed with code, 0x%X = %s", LOG_INF, result, errBuf);
+				append_linef(pMessage, "CSR signing failed with code, 0x%X = %s", result, errBuf);
 				csrString = NULL;
 			}
 			else
 			{
-				log_trace("%s::%s(%d) : Successfully signed CSR",
-					__FILE__, __FUNCTION__, __LINE__);
+				log_trace("%s::%s(%d) : Successfully signed CSR", LOG_INF);
 				result = SSL_SUCCESS;
 			}
 		}
@@ -1779,12 +1665,8 @@ char* ssl_generate_csr(const char* asciiSubject, size_t* csrLen, \
 		{
 			errNum = ERR_peek_last_error();
 			ERR_error_string(errNum, errBuf);
-			log_error(\
-			"%s::%s(%d) : CSR set of public key failed with code, 0x%X = %s", 
-				__FILE__, __FUNCTION__, __LINE__, result, errBuf);
-			append_linef(pMessage, \
-				"CSR set of public key failed with code, 0x%X = %s", \
-				result, errBuf);
+			log_error("%s::%s(%d) : CSR set of public key failed with code, 0x%X = %s", LOG_INF, result, errBuf);
+			append_linef(pMessage, "CSR set of public key failed with code, 0x%X = %s", result, errBuf);
 			csrString = NULL;
 		}
 	}
@@ -1792,12 +1674,8 @@ char* ssl_generate_csr(const char* asciiSubject, size_t* csrLen, \
 	{
 		errNum = ERR_peek_last_error();
 		ERR_error_string(errNum, errBuf);
-		log_error(\
-			"%s::%s(%d) : CSR subject name set failed with code, 0x%X = %s", 
-			__FILE__, __FUNCTION__, __LINE__, result, errBuf);
-		append_linef(pMessage, \
-			"CSR subject name set failed with code, 0x%X = %s", \
-				result, errBuf);
+		log_error("%s::%s(%d) : CSR subject name set failed with code, 0x%X = %s", LOG_INF, result, errBuf);
+		append_linef(pMessage, "CSR subject name set failed with code, 0x%X = %s", result, errBuf);
 		csrString = NULL;
 	}
 
@@ -1808,9 +1686,7 @@ char* ssl_generate_csr(const char* asciiSubject, size_t* csrLen, \
 	 ************************************************************************/
 	if( SSL_SUCCESS == result )	
 	{
-		log_verbose(\
-"%s::%s(%d) : Encoding the CSR and converting it to a base 64 encoded string."
-						, __FILE__, __FUNCTION__, __LINE__);
+		log_verbose("%s::%s(%d) : Encoding the CSR and converting it to a base 64 encoded string.", LOG_INF);
 		reqBytes = calloc(MAX_CSR_SIZE,sizeof(*reqBytes)); 
 		if ( reqBytes )
 		{
@@ -1820,19 +1696,13 @@ char* ssl_generate_csr(const char* asciiSubject, size_t* csrLen, \
 			/* Now convert this structure to an ASCII string */
 			csrString = base64_encode(reqBytes, (size_t)writeLen, false, NULL);
 			*csrLen = (size_t)writeLen; // GM Specific Code
-			log_trace("%s::%s(%d) : csrString=%s", \
-				__FILE__, __FUNCTION__, __LINE__, csrString);
-			log_trace("%s::%s(%d) : csrLen = %ld", \
-				__FILE__, __FUNCTION__, __LINE__, *csrLen);
+			log_trace("%s::%s(%d) : csrString=%s", LOG_INF, csrString);
+			log_trace("%s::%s(%d) : csrLen = %ld", LOG_INF, *csrLen);
 		}
 		else
 		{
-			log_error(\
-				"%s::%s(%d) : Out of memory allocating %u bytes for reqBytes",
-				__FILE__, __FUNCTION__, __LINE__, MAX_CSR_SIZE);
-			append_linef(pMessage, \
-				"Out of memory allocating %u bytes for reqBytes",
-				MAX_CSR_SIZE);
+			log_error("%s::%s(%d) : Out of memory allocating %u bytes for reqBytes", LOG_INF, MAX_CSR_SIZE);
+			append_linef(pMessage, "Out of memory allocating %u bytes for reqBytes", MAX_CSR_SIZE);
 			csrString = NULL;
 		}
 	}
@@ -1856,35 +1726,31 @@ char* ssl_generate_csr(const char* asciiSubject, size_t* csrLen, \
  *                                we want to pass back to the calling function
  * @return - unsigned long error code
  */
-unsigned long ssl_save_cert_key(const char* storePath, const char* keyPath,	\
-	const char* password, const char* cert, char** pMessage)
+unsigned long ssl_save_cert_key(const char* storePath, const char* keyPath,	const char* password, const char* cert, char** pMessage)
 {
 	BIO* certBIO = NULL;
 	BIO* keyBIO = NULL;
 	unsigned long err = 0;
 	char errBuf[120];
 
-	log_verbose("%s::%s(%d) : Entering function %s", 
-		__FILE__, __FUNCTION__, __LINE__, __FUNCTION__);
+	log_verbose("%s::%s(%d) : Entering function %s", LOG_INF, __FUNCTION__);
 	err = backup_file(storePath);
-	if(err != 0 && err != ENOENT) {
+	if(err != 0 && err != ENOENT) 
+	{
 		char* errStr = strerror(err);
-		log_error("%s::%s(%d) : Unable to backup store at %s: %s\n",
-			__FILE__, __FUNCTION__, __LINE__, storePath, errStr);
-		append_linef(pMessage, "Unable to open store at %s: %s", storePath, \
-			errStr);
+		log_error("%s::%s(%d) : Unable to backup store at %s: %s\n", LOG_INF, storePath, errStr);
+		append_linef(pMessage, "Unable to open store at %s: %s", storePath, errStr);
 	} else {
 		/* Write the cert as a full PEM into memory */
 		certBIO = BIO_new(BIO_s_mem());
 		keyBIO = NULL;
 
 		err = write_cert_bio(certBIO, cert);
-		if(err)	{
+		if(err)	
+		{
 			ERR_error_string(err, errBuf);
-			log_error("%s::%s(%d) : Unable to write certificate to BIO: %s", \
-				__FILE__, __FUNCTION__, __LINE__, errBuf);
-			append_linef(pMessage, "Unable to write certificate to BIO: %s", \
-				errBuf);
+			log_error("%s::%s(%d) : Unable to write certificate to BIO: %s", LOG_INF, errBuf);
+			append_linef(pMessage, "Unable to write certificate to BIO: %s", errBuf);
 		}
 	}
 
@@ -1893,34 +1759,36 @@ unsigned long ssl_save_cert_key(const char* storePath, const char* keyPath,	\
 	/* If there is a TPM, this got stored to a file during key creation */
 	if(!err)
 	{
-		if(keyPath)	{
+		if(keyPath)	
+		{
 			keyBIO = BIO_new(BIO_s_mem());
 			err = write_key_bio(keyBIO, password, NULL); // save keyPair
 		}
-		else {
+		else 
+		{
 			err = write_key_bio(certBIO, password, NULL); // save keyPair
 		}
 
-		if(err)	{
+		if(err)	
+		{
 			ERR_error_string(err, errBuf);
-			log_error("%s::%s(%d) : Unable to write key to BIO: %s", \
-				__FILE__, __FUNCTION__, __LINE__, errBuf);
+			log_error("%s::%s(%d) : Unable to write key to BIO: %s", LOG_INF, errBuf);
 			append_linef(pMessage, "Unable to write key to BIO: %s", errBuf);
 		}
 	}
 #endif
 
-	if(!err) {
+	if(!err) 
+	{
 		char* data = NULL;
 		long len = BIO_get_mem_data(certBIO, &data);
 		err = replace_file(storePath, data, len, true);
 
-		if(err)	{
+		if(err)	
+		{
 			char* errStr = strerror(err);
-			log_error("%s::%s(%d) : Unable to write store at %s: %s",\
-				__FILE__, __FUNCTION__, __LINE__, storePath, errStr);
-			append_linef(pMessage, "Unable to write store at %s: %s",\
-				storePath, errStr);
+			log_error("%s::%s(%d) : Unable to write store at %s: %s", LOG_INF, storePath, errStr);
+			append_linef(pMessage, "Unable to write store at %s: %s", storePath, errStr);
 		}
 	}
 
@@ -1934,10 +1802,8 @@ unsigned long ssl_save_cert_key(const char* storePath, const char* keyPath,	\
 		if(err)
 		{
 			char* errStr = strerror(err);
-			log_error("%s::%s(%d) : Unable to write key at %s: %s", \
-				__FILE__, __FUNCTION__, __LINE__, keyPath, errStr);
-			append_linef(pMessage, "Unable to write key at %s: %s", \
-				keyPath, errStr);
+			log_error("%s::%s(%d) : Unable to write key at %s: %s", LOG_INF, keyPath, errStr);
+			append_linef(pMessage, "Unable to write key at %s: %s", keyPath, errStr);
 		}
 	}
 #endif
@@ -1960,8 +1826,7 @@ unsigned long ssl_save_cert_key(const char* storePath, const char* keyPath,	\
  * @return - success : 0
  *		   - failure : the error code from opening the file or such
  */
-int ssl_read_store_inventory(const char* path, const char* password, \
-	PemInventoryList** pPemList)
+int ssl_read_store_inventory(const char* path, const char* password, PemInventoryList** pPemList)
 {
 	return get_inventory(path, password, pPemList, NULL, false, NULL, false);
 } /* ssl_read_store_inventory */
@@ -1979,8 +1844,7 @@ int ssl_read_store_inventory(const char* path, const char* password, \
  * @return - success : true
  *         - failure : false
  */
-bool ssl_PemInventoryItem_create(struct PemInventoryItem** pem, \
-	const char* certASCII)
+bool ssl_PemInventoryItem_create(struct PemInventoryItem** pem, const char* certASCII)
 {
 	bool bResult = false;
 	X509* cert = NULL;
@@ -1998,15 +1862,13 @@ bool ssl_PemInventoryItem_create(struct PemInventoryItem** pem, \
 		cert = PEM_read_bio_X509(cbio, NULL, 0, NULL);
 		if ( NULL == cert )
 		{
-			log_error("%s::%s(%d) : This is not a valid X509 cert: \n%s", \
-				__FILE__, __FUNCTION__, __LINE__, certPEM);
+			log_error("%s::%s(%d) : This is not a valid X509 cert: \n%s", LOG_INF, certPEM);
 			goto cleanup;
 		}
 		/* cert now contains the X509 cert */
 		if ( NULL == (*pem = PemInventoryItem_new()) )
 		{
-			log_error("%s::%s(%d) : Out of memory",
-				__FILE__, __FUNCTION__, __LINE__);
+			log_error("%s::%s(%d) : Out of memory",	LOG_INF);
 			goto cleanup;
 		}
 		/* Populate the PemInventoryItem with a thumbprint */
@@ -2016,14 +1878,12 @@ bool ssl_PemInventoryItem_create(struct PemInventoryItem** pem, \
 		}
 		else
 		{
-			log_error("%s::%s(%d) : Error populating cert",\
-				__FILE__, __FUNCTION__, __LINE__);
+			log_error("%s::%s(%d) : Error populating cert", LOG_INF);
 		}
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Out of memory",
-			__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Out of memory", LOG_INF);
 	}
 
 cleanup:
@@ -2050,8 +1910,7 @@ bool ssl_Store_Cert_add(const char* storePath, const char* certASCII)
 	size_t certLen;
 	char* certPEM = base64_decode(certASCII, -1, &certLen);
 
-	log_trace("%s::%s(%d) : Converting cert to X509", \
-		__FILE__, __FUNCTION__, __LINE__);
+	log_trace("%s::%s(%d) : Converting cert to X509", LOG_INF);
 	/* Place the PEM into a BIO structure to be decoded */
 	BIO *cbio = BIO_new(BIO_s_mem());
 	BIO_puts(cbio, certPEM);
@@ -2061,8 +1920,7 @@ bool ssl_Store_Cert_add(const char* storePath, const char* certASCII)
 		cert = PEM_read_bio_X509(cbio, NULL, 0, NULL);
 		if ( NULL == cert )
 		{
-			log_error("%s::%s(%d) : This is not a valid cert:\n%s",\
-				__FILE__, __FUNCTION__, __LINE__, certPEM);
+			log_error("%s::%s(%d) : This is not a valid cert:\n%s", LOG_INF, certPEM);
 			return bResult;
 		}
 
@@ -2070,16 +1928,14 @@ bool ssl_Store_Cert_add(const char* storePath, const char* certASCII)
 		if(ret != 0 && ret != ENOENT)
 		{
 			char* errStr = strerror(ret);
-			log_error("%s::%s(%d) : Unable to backup store at %s: %s\n", \
-				__FILE__, __FUNCTION__, __LINE__, storePath, errStr);
+			log_error("%s::%s(%d) : Unable to backup store at %s: %s\n", LOG_INF, storePath, errStr);
 		}
 		else
 		{
 			ret = store_append_cert(storePath, cert);
 			if ( 0 != ret )
 			{
-				log_error("%s::%s(%d) : Unable to append cert to store at %s", \
-					__FILE__, __FUNCTION__, __LINE__, storePath);
+				log_error("%s::%s(%d) : Unable to append cert to store at %s", LOG_INF, storePath);
 			}
 			else
 			{
@@ -2089,8 +1945,7 @@ bool ssl_Store_Cert_add(const char* storePath, const char* certASCII)
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Out of memory",
-			__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Out of memory",	LOG_INF);
 	}
 
 	if ( cert ) { X509_free(cert); }
@@ -2111,8 +1966,7 @@ bool ssl_Store_Cert_add(const char* storePath, const char* certASCII)
  * @return - success : true
  *           failure : false
  */
-bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,\
-	const char* keyPath, const char* password)
+bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb, const char* keyPath, const char* password)
 {
 	bool bResult = false;
 	PemInventoryList* pemList = NULL;
@@ -2128,9 +1982,8 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,\
 	 * 1.)Get the PEM inventory, X509 PEM, and list of private keys in the store
 	 **************************************************************************/
 	log_trace("%s::%s(%d) : Get PEM inventory",
-		__FILE__, __FUNCTION__, __LINE__);
-	if ( 0 != get_inventory(storePath, password, &pemList, &pemX509Array, true,\
-			&keyArray, true) )
+		LOG_INF);
+	if ( 0 != get_inventory(storePath, password, &pemList, &pemX509Array, true, &keyArray, true) )
 	{
 		if ( pemList )
 		{
@@ -2147,23 +2000,19 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,\
 			PrivKeyList_free(keyArray);
 			keyArray = NULL;
 		}
-		log_error("%s::%s(%d) : Failed to get inventory",
-			__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Failed to get inventory", LOG_INF);
 		return bResult;
 	}
 
 	/***************************************************************************
 	 * 2.) Search for the certificate inside of the store by sha1 hash
 	 **************************************************************************/
-	log_trace("%s::%s(%d) : Search for matching hash to remove in inventory",\
-		__FILE__, __FUNCTION__, __LINE__);
+	log_trace("%s::%s(%d) : Search for matching hash to remove in inventory", LOG_INF);
 	bool certFound = false;
 	int i = pemList->item_count-1;
-	while ( (!certFound) && \
-		    (0 <= i) )
+	while ( (!certFound) && (0 <= i) )
 	{
-		log_trace("%s::%s(%d) : thumb #%d compared", \
-			__FILE__, __FUNCTION__, __LINE__, i);
+		log_trace("%s::%s(%d) : thumb #%d compared", LOG_INF, i);
 		if (0 == strcasecmp(searchThumb, pemList->items[i]->thumbprint_string) )
 		{
 			certFound = true;
@@ -2173,8 +2022,7 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,\
 			i--;
 		}
 	}
-	log_verbose("%s::%s(%d) : Found cert: %s", \
-			__FILE__, __FUNCTION__, __LINE__, (certFound ? "yes" : "no"));
+	log_verbose("%s::%s(%d) : Found cert: %s", LOG_INF, (certFound ? "yes" : "no"));
 
 	/**************************************************************************
 	 * 3.) Update the store, but skip the cert we want to remove
@@ -2184,8 +2032,7 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,\
 		/*************************
 		 * 3a.) Add all the certs
 		 ************************/
-		log_trace("%s::%s(%d) : Writing certs to store",\
-			__FILE__, __FUNCTION__, __LINE__);
+		log_trace("%s::%s(%d) : Writing certs to store", LOG_INF);
 		bio = BIO_new(BIO_s_mem()); // Get new memory to store the bio
 		/* At this point i points to the pemList & */
 		/* PEMx509List of the cert to delete */
@@ -2196,8 +2043,7 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,\
 				ret = BIO_puts(bio, pemList->items[j]->cert);					 
 				if ( 0 != ret )
 				{
-					log_error("%s::%s(%d) : Failed to add cert to store %s",
-						__FILE__, __FUNCTION__, __LINE__, storePath);
+					log_error("%s::%s(%d) : Failed to add cert to store %s", LOG_INF, storePath);
 					goto cleanup;
 				}
 			}
@@ -2214,8 +2060,7 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,\
 				ret = write_key_bio(bio, password, keyArray->keys[k]);
 				if ( 0!= ret )
 				{
-					log_error("%s::%s(%d) : Failed to add key to store %s",
-						__FILE__, __FUNCTION__, __LINE__, storePath);
+					log_error("%s::%s(%d) : Failed to add key to store %s",	LOG_INF, storePath);
 					goto cleanup;
 				}
 			}
@@ -2231,7 +2076,7 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,\
 		{
 			char* errStr = strerror(ret);
 			log_error("%s::%s(%d) : Unable to write key at %s: %s", 
-				__FILE__, __FUNCTION__, __LINE__, storePath, errStr);
+				LOG_INF, storePath, errStr);
 			goto cleanup;
 		}
 
@@ -2251,8 +2096,7 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,\
 			ret = get_key_inventory(keyPath, password, &keyArray);
 			if ( 0 != ret )
 			{
-				log_error("%s::%s(%d) : Error reading keystore %s",
-					__FILE__, __FUNCTION__, __LINE__, keyPath);
+				log_error("%s::%s(%d) : Error reading keystore %s",	LOG_INF, keyPath);
 				goto cleanup;
 			}
 			bio = BIO_new(BIO_s_mem()); // Get new memory to store the bio
@@ -2262,8 +2106,7 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,\
 				ret = write_key_bio(bio, password, keyArray->keys[x]);
 				if ( 0 != ret )
 				{
-					log_error("%s::%s(%d) : Failed to add key to store %s",
-						__FILE__, __FUNCTION__, __LINE__, keyPath);
+					log_error("%s::%s(%d) : Failed to add key to store %s", LOG_INF, keyPath);
 					goto cleanup;
 				}
 			}
@@ -2277,16 +2120,14 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,\
 			if( 0 != ret)
 			{
 				char* errStr = strerror(ret);
-				log_error("%s::%s(%d) : Unable to write key at %s: %s", 
-					__FILE__, __FUNCTION__, __LINE__, keyPath, errStr);
+				log_error("%s::%s(%d) : Unable to write key at %s: %s", LOG_INF, keyPath, errStr);
 				goto cleanup;
 			}
 		} /* end separate keystore */
 	}
 	else
 	{
-		log_error("%s::%s(%d) Cert not found in PEM store %s",
-			__FILE__, __FUNCTION__, __LINE__, storePath);
+		log_error("%s::%s(%d) Cert not found in PEM store %s", LOG_INF, storePath);
 		goto cleanup;
 	}
 
@@ -2326,8 +2167,7 @@ cleanup:
  */
 void ssl_cleanup(void)
 {
-	log_trace("%s::%s(%d) : Cleaning up openssl", \
-		__FILE__, __FUNCTION__, __LINE__);
+	log_trace("%s::%s(%d) : Cleaning up openssl", LOG_INF);
 	if (keyPair) EVP_PKEY_free(keyPair);
 	if (newRsa) OPENSSL_free(newRsa);
 	if (newEcc) OPENSSL_free(newEcc);
@@ -2345,11 +2185,9 @@ void ssl_cleanup(void)
  */
 void ssl_init(void)
 {
-	log_trace("%s::%s(%d) : Adding openSSL algorithms", 
-		__FILE__, __FUNCTION__, __LINE__);
+	log_trace("%s::%s(%d) : Adding openSSL algorithms", LOG_INF);
 	OpenSSL_add_all_algorithms();
-	log_trace("%s::%s(%d) : Loading Crypto error strings", 
-		      __FILE__, __FUNCTION__, __LINE__);
+	log_trace("%s::%s(%d) : Loading Crypto error strings", LOG_INF);
 	ERR_load_crypto_strings();
 	return;
 } /* ssl_init */

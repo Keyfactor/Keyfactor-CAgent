@@ -17,17 +17,13 @@ CFLAGS += -Wno-missing-braces
 #CFLAGS += -fsanitize=address
 CFLAGS += -fno-strict-aliasing
 #CFLAGS += -fstack-protector-all
-
-# TODO: re-enable this after some things are fixed, like SecurityKeys.h
 CFLAGS += -Wno-ignored-qualifiers
-
-# yet more warnings from https://news.ycombinator.com/item?id=7371806
-CFLAGS += -Wformat=2
-CFLAGS += -D_FORTIFY_SOURCE=2
-
-FEATURES = splitdebug            
-DEBUG_FLAGS = -g3 -ggdb3 -O2
+          
+#DEBUG_FLAGS = -g3 -ggdb3 -O0
+DEBUG_FLAGS = -g0 -O0
 DEFINES = 
+#DEFINES += -D__RUN_CHAIN_JOBS__
+#DEFINES += -D__INFINITE_AGENT__
 
 WOLFLIBS = -I ./ -I/usr/local/include/wolfssl -I/usr/local/include/curl \
            -L/usr/local/lib -L/usr/local/include/wolfssl/wolfcrypt \
@@ -54,19 +50,19 @@ OSRC := $(wildcard *.c) \
         $(wildcard openssl_wrapper/*.c)
 OOBJ = $(OSRC:%.c=%.o)
 
-wolftest: DEFINES += -D __WOLF_SSL__ -D __KEYFACTOR_LOCAL_TESTING__ -D _DEBUG
+wolftest: DEFINES += -D__WOLF_SSL__
 wolftest: ${OBJS}
 	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${WOLFLIBS}
 
-opentest: DEFINES += -D __OPEN_SSL__ -D __KEYFACTOR_LOCAL_TESTING__ -D _DEBUG
+opentest: DEFINES += -D__OPEN_SSL__
 opentest: ${OOBJ}
 	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${OPENLIBS}
 
-rpi9670test: DEFINES += -D __OPEN_SSL__ -D __KEYFACTOR_LOCAL_TESTING__ -D _DEBUG -D __TPM__
+rpi9670test: DEFINES += -D__OPEN_SSL__ -D__TPM__
 rpi9670test: ${OOBJ}
 	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${OPENLIBS} ${RPI_TSSLIBS}
 
-test: rpi9670test
+test: wolftest
 
 # define the builds
 %.o: %.c

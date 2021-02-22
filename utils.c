@@ -11,11 +11,57 @@
 #include "logging.h"
 #include "errno.h"
 #include <string.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+/******************************************************************************/
+/** @fn int file_exists( const char *file )
+	@brief checks if a file exists already
+	@param const char *file = path and filename of file to check
+	@returns 0 if file does not exist, is a directory, or is a sym link,
+	         1 if it does exist
+*/
+/******************************************************************************/
+int file_exists( const char *file )
+{
+	int retval = 0;
+	struct stat file_stat;
+
+	stat(file, &file_stat); // what file do we have?
+	if ( 0 != S_ISREG(file_stat.st_mode) ) // if we have a regular file
+	{
+		if ( -1 != access( file, F_OK ) ) 
+		{
+			retval = 1;
+		}
+	}
+
+	return retval;
+} // file_exists
+
+/******************************************************************************/
+/** @fn is_directory( const char *file )
+	@brief checks if a string is really a directory
+	@param const char *file = path and filename of file to check
+	@returns true if file is actually a directory
+	         false if the file is actually a file
+*/
+/******************************************************************************/
+bool is_directory( const char *file )
+{
+	bool bResult = false;
+	struct stat file_stat;
+	stat(file, &file_stat);
+	if ( 0 != S_ISDIR(file_stat.st_mode) )
+	{
+		bResult = true;
+	}
+	return bResult;
+}
 
 /******************************************************************************/
 /** @fn char NibbleToChar
@@ -102,26 +148,6 @@ void to_Lower_Case( char s[], const int len)
 	}
 	return;
 } // toLowerCase
-
-/******************************************************************************/
-/** @fn int file_exists( const char *file )
-	@brief checks if a file exists already
-	@param const char *file = path and filename of file to check
-	@returns 0 if file does not exist, 1 if it does exist
-*/
-/******************************************************************************/
-int file_exists( const char *file )
-{
-	int retval = 0;
-
-	if ( -1 != access( file, F_OK ) )
-	{
-		retval = 1;
-	}
-
-	return retval;
-} // file_exists
-
 
 /******************************************************************************/
 /** @fn int create_file( const char *file )
@@ -380,7 +406,7 @@ int backup_file(const char* file)
 			dummy = strdup(file);
 		}
 		log_info("%s::%s(%d) : No file found at %s", \
-			__FILE__, __FUNCTION__, __LINE__, dummy);
+			LOG_INF, dummy);
 		free(dummy);
 		err = ENOENT;
 	}
@@ -427,24 +453,24 @@ int replace_file(const char* file, const char* contents, long len, bool backup)
 			err = errno;
 			char* errStr = strerror(errno);
 			log_error("%s::%s(%d) : Unable to open store at %s for writing: %s",
-					   __FILE__, __FUNCTION__, __LINE__, file, errStr);
+					   LOG_INF, file, errStr);
 		}
 		else
 		{
 			log_verbose("%s::%s(%d) : Preparing to write %ld bytes to the modified store",
-						__FILE__, __FUNCTION__, __LINE__, len);
+						LOG_INF, len);
 
 			if(fwrite(contents, 1, len, fpWrite) == (size_t)len)
 			{
 				log_verbose("%s::%s(%d) : Store %s written successfully",
-							__FILE__, __FUNCTION__, __LINE__, file);
+							LOG_INF, file);
 			}
 			else
 			{
 				err = errno;
 				char* errStr = strerror(errno);
 				log_error("%s::%s(%d) : Unable to write store at %s: %s",
-							__FILE__, __FUNCTION__, __LINE__, file, errStr);
+							LOG_INF, file, errStr);
 			}
 		}
 
@@ -480,7 +506,7 @@ char* util_strip_string(const char* fromString, const char* stripString)
 
 
 	log_trace("%s::%s(%d) : Attempting to strip %s from %s", \
-		__FILE__, __FUNCTION__, __LINE__, stripString,fromString);
+		LOG_INF, stripString,fromString);
 	/* get a pointer into fromString at the staring location */
 	/* of the strip string */
 	stripPointer = strstr(fromString, stripString);
@@ -507,7 +533,7 @@ char* util_strip_string(const char* fromString, const char* stripString)
 	{
 		returnString = strdup(fromString);
 		log_trace("%s::%s(%d) : Didn't find %s inside %s, not modifying %s",
-			__FILE__, __FUNCTION__, __LINE__, stripString, fromString, fromString);
+			LOG_INF, stripString, fromString, fromString);
 	}
 
 	/* Clean up */

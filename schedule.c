@@ -9,9 +9,12 @@
 /** @file schedule.c */
 #include "schedule.h"
 #include "logging.h"
+#include "agent.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+struct ScheduledJob* currentJob; // Defined in schedule.c
 
 /**
  * Retrieve the Local offset from UTC. Negative if local time is "behind" UTC
@@ -48,8 +51,7 @@ static time_t next_interval(char* intSch, time_t prev)
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Invalid interval: %s", 
-			__FILE__, __FUNCTION__, __LINE__, intSch);
+		log_error("%s::%s(%d) : Invalid interval: %s", LOG_INF, intSch);
 		return prev;
 	}
 } /* next_interval */
@@ -91,8 +93,7 @@ static time_t next_daily(char* dailySch, time_t prev)
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Invalid daily: %s", \
-			__FILE__, __FUNCTION__, __LINE__, dailySch);
+		log_error("%s::%s(%d) : Invalid daily: %s", LOG_INF, dailySch);
 		return prev;
 	}
 } /* next_daily */
@@ -151,8 +152,7 @@ static time_t next_weekly(char* weeklySch, time_t prev)
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Invalid weekly: %s", \
-			__FILE__, __FUNCTION__, __LINE__, weeklySch);
+		log_error("%s::%s(%d) : Invalid weekly: %s", LOG_INF, weeklySch);
 		return prev;
 	}
 } /* next_weekly */
@@ -224,8 +224,7 @@ static time_t next_monthly(char* monthSch, time_t prev)
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Invalid monthly: %s", \
-			__FILE__, __FUNCTION__, __LINE__, monthSch);
+		log_error("%s::%s(%d) : Invalid monthly: %s", LOG_INF, monthSch);
 		return prev;
 	}
 } /* next_monthly */
@@ -272,8 +271,7 @@ static time_t next_one_time(char* oneTimeSch)
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Invalid one-time: %s", \
-			__FILE__, __FUNCTION__, __LINE__, oneTimeSch);
+		log_error("%s::%s(%d) : Invalid one-time: %s", LOG_INF, oneTimeSch);
 		return time(NULL);
 	}
 } /* next_one_time */
@@ -304,42 +302,34 @@ time_t next_execution(char* sch, time_t prev)
 
 	if(!sch || strlen(sch) < 3)
 	{
-		log_verbose("%s::%s(%d) : Schedule is not provided, "
-			        "indicating job should be run immediately", \
-			        __FILE__, __FUNCTION__, __LINE__);
+		log_verbose("%s::%s(%d) : Schedule is not provided, indicating job should be run immediately", LOG_INF);
 		return next = prev;
 	}
 
 	switch(sch[0])
 	{
 		case 'D':
-			log_verbose("%s::%s(%d) : Daily schedule: %s", \
-				__FILE__, __FUNCTION__, __LINE__, sch);
+			log_verbose("%s::%s(%d) : Daily schedule: %s", LOG_INF, sch);
 			next = next_daily(&sch[2], prev);
 			break;
 		case 'M':
-			log_verbose("%s::%s(%d) : Monthly schedule: %s", \
-				__FILE__, __FUNCTION__, __LINE__, sch);
+			log_verbose("%s::%s(%d) : Monthly schedule: %s", LOG_INF, sch);
 			next = next_monthly(&sch[2], prev);
 			break;
 		case 'O':
-			log_verbose("%s::%s(%d) : One-time schedule: %s", \
-				__FILE__, __FUNCTION__, __LINE__, sch);
+			log_verbose("%s::%s(%d) : One-time schedule: %s", LOG_INF, sch);
 			next = next_one_time(&sch[2]);
 			break;
 		case 'I':
-			log_verbose("%s::%s(%d) : Interval schedule: %s", \
-				__FILE__, __FUNCTION__, __LINE__, sch);
+			log_verbose("%s::%s(%d) : Interval schedule: %s", LOG_INF, sch);
 			next = next_interval(&sch[2], prev);
 			break;
 		case 'W':
-			log_verbose("%s::%s(%d) : Weekly schedule: %s", \
-				__FILE__, __FUNCTION__, __LINE__, sch);
+			log_verbose("%s::%s(%d) : Weekly schedule: %s", LOG_INF, sch);
 			next = next_weekly(&sch[2], prev);
 			break;
 		default:
-			log_error("%s::%s(%d) : Unknown schedule: %s", \
-				__FILE__, __FUNCTION__, __LINE__, sch);
+			log_error("%s::%s(%d) : Unknown schedule: %s", LOG_INF, sch);
 			break;
 	}
 
@@ -361,9 +351,7 @@ struct SessionJob* get_runnable_job(struct ScheduledJob** pList, time_t now)
 
 	while(current)
 	{
-		log_trace("%s::%s(%d) : Checking job %s NextExecution = %ld Now = %ld",\
-			__FILE__,__FUNCTION__, __LINE__, \
-			current->Job->JobId,current->NextExecution,now);
+		log_trace("%s::%s(%d) : Checking job %s NextExecution = %ld Now = %ld", LOG_INF, current->Job->JobId,current->NextExecution,now);
 		if(current->NextExecution <= now)
 		{
 			return current->Job;
@@ -372,8 +360,7 @@ struct SessionJob* get_runnable_job(struct ScheduledJob** pList, time_t now)
 		current = current->NextJob;
 	}
 
-	log_verbose("%s::%s(%d) : No jobs to run", \
-		__FILE__, __FUNCTION__, __LINE__);
+	log_verbose("%s::%s(%d) : No jobs to run", LOG_INF);
 	return NULL;
 }
 
@@ -399,8 +386,7 @@ struct SessionJob* get_job_by_id(struct ScheduledJob** pList, const char* jobId)
 		current = current->NextJob;
 	}
 
-	log_verbose("%s::%s(%d) : -Job %s not found", \
-		__FILE__, __FUNCTION__, __LINE__, jobId);
+	log_verbose("%s::%s(%d) : -Job %s not found", LOG_INF, jobId);
 	return NULL;
 } /* get_job_by_id */
 
@@ -435,14 +421,12 @@ void clear_job_schedules(struct ScheduledJob** pList)
  * @param  - [Input] prev = 
  * @return - none
  */
-void schedule_job(struct ScheduledJob** pList, struct SessionJob* job, \
-	time_t prev)
+void schedule_job(struct ScheduledJob** pList, struct SessionJob* job, time_t prev)
 {
 	struct ScheduledJob* newSchJob = calloc(1, sizeof(struct ScheduledJob));
 	if ( !newSchJob )
 	{
-		log_error("%s::%s(%d) : Out of memory", \
-			__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Out of memory", LOG_INF);
 		return;
 	}
 	newSchJob->Job = job;
@@ -464,16 +448,13 @@ void schedule_job(struct ScheduledJob** pList, struct SessionJob* job, \
 		{
 			if(strcasecmp(current->Job->JobId, job->JobId) == 0)
 			{
-				log_verbose("%s::%s(%d) : Rescheduling job %s", \
-					__FILE__, __FUNCTION__, __LINE__, job->JobId);
+				log_verbose("%s::%s(%d) : Rescheduling job %s", LOG_INF, job->JobId);
 
 				if(
 					current->NextExecution > 0 && \
 					(!job->Schedule || job->Schedule[0] == 'O') )
 				{
-					log_verbose("%s::%s(%d) : Job %s is a one-time job, "
-						        "and will not be rescheduled", \
-								__FILE__, __FUNCTION__, __LINE__, job->JobId);
+					log_verbose("%s::%s(%d) : Job %s is a one-time job, and will not be rescheduled", LOG_INF, job->JobId);
 
 					if(prev)
 					{

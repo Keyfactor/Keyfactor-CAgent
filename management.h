@@ -20,11 +20,9 @@
  *		3.) Respond to the platform as to the job's success
  *
  * @param  - [Input] : jobInfo
- * @param  - [Input] : config
  * @param  - [Input] : sessionToken
  * @param  - [Input] : chainJob
  * @return - job was run : 0
  *		   - job was canceled : 1
  */
-int cms_job_manage(struct SessionJob* jobInfo, struct ConfigData* config, \
-	char* sessionToken, char** chainJob);
+int cms_job_manage(struct SessionJob* jobInfo, char* sessionToken, char** chainJob);

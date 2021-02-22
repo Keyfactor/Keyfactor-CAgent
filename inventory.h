@@ -10,4 +10,4 @@
 #include "dto.h"
 #include "config.h"
 
-int cms_job_inventory(struct SessionJob* jobInfo, struct ConfigData* config, char* sessionToken);
+int cms_job_inventory(struct SessionJob* jobInfo, char* sessionToken);

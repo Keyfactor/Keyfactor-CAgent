@@ -47,20 +47,16 @@ char* util_strip_string(const char* fromString, const char* stripString);
 /** 															*/
 char* bstrcat(const char* s1, const char* s2);
 
-/* BEGIN GM Specific */
-/**
- * GM Specific
- * Convert the numbers in the VIN or ECU into characters
- *
- * @param  - [Output] outString : The string to hold the destination
- *                    NOTE: The output string must be longer than the
- *                    length by 1 or more.  this is not validated here.
- * @param  - [Input] id : The VIN or ECU id
- * @param  - [Input] len : The length of the VIN or ID in bytes
- * @return - success : A string (null terminated) representing the ID
- *           failure : NULL
- */
-char* convert_GMid(uint8_t* id, uint8_t len);
-/* END GM Specific */
+int file_exists( const char *file );
+
+/******************************************************************************/
+/** @fn is_directory( const char *file )
+	@brief checks if a string is really a directory
+	@param const char *file = path and filename of file to check
+	@returns true if file is actually a directory
+	         false if the file is actually a file
+*/
+/******************************************************************************/
+bool is_directory( const char *file );
 
 #endif /* UTILS_H_ */

@@ -13,7 +13,6 @@
 #include "dto.h"
 #include "config.h"
 
-int cms_job_fetchLogs(struct SessionJob* jobInfo, struct ConfigData* config, \
-					  char* sessionToken);
+int cms_job_fetchLogs(struct SessionJob* jobInfo, char* sessionToken);
 
 #endif /* KEYFACTOR_FETCHLOGS_H_ */

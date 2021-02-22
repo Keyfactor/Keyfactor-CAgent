@@ -52,31 +52,28 @@ struct SerializeData* serialize_load( char* fileName )
 			serial = calloc(1, sizeof(struct SerializeData));
 			if ( NULL == serial )
 			{
-				log_error("%s::%s(%d) : Out of memory! ", __FILE__, __FUNCTION__, __LINE__);
+				log_error("%s::%s(%d) : Out of memory! ", LOG_INF);
 				fclose(fp);
 				return NULL;
 			}
 
 			serial->ModelName = json_get_member_string(json, "ModelName");
-			serial->NextNumber = 
-							json_get_member_number(json, "NextNumber", 0);
+			serial->NextNumber = json_get_member_number(json, "NextNumber", 0);
 
 			json_delete(json);
-			log_verbose("%s::%s(%d) : Serialize parameters follow:", __FILE__, __FUNCTION__, __LINE__);
+			log_verbose("%s::%s(%d) : Serialize parameters follow:", LOG_INF);
 			SerializeData_print( serial );
 		}
 		else
 		{
-			log_error("%s::%s(%d) : Contents of %s are not valid JSON",
-						__FILE__, __FUNCTION__, __LINE__, fileName);
+			log_error("%s::%s(%d) : Contents of %s are not valid JSON",	LOG_INF, fileName);
 		}
 		fclose(fp);
 	}
 	else
 	{
 		int err = errno;
-		log_error("%s::%s(%d) : Unable to open serialization file %s: %s",
-					__FILE__, __FUNCTION__, __LINE__, fileName, strerror(err));
+		log_error("%s::%s(%d) : Unable to open serialization file %s: %s", LOG_INF, fileName, strerror(err));
 	}
 	return serial;
 } // serialize_load
@@ -93,7 +90,7 @@ int serialize_save( struct SerializeData* serial, char* fileName )
 	JsonNode* json = json_mkobject();
 	if ( NULL == json )
 	{
-		log_error("%s::%s(%d) : Out of memory! ", __FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Out of memory! ", LOG_INF);
 		return 0; 
 	}
 
@@ -104,22 +101,19 @@ int serialize_save( struct SerializeData* serial, char* fileName )
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Missing required ModelName", \
-			__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Missing required ModelName", LOG_INF);
 		json_delete(json);
 		return 0;
 	}
 
 	if(serial->NextNumber)
 	{
-		json_append_member(json, "NextNumber",
-							json_mknumber(serial->NextNumber));
+		json_append_member(json, "NextNumber", json_mknumber(serial->NextNumber));
 
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Missing required NextNumber", \
-			__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Missing required NextNumber", LOG_INF);
 		json_delete(json);
 		return 0;
 	}
@@ -131,8 +125,7 @@ int serialize_save( struct SerializeData* serial, char* fileName )
 		size_t w = fwrite(serialString, 1, strlen(serialString), fp);
 		if ( w != strlen(serialString) )
 		{
-			log_error("%s::%s(%d) : Error writing to file %s",
-						__FILE__, __FUNCTION__, __LINE__,fileName);
+			log_error("%s::%s(%d) : Error writing to file %s", LOG_INF,fileName);
 			free(serialString);
 			fclose(fp);
 			return 0;
@@ -143,8 +136,7 @@ int serialize_save( struct SerializeData* serial, char* fileName )
 	else
 	{
 		int err = errno;
-		log_error("%s::%s(%d) : Unable to write serial file %s: %s",
-				__FILE__, __FUNCTION__, __LINE__,fileName,strerror(err));
+		log_error("%s::%s(%d) : Unable to write serial file %s: %s", LOG_INF,fileName,strerror(err));
 		return 0;
 	}
 	

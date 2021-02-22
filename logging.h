@@ -13,27 +13,31 @@
 #include <stdbool.h>
 	
 void log_error(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
-
+void log_warn(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
 void log_info(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
-
 void log_verbose(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
-
 void log_debug(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
-
 void log_trace(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
 
 void log_set_trace(bool param);
 void log_set_debug(bool param);
 void log_set_verbosity(bool param);
 void log_set_info(bool param);
+void log_set_warn(bool param);
 void log_set_error(bool param);
 void log_set_off(bool param);
 
 bool is_log_off( void );
 bool is_log_error( void );
+bool is_log_warn( void );
 bool is_log_info( void );
 bool is_log_verbose( void );
 bool is_log_debug( void );
 bool is_log_trace( void );
+
+void load_log_buffer( void );
+void write_log_file( char* file );
+
+#define LOG_INF __FILE__, __FUNCTION__, __LINE__
 
 #endif /* LOGGING_H_ */

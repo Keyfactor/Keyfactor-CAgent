@@ -18,35 +18,36 @@
 #include "utils.h"
 #include "global.h"
 
+bool config_loaded = false;
+struct ConfigData* ConfigData;
+
 /**
 	print the configuration parameters pulled from config.json
 	@param  - [Input] config = a pointer to the configuration data
 	@return - none
  */
-static void print_config( struct ConfigData *config )
+static void print_config( struct ConfigData* ConfigData )
 {
-	printf("\n\n          AgentId = %s\n", config->AgentId);
-	printf("          AgentName = %s\n", config->AgentName);
-	printf("          ClientParameterPath = %s\n",
-										config->ClientParameterPath);
-	printf("          Hostname = %s\n", config->Hostname);
-	printf("          Password = %s\n", config->Password);
-	printf("          Username = %s\n", config->Username);
-	printf("          VirtualDirectory = %s\n", config->VirtualDirectory);
-	printf("          TrustStore = %s\n", config->TrustStore);
-	printf("          AgentCert = %s\n", config->AgentCert);
-	printf("          AgentKey = %s\n", config->AgentKey);
-	printf("          AgentKeyPassword = %s\n", config->AgentKeyPassword);
-	printf("          UseSsl = %s\n", config->UseSsl ? "true" : "false");
-	printf("          CSRKeyType = %s\n", config->CSRKeyType);
-	printf("          CSRKeySize = %d\n", config->CSRKeySize);
-	printf("          CSRSubject = %s\n", config->CSRSubject);
-	printf("          EnrollOnStartup = %s\n",
-									config->EnrollOnStartup ? "true" : "false");
-	printf("          Serialize = %s\n", config->Serialize ? "true" : "false");
-	printf("          SerialFile = %s\n", config->SerialFile);
-	printf("          httpRetries = %d\n", config->httpRetries); /* BL-20654 */
-	printf("          retryInterval = %d\n", config->retryInterval);/*BL-20654*/
+	printf("\n\n          AgentId = %s\n", ConfigData->AgentId);
+	printf("          AgentName = %s\n", ConfigData->AgentName);
+	printf("          ClientParameterPath = %s\n", ConfigData->ClientParameterPath);
+	printf("          Hostname = %s\n", ConfigData->Hostname);
+	printf("          Password = %s\n", ConfigData->Password);
+	printf("          Username = %s\n", ConfigData->Username);
+	printf("          VirtualDirectory = %s\n", ConfigData->VirtualDirectory);
+	printf("          TrustStore = %s\n", ConfigData->TrustStore);
+	printf("          AgentCert = %s\n", ConfigData->AgentCert);
+	printf("          AgentKey = %s\n", ConfigData->AgentKey);
+	printf("          AgentKeyPassword = %s\n", ConfigData->AgentKeyPassword);
+	printf("          UseSsl = %s\n", ConfigData->UseSsl ? "true" : "false");
+	printf("          CSRKeyType = %s\n", ConfigData->CSRKeyType);
+	printf("          CSRKeySize = %d\n", ConfigData->CSRKeySize);
+	printf("          CSRSubject = %s\n", ConfigData->CSRSubject);
+	printf("          EnrollOnStartup = %s\n", ConfigData->EnrollOnStartup ? "true" : "false");
+	printf("          Serialize = %s\n", ConfigData->Serialize ? "true" : "false");
+	printf("          SerialFile = %s\n", ConfigData->SerialFile);
+	printf("          httpRetries = %d\n", ConfigData->httpRetries); 
+	printf("          retryInterval = %d\n", ConfigData->retryInterval);
 	printf("\n\n");
 	return;
 } /* print_config */
@@ -78,8 +79,7 @@ struct ConfigData* config_decode(const char* buf)
 		config = calloc(1, sizeof(struct ConfigData));
 		if ( NULL == config )
 		{
-			log_error("%s::%s(%d) : Out of memory! ", \
-				__FILE__, __FUNCTION__, __LINE__);
+			log_error("%s::%s(%d) : Out of memory! ", LOG_INF);
 			return NULL;
 		}
 
@@ -87,57 +87,47 @@ struct ConfigData* config_decode(const char* buf)
 		if ( (UUID_LEN-1) > strlen(config->AgentId) )
 		{
 			/* The GUID is malformed, reallocate the size */
-			log_trace("%s::%s(%d) : Resizing agent id to %lu bytes", \
-				__FILE__, __FUNCTION__, __LINE__, \
-				UUID_LEN * sizeof(*(config->AgentId)) );
-			config->AgentId = realloc(config->AgentId, 
-				UUID_LEN * sizeof(*(config->AgentId)) );
+			log_trace("%s::%s(%d) : Resizing agent id to %lu bytes", LOG_INF, UUID_LEN * sizeof(*(config->AgentId)) );
+			config->AgentId = realloc(config->AgentId, UUID_LEN * sizeof(*(config->AgentId)) );
 		}
 		config->AgentName = json_get_member_string(jsonRoot, "AgentName");
-		config->ClientParameterPath = 
-					json_get_member_string(jsonRoot, "ClientParameterPath");
+		config->ClientParameterPath = json_get_member_string(jsonRoot, "ClientParameterPath");
 		config->Hostname = json_get_member_string(jsonRoot, "Hostname");
 		config->Password = json_get_member_string(jsonRoot, "Password");
 		config->Username = json_get_member_string(jsonRoot, "Username");
-		config->VirtualDirectory = 
-					   json_get_member_string(jsonRoot, "VirtualDirectory");
+		config->VirtualDirectory = json_get_member_string(jsonRoot, "VirtualDirectory");
 		config->TrustStore = json_get_member_string(jsonRoot, "TrustStore");
 		config->AgentCert = json_get_member_string(jsonRoot, "AgentCert");
 		config->AgentKey = json_get_member_string(jsonRoot, "AgentKey");
-		config->AgentKeyPassword = 
-					json_get_member_string(jsonRoot, "AgentKeyPassword");
+		config->AgentKeyPassword = json_get_member_string(jsonRoot, "AgentKeyPassword");
 		config->UseSsl = json_get_member_bool(jsonRoot, "UseSsl", true);
 		config->CSRKeyType = json_get_member_string(jsonRoot, "CSRKeyType");
 		config->CSRKeySize =json_get_member_number(jsonRoot,"CSRKeySize",0);
 		config->CSRSubject = json_get_member_string(jsonRoot, "CSRSubject");
-		config->EnrollOnStartup = 
-				json_get_member_bool(jsonRoot, "EnrollOnStartup", false);
-		config->Serialize = 
-				json_get_member_bool(jsonRoot, "Serialize", false);
+		config->EnrollOnStartup = json_get_member_bool(jsonRoot, "EnrollOnStartup", false);
+		config->Serialize = json_get_member_bool(jsonRoot, "Serialize", false);
 		config->SerialFile = json_get_member_string(jsonRoot, "SerialFile");
 		config->LogFile = json_get_member_string(jsonRoot, "LogFile");
-		config->httpRetries = \
-			json_get_member_number(jsonRoot, "httpRetries", 1); /* BL20654 */
-		if(1 > config->httpRetries) /* BL20654 - verify minimum value */
+		config->httpRetries = json_get_member_number(jsonRoot, "httpRetries", 1); 
+		if(1 > config->httpRetries) /* verify minimum value */
 		{
 			config->httpRetries = 1;
 		}
-		config->retryInterval = json_get_member_number(jsonRoot, \
-			"retryInterval", 1); /* BL20564 */
+		config->retryInterval = json_get_member_number(jsonRoot, "retryInterval", 1); 
 
 		json_delete(jsonRoot);
 
 		if ( is_log_verbose() )
 		{
-			log_verbose("%s::%s(%d) : Config parameters follow:", \
-				__FILE__, __FUNCTION__, __LINE__);
+			log_verbose("%s::%s(%d) : Config parameters follow:", LOG_INF);
 			print_config( config );
 		}
+
+		config_loaded = true;
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Contents of %s are not valid JSON", 
-					__FILE__, __FUNCTION__, __LINE__, CONFIG_LOCATION);
+		log_error("%s::%s(%d) : Contents of %s are not valid JSON", LOG_INF, CONFIG_LOCATION);
 	}
 
 	return config;
@@ -150,24 +140,31 @@ struct ConfigData* config_decode(const char* buf)
  *
  * @param  - none
  * @return - a reference to a filled out ConfigData element
+ *           NULL on error
  */
-struct ConfigData* config_load()
+struct ConfigData* config_load( void )
 {
 	char buf[MAX_CONFIG_FILE_LEN]; 
 
-	FILE* fp = fopen(CONFIG_LOCATION, "r");
-	if(fp)
-	{	
-		size_t len = fread(buf, 1, MAX_CONFIG_FILE_LEN-1, fp);
-		buf[len++] = '\0';
-		fclose(fp);
+	if (file_exists(CONFIG_LOCATION))
+	{
+		FILE* fp = fopen(CONFIG_LOCATION, "r");
+		if(fp)
+		{	
+			size_t len = fread(buf, 1, MAX_CONFIG_FILE_LEN-1, fp);
+			buf[len++] = '\0';
+			fclose(fp);
+		}
+		else
+		{
+			int err = errno;
+			log_error("%s::%s(%d) : Unable to open config file %s: %s", LOG_INF, CONFIG_LOCATION, strerror(err));
+			return NULL;
+		}
 	}
 	else
 	{
-		int err = errno;
-		log_error("%s::%s(%d) : Unable to open config file %s: %s", \
-					__FILE__, __FUNCTION__, __LINE__, \
-					CONFIG_LOCATION, strerror(err));
+		log_error("%s::%s(%d) : Either %s does not exist or is a directory", LOG_INF, CONFIG_LOCATION);
 		return NULL;
 	}
 
@@ -183,92 +180,86 @@ struct ConfigData* config_load()
  * You are using a securely encoded file & need to encode it before saving
  * the file to disk.  
  *
- * @param  - [Input] config = a reference to a filled out ConfigData element
  * @return - A json encoded string
  */
-char* config_to_json(struct ConfigData* config)
+char* config_to_json( void )
 {
 	JsonNode* jsonRoot = json_mkobject();
-	if(config->AgentId)	{
-		json_append_member(jsonRoot, "AgentId", \
-							json_mkstring(config->AgentId));
+	if(ConfigData->AgentId)	
+	{
+		json_append_member(jsonRoot, "AgentId", json_mkstring(ConfigData->AgentId));
 	}
-	if(config->AgentName) {
-		json_append_member(jsonRoot, "AgentName", \
-							json_mkstring(config->AgentName));
+	if(ConfigData->AgentName) 
+	{
+		json_append_member(jsonRoot, "AgentName", json_mkstring(ConfigData->AgentName));
 	}
-	if(config->ClientParameterPath)	{
-		json_append_member(jsonRoot, "ClientParameterPath", \
-							json_mkstring(config->ClientParameterPath));
+	if(ConfigData->ClientParameterPath)	
+	{
+		json_append_member(jsonRoot, "ClientParameterPath", json_mkstring(ConfigData->ClientParameterPath));
 	}
-	if(config->Hostname) {
-		json_append_member(jsonRoot, "Hostname", \
-							json_mkstring(config->Hostname));
+	if(ConfigData->Hostname) 
+	{
+		json_append_member(jsonRoot, "Hostname", json_mkstring(ConfigData->Hostname));
 	}
-	if(config->Password) {
-		json_append_member(jsonRoot, "Password", \
-							json_mkstring(config->Password));
+	if(ConfigData->Password) 
+	{
+		json_append_member(jsonRoot, "Password", json_mkstring(ConfigData->Password));
 	}
-	if(config->Username) {
-		json_append_member(jsonRoot, "Username", \
-							json_mkstring(config->Username));
+	if(ConfigData->Username) 
+	{
+		json_append_member(jsonRoot, "Username", json_mkstring(ConfigData->Username));
 	}
-	if(config->VirtualDirectory) {
-		json_append_member(jsonRoot, "VirtualDirectory", \
-							json_mkstring(config->VirtualDirectory));
+	if(ConfigData->VirtualDirectory) 
+	{
+		json_append_member(jsonRoot, "VirtualDirectory", json_mkstring(ConfigData->VirtualDirectory));
 	}
-	if(config->TrustStore) {
-		json_append_member(jsonRoot, "TrustStore", \
-							json_mkstring(config->TrustStore));
+	if(ConfigData->TrustStore) 
+	{
+		json_append_member(jsonRoot, "TrustStore", json_mkstring(ConfigData->TrustStore));
 	}
-	if(config->AgentCert) {
-		json_append_member(jsonRoot, "AgentCert", \
-							json_mkstring(config->AgentCert));
+	if(ConfigData->AgentCert) 
+	{
+		json_append_member(jsonRoot, "AgentCert", json_mkstring(ConfigData->AgentCert));
 	}
-	if(config->AgentKey) {
-		json_append_member(jsonRoot, "AgentKey", \
-							json_mkstring(config->AgentKey));
+	if(ConfigData->AgentKey) 
+	{
+		json_append_member(jsonRoot, "AgentKey", json_mkstring(ConfigData->AgentKey));
 	}
-	if(config->AgentKeyPassword) {
-		json_append_member(jsonRoot, "AgentKeyPassword", \
-							json_mkstring(config->AgentKeyPassword));
+	if(ConfigData->AgentKeyPassword) 
+	{
+		json_append_member(jsonRoot, "AgentKeyPassword", json_mkstring(ConfigData->AgentKeyPassword));
 	}
-	if(config->CSRKeyType) {
-		json_append_member(jsonRoot, "CSRKeyType", \
-							json_mkstring(config->CSRKeyType));
+	if(ConfigData->CSRKeyType) 
+	{
+		json_append_member(jsonRoot, "CSRKeyType", json_mkstring(ConfigData->CSRKeyType));
 	}
-	if(config->CSRKeySize) {
-		json_append_member(jsonRoot, "CSRKeySize", \
-							json_mknumber(config->CSRKeySize));
+	if(ConfigData->CSRKeySize) 
+	{
+		json_append_member(jsonRoot, "CSRKeySize", json_mknumber(ConfigData->CSRKeySize));
 	}
-	if(config->CSRSubject) {
-		json_append_member(jsonRoot, "CSRSubject", \
-							json_mkstring(config->CSRSubject));
+	if(ConfigData->CSRSubject) 
+	{
+		json_append_member(jsonRoot, "CSRSubject", json_mkstring(ConfigData->CSRSubject));
 	}
-	json_append_member(jsonRoot, "EnrollOnStartup", \
-							json_mkbool(config->EnrollOnStartup));
-	json_append_member(jsonRoot, "UseSsl", \
-							json_mkbool(config->UseSsl));
-	json_append_member(jsonRoot, "Serialize", \
-							json_mkbool(config->Serialize));
-	if(config->SerialFile) {
-		json_append_member(jsonRoot, "SerialFile", \
-							json_mkstring(config->SerialFile));
+	json_append_member(jsonRoot, "EnrollOnStartup", json_mkbool(ConfigData->EnrollOnStartup));
+	json_append_member(jsonRoot, "UseSsl", json_mkbool(ConfigData->UseSsl));
+	json_append_member(jsonRoot, "Serialize", json_mkbool(ConfigData->Serialize));
+	if(ConfigData->SerialFile) 
+	{
+		json_append_member(jsonRoot, "SerialFile", json_mkstring(ConfigData->SerialFile));
 	}
-	if(config->LogFile)	{
-		json_append_member(jsonRoot, "LogFile", \
-			json_mkstring(config->LogFile));
+	if(ConfigData->LogFile)	
+	{
+		json_append_member(jsonRoot, "LogFile", json_mkstring(ConfigData->LogFile));
 	}
-	/* Begin BL-20654 */
-	if(config->httpRetries)	{
-		json_append_member(jsonRoot, "httpRetries", \
-			json_mknumber(config->httpRetries));
+	if(ConfigData->httpRetries)	
+	{
+		json_append_member(jsonRoot, "httpRetries", json_mknumber(ConfigData->httpRetries));
 	}
-	if(config->retryInterval) {
-		json_append_member(jsonRoot, "retryInterval", \
-			json_mknumber(config->retryInterval));
+	if(ConfigData->retryInterval) 
+	{
+		json_append_member(jsonRoot, "retryInterval", json_mknumber(ConfigData->retryInterval));
 	}
-	/* End BL-20654 */
 
 	char* confString = json_stringify(jsonRoot, "\t");
 	json_delete(jsonRoot);
@@ -279,14 +270,13 @@ char* config_to_json(struct ConfigData* config)
 /**
  * Save the configuration structure to "config.json" on the file system
  *
- * @param  - [Input] config = a reference to a filled out ConfigData element
  * @return - success : true
  *           failure : false
  */
-bool config_save(struct ConfigData* config)
+bool config_save( void )
 {
 	bool bResult = false;
-	char* confString = config_to_json(config);
+	char* confString = config_to_json();
 	
 	char eol[1] = {'\n'};
 	FILE* fp = fopen(CONFIG_LOCATION, "w");
@@ -301,9 +291,7 @@ bool config_save(struct ConfigData* config)
 	else
 	{
 		int err = errno;
-		log_error("%s::%s(%d) : Unable to open config file %s: %s", 
-					__FILE__, __FUNCTION__, __LINE__, \
-					CONFIG_LOCATION, strerror(err));
+		log_error("%s::%s(%d) : Unable to open config file %s: %s", LOG_INF, CONFIG_LOCATION, strerror(err));
 	}
 
 	return bResult;
@@ -315,148 +303,160 @@ bool config_save(struct ConfigData* config)
  * has a bug where it will always pass KeyfactorAgents/ make sure to 
  * strip that from the string passed in relPath.
  *
- * @param  - [Input] : config = configuration data structure
  * @param  - [Input] : relPath = the endpoint the Platfrom wants to hit
  * @param  - [Input] : vdirFromConfig = yes if you need to use a proxy at the 
  *                     platform side.  no otherwise.
  * @return - success : a completed URL
  *           failure : NULL
  */
-char* config_build_url(struct ConfigData* config, const char* relPath, \
-	bool vdirFromConfig)
+char* config_build_url(const char* relPath, bool vdirFromConfig)
 {
 	char* url = NULL;
 	char* relPathStripped = NULL;
 
-	if(config && relPath)
+	if(ConfigData && relPath)
 	{
-		if ( true == config->UseSsl ) {
+		if ( true == ConfigData->UseSsl ) 
+		{
 			url = strdup("https://");
 		}
-		else {
+		else 
+		{
 			url = strdup("http://");
 		}
 		log_trace("%s::%s(%d) : url = %s",
-			__FILE__, __FUNCTION__, __LINE__, url);
+			LOG_INF, url);
 
-		url = realloc(url, (strlen(url)+strlen(config->Hostname)+1) );
-		strcat(url, config->Hostname);
-		log_trace("%s::%s(%d) : Added Hostname to url is now = %s",
-			__FILE__, __FUNCTION__, __LINE__, url);
+		url = realloc(url, (strlen(url)+strlen(ConfigData->Hostname)+1) );
+		strcat(url, ConfigData->Hostname);
+		log_trace("%s::%s(%d) : Added Hostname to url is now = %s",	LOG_INF, url);
 		
-		if(vdirFromConfig)	{	
-			url = realloc( url, \
-				(strlen(url)+strlen(config->VirtualDirectory)+2) );
+		if(vdirFromConfig)	
+		{	
+			url = realloc( url, (strlen(url)+strlen(ConfigData->VirtualDirectory)+2) );
 			strcat(url, "/");
-			strcat(url, config->VirtualDirectory);
-			log_trace("%s::%s(%d) : Added Virutal Directory to url is now = %s",
-			__FILE__, __FUNCTION__, __LINE__, url);
+			strcat(url, ConfigData->VirtualDirectory);
+			log_trace("%s::%s(%d) : Added Virutal Directory to url is now = %s", LOG_INF, url);
 		}
 
-		if(strcspn(relPath, "/") != 0)	{
+		if(strcspn(relPath, "/") != 0)	
+		{
 			url = realloc( url, (strlen(url)+2) );
 			strcat(url, "/");
-			log_trace("%s::%s(%d) : Added / to url is now = %s",
-			__FILE__, __FUNCTION__, __LINE__, url);
+			log_trace("%s::%s(%d) : Added / to url is now = %s", LOG_INF, url);
 		}
 
 		/* Remove KeyfactorAgents/ from the relPath */
 		//TODO: Remove this if statement and replace with strcat(url, relPath);
 		//      Once the platform changes to not send KeyfactorAgents/
 
-		log_trace("%s::%s(%d) : Stripping KeyfactorAgents/ from %s", \
-			__FILE__, __FUNCTION__, __LINE__, relPath);
+		log_trace("%s::%s(%d) : Stripping KeyfactorAgents/ from %s", LOG_INF, relPath);
 		relPathStripped = util_strip_string(relPath, "KeyfactorAgents/");
-		log_trace("%s::%s(%d) : New relPath = %s", \
-			__FILE__, __FUNCTION__, __LINE__, relPathStripped);
+		log_trace("%s::%s(%d) : New relPath = %s", LOG_INF, relPathStripped);
 		url = realloc( url, (strlen(url)+strlen(relPathStripped)+1) );
 		strcat(url, relPathStripped);
-		log_trace("%s::%s(%d) : url = %s",
-			__FILE__, __FUNCTION__, __LINE__, url);
+		log_trace("%s::%s(%d) : url = %s", LOG_INF, url);
 	}
-	else {
-		log_error("%s::%s(%d) : Unable to build url: Invalid arguments", \
-			__FILE__, __FUNCTION__, __LINE__);
+	else 
+	{
+		log_error("%s::%s(%d) : Unable to build url: Invalid arguments", LOG_INF);
 	}
 
-	if ( relPathStripped ) {
+	if ( relPathStripped ) 
+	{
 		free(relPathStripped);
 	}
-	log_trace("%s::%s(%d) : url = %s", __FILE__, __FUNCTION__, __LINE__, url);
+	log_trace("%s::%s(%d) : url = %s", LOG_INF, url);
 	return url;
 } /* config_build_url */
 
 /**
  * Release memory associated with the ConfigData element
  *
- * @param  - [Input] : config = a reference to a ConfigData element
  * @return none
  */
-void ConfigData_free(struct ConfigData* config)
+void ConfigData_free( void )
 {
-	if(config)
+	if(ConfigData)
 	{
-		if(config->AgentId)	{
-			free(config->AgentId);
-			config->AgentId = NULL;
+		if(ConfigData->AgentId)	
+		{
+			free(ConfigData->AgentId);
+			ConfigData->AgentId = NULL;
 		}
-		if(config->AgentName) {
-			free(config->AgentName);
-			config->AgentName = NULL;
+		if(ConfigData->AgentName)
+		 {
+			free(ConfigData->AgentName);
+			ConfigData->AgentName = NULL;
 		}
-		if(config->ClientParameterPath) {
-			free(config->ClientParameterPath);
-			config->ClientParameterPath = NULL;
+		if(ConfigData->ClientParameterPath) 
+		{
+			free(ConfigData->ClientParameterPath);
+			ConfigData->ClientParameterPath = NULL;
 		}
-		if(config->Hostname) {
-			free(config->Hostname);
-			config->Hostname = NULL;
+		if(ConfigData->Hostname) 
+		{
+			free(ConfigData->Hostname);
+			ConfigData->Hostname = NULL;
 		}
-		if(config->Password) {
-			free(config->Password);
-			config->Password = NULL;
+		if(ConfigData->Password) 
+		{
+			free(ConfigData->Password);
+			ConfigData->Password = NULL;
 		}
-		if(config->Username) {
-			free(config->Username);
-			config->Username = NULL;
+		if(ConfigData->Username) 
+		{
+			free(ConfigData->Username);
+			ConfigData->Username = NULL;
 		}
-		if(config->VirtualDirectory) {
-			free(config->VirtualDirectory);
-			config->VirtualDirectory = NULL;
+		if(ConfigData->VirtualDirectory) 
+		{
+			free(ConfigData->VirtualDirectory);
+			ConfigData->VirtualDirectory = NULL;
 		}
-		if(config->TrustStore) {
-			free(config->TrustStore);
-			config->TrustStore = NULL;
+		if(ConfigData->TrustStore) 
+		{
+			free(ConfigData->TrustStore);
+			ConfigData->TrustStore = NULL;
 		}
-		if(config->AgentCert) 	{
-			free(config->AgentCert);
-			config->AgentCert = NULL;
+		if(ConfigData->AgentCert) 	
+		{
+			free(ConfigData->AgentCert);
+			ConfigData->AgentCert = NULL;
 		}
-		if(config->AgentKey) {
-			free(config->AgentKey);
-			config->AgentKey = NULL;
+		if(ConfigData->AgentKey) 
+		{
+			free(ConfigData->AgentKey);
+			ConfigData->AgentKey = NULL;
 		}
-		if(config->AgentKeyPassword) {
-			free(config->AgentKeyPassword);
-			config->AgentKeyPassword = NULL;
+		if(ConfigData->AgentKeyPassword) 
+		{
+			free(ConfigData->AgentKeyPassword);
+			ConfigData->AgentKeyPassword = NULL;
 		}
-		if(config->CSRKeyType) {
-			free(config->CSRKeyType);
-			config->CSRKeyType = NULL;
+		if(ConfigData->CSRKeyType) 
+		{
+			free(ConfigData->CSRKeyType);
+			ConfigData->CSRKeyType = NULL;
 		}
-		if(config->CSRSubject) {
-			free(config->CSRSubject);
-			config->CSRSubject = NULL;
+		if(ConfigData->CSRSubject) 
+		{
+			free(ConfigData->CSRSubject);
+			ConfigData->CSRSubject = NULL;
 		}
-		if(config->SerialFile) {
-			free(config->SerialFile);
-			config->SerialFile = NULL;
+		if(ConfigData->SerialFile) 
+		{
+			free(ConfigData->SerialFile);
+			ConfigData->SerialFile = NULL;
 		}
-		if(config->LogFile) {
-			free(config->LogFile);
-			config->LogFile = NULL;
+		if(ConfigData->LogFile) 
+		{
+			free(ConfigData->LogFile);
+			ConfigData->LogFile = NULL;
 		}
 
-		free(config);
+		free(ConfigData);
 	}
+	config_loaded = false;
+	return;
 } /* ConfigData_free */

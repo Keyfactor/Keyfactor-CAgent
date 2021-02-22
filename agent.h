@@ -25,6 +25,7 @@ bool release_platform( void );
 extern struct SessionInfo SessionData;
 extern struct ScheduledJob* JobList;
 extern struct ConfigData* ConfigData;
+extern struct ScheduledJob* currentJob; // Defined in schedule.c
 #if defined(__OPEN_SSL__)
 extern char engine_id[21];
 #endif
@@ -36,6 +37,16 @@ extern ENGINE* e;
 /* Versioning Information */
 /* 2.0.0.0 = Created wrapper class */
 /* 2.1.0.0 = Added TPM for raspberry pi into version */
-#define AGENT_VERSION 0x0002000100000000
+/* 2.5.0.0 = Added the following functionality: */
+/*             * Log to file upon agent shutting down */
+/*             * Agent runs through all jobs once, this allows cron to schedule it */
+/*             * Added warning log level */
+/*             * Added a priority queue for agent jobs upon initial retrieval */
+/*             * Ignore any chained jobs - inventory jobs will always run immediate */
+/*             * Check if a store is a directory before reading/writing */
+/*             * Check if re-enrollment, inventory, or management jobs are targeting */
+/*               the agent certificate & don't run those jobs. */
+/*             * Added agent cert re-enrollment on Error response to reenroll */
+#define AGENT_VERSION 0x0002000500000000
 
 #endif // AGENT_H_

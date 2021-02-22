@@ -17,6 +17,8 @@
 #include "logging.h"
 #include "httpclient.h"
 #include "global.h"
+#include "utils.h"
+#include "config.h"
 
 #if defined(__TPM__)
   #include "agent.h"
@@ -57,8 +59,7 @@ struct MemoryStruct {
  * @return - success = the number of bytes taken care of
  *           failure = the number of bytes taken care of
  */
-static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, \
-  void *userp)
+static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
   size_t realsize = size * nmemb;
   struct MemoryStruct *mem = (struct MemoryStruct *)userp;
@@ -66,7 +67,7 @@ static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, \
   mem->memory = realloc( mem->memory, (mem->size + realsize + 1) );
   if( NULL == mem->memory )  
   {
-    log_error("%s::%s(%d): out of memory", __FILE__, __FUNCTION__, __LINE__);
+    log_error("%s::%s(%d): out of memory", LOG_INF);
     return 0;
   }
 
@@ -130,8 +131,7 @@ int http_post_json(const char* url, const char* username,
                    const char* clientKeyPass, char* postData,
                    char** pRespData, int retryCount, int retryInterval) 
 {
-  log_trace("%s::%s(%d) : Preparing to POST to Platform", \
-    __FILE__, __FUNCTION__, __LINE__);
+  log_info("%s::%s(%d) : Preparing to POST to Platform at %s", LOG_INF, url);
 	int toReturn = -1;
 	CURL* curl = curl_easy_init();
 	char errBuff[CURL_ERROR_SIZE];
@@ -142,16 +142,15 @@ int http_post_json(const char* url, const char* username,
     chunk.memory = calloc(1,sizeof(*chunk.memory));
     if ( !chunk.memory )
     {
-      log_error("%s::%s(%d): Out of memory when allocating chunk", \
-        __FILE__, __FUNCTION__, __LINE__);
+      log_error("%s::%s(%d): Out of memory when allocating chunk", LOG_INF);
       curl_easy_cleanup(curl);
       return CURLE_FAILED_INIT;
     }
 
 #if  defined(__TPM__)
-    if (ConfigData->EnrollOnStartup) {
-      log_info("%s::%s(%d) : Skipping TPM - enroll on startup is turned on.", \
-        __FILE__, __FUNCTION__, __LINE__);
+    if (ConfigData->EnrollOnStartup) 
+    {
+      log_info("%s::%s(%d) : Skipping TPM - enroll on startup is turned on.", LOG_INF);
       goto skipTPM;
     }
     /***************************************************************************
@@ -159,76 +158,72 @@ int http_post_json(const char* url, const char* username,
         only be decoded inside the TPM.  Tell cURL that this is the case &
         use the engine_id global variable.  This is usually the tpm2tss engine.
     ***************************************************************************/
-    log_verbose("%s::%s(%d) : Setting cURL to use TPM as SSL Engine %s", \
-      __FILE__, __FUNCTION__, __LINE__, engine_id);
+    log_verbose("%s::%s(%d) : Setting cURL to use TPM as SSL Engine %s", LOG_INF, engine_id);
     int errNum = curl_easy_setopt(curl, CURLOPT_SSLENGINE, engine_id);
-    if ( CURLE_OK != errNum ) {
+    if ( CURLE_OK != errNum ) 
+    {
       /* When tracing, dump the error buffer to stderr */
-      if ( is_log_trace() ) {
+      if ( is_log_trace() ) 
+      {
         size_t len = strlen( errBuff );
-        log_trace( "%s::%s-libcurl: (%d) ", \
-          __FILE__, __FUNCTION__, __LINE__, errNum );
-        if ( len ) {
-          log_trace( "%s::%s(%d) : %s%s", __FILE__, __FUNCTION__, __LINE__,
-                  errBuff, ((errBuff[len-1] != '\n') ? "\n" : ""));
-
-        } else {
-          log_trace("%s::%s(%d) : %s", \
-            __FILE__, __FUNCTION__, __LINE__, curl_easy_strerror(errNum) );
+        log_error( "%s::%s-libcurl: (%d) ", LOG_INF, errNum );
+        if ( len ) 
+        {
+          log_error( "%s::%s(%d) : %s%s", LOG_INF, errBuff, ((errBuff[len-1] != '\n') ? "\n" : ""));
+        } 
+        else 
+        {
+          log_error("%s::%s(%d) : %s", LOG_INF, curl_easy_strerror(errNum) );
         }
       }
-      log_error("%s::%s(%d) : http-http_post_json-%s", \
-        __FILE__, __FUNCTION__, __LINE__, curl_easy_strerror(errNum));
+      log_error("%s::%s(%d) : %s", LOG_INF, curl_easy_strerror(errNum));
 
       curl_easy_cleanup(curl);
       return errNum;
     }
 
-    log_verbose("%s::%s(%d) : Setting cURL to use TPM as the default SSL Engine %s", \
-      __FILE__, __FUNCTION__, __LINE__, engine_id);
+    log_verbose("%s::%s(%d) : Setting cURL to use TPM as the default SSL Engine %s", LOG_INF, engine_id);
     errNum = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
-    if ( CURLE_OK != errNum ) {
+    if ( CURLE_OK != errNum ) 
+    {
       /* When tracing, dump the error buffer to stderr */
-      if ( is_log_trace() ) {
+      if ( is_log_trace() ) 
+      {
         size_t len = strlen( errBuff );
-        log_trace( "%s::%s-libcurl: (%d) ", \
-          __FILE__, __FUNCTION__, __LINE__, errNum );
-        if ( len )  {
-          log_trace( "%s::%s(%d) : %s%s", __FILE__, __FUNCTION__, __LINE__,
-                  errBuff, ((errBuff[len-1] != '\n') ? "\n" : ""));
-
-        } else {
-          log_trace("%s::%s(%d) : %s", \
-            __FILE__, __FUNCTION__, __LINE__, curl_easy_strerror(errNum) );
+        log_error( "%s::%s-libcurl: (%d) ", LOG_INF, errNum );
+        if ( len ) 
+        {
+          log_error( "%s::%s(%d) : %s%s", LOG_INF, errBuff, ((errBuff[len-1] != '\n') ? "\n" : ""));
+        } 
+        else 
+        {
+          log_error("%s::%s(%d) : %s", LOG_INF, curl_easy_strerror(errNum) );
         }
       }
-      log_error("%s::%s(%d) : http-http_post_json-%s", \
-        __FILE__, __FUNCTION__, __LINE__, curl_easy_strerror(errNum));
+      log_error("%s::%s(%d) : %s", LOG_INF, curl_easy_strerror(errNum));
 
       curl_easy_cleanup(curl);
       return errNum;
     }
 
-    log_verbose("%s::%s(%d) : Setting cURL to have keytype as engine",\
-      __FILE__, __FUNCTION__, __LINE__);
+    log_verbose("%s::%s(%d) : Setting cURL to have keytype as engine", LOG_INF);
     errNum = curl_easy_setopt(curl, CURLOPT_SSLKEYTYPE, "ENG");
     if ( CURLE_OK != errNum ) {
       /* When tracing, dump the error buffer to stderr */
-      if ( is_log_trace() ) {
+      if ( is_log_trace() ) 
+      {
         size_t len = strlen( errBuff );
-        log_trace( "%s::%s-libcurl: (%d) ", \
-          __FILE__, __FUNCTION__, __LINE__, errNum );
-        if ( len )  {
-          log_trace( "%s::%s(%d) : %s%s", __FILE__, __FUNCTION__, __LINE__,
-                  errBuff, ((errBuff[len-1] != '\n') ? "\n" : ""));
-
-        } else {
-          log_trace("%s::%s(%d) : %s", \
-            __FILE__, __FUNCTION__, __LINE__, curl_easy_strerror(errNum) );
+        log_error( "%s::%s-libcurl: (%d) ", LOG_INF, errNum );
+        if ( len ) 
+        {
+          log_error( "%s::%s(%d) : %s%s", LOG_INF, errBuff, ((errBuff[len-1] != '\n') ? "\n" : ""));
+        } 
+        else 
+        {
+          log_error("%s::%s(%d) : %s", LOG_INF, curl_easy_strerror(errNum) );
         }
       }
-      log_error("%s::%s(%d) : http-http_post_json-%s", \
-        __FILE__, __FUNCTION__, __LINE__, curl_easy_strerror(errNum));
+      log_error("%s::%s(%d) : %s", LOG_INF, curl_easy_strerror(errNum));
 
       curl_easy_cleanup(curl);
       return errNum;
@@ -248,7 +243,7 @@ skipTPM:
     }
     (void)curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT);
 #ifdef __HTTP_1_1__
-    /* Some version sof openSSL default to v2.0.  If the platform is set for */
+    /* Some versions of openSSL default to v2.0.  If the platform is set for */
     /* v1.1, curl will not failover to v1.1.  So, force V1.1 */
     (void)curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 #endif
@@ -257,53 +252,31 @@ skipTPM:
         If the passed files exist in the system, then use them for additional
         trusted certificates, and certs to create the TLS connection.
     ***************************************************************************/
-		if( check_file_exists(trustStore) )	{
-      log_trace("%s::%s(%d) : Setting trustStore to %s",
-                    __FILE__, __FUNCTION__, __LINE__,trustStore);
+		if( 1 == file_exists(trustStore) )	{
+      log_trace("%s::%s(%d) : Setting trustStore to %s", LOG_INF,trustStore);
 			(void)curl_easy_setopt(curl, CURLOPT_CAINFO, trustStore);
 		}
 
-#if defined(__TPM__)
     /* Set the cert based on enroll on startup */
     if( ConfigData->EnrollOnStartup ) {
-      log_info("%s::%s(%d) : Bypassing client certificates on initial startup", \
-        __FILE__, __FUNCTION__, __LINE__);
-    } else {
-      log_trace("%s::%s(%d) : Use the Agent cert and key", \
-        __FILE__, __FUNCTION__, __LINE__);
-      if( check_file_exists(clientCert) ) {
-      log_trace("%s::%s(%d) : Setting clientCert to %s",
-        __FILE__, __FUNCTION__, __LINE__,clientCert);
+      log_info("%s::%s(%d) : Bypassing client certificates on initial startup", LOG_INF);
+    } 
+    else {
+      log_trace("%s::%s(%d) : Use the Agent cert and key", LOG_INF);
+      if( 1 == file_exists(clientCert) ) {
+      log_trace("%s::%s(%d) : Setting clientCert to %s", LOG_INF, clientCert);
       (void)curl_easy_setopt(curl, CURLOPT_SSLCERT, clientCert);
       }
-      if( check_file_exists(clientKey) ) {
-        log_trace("%s::%s(%d) : Setting clientKey to %s",
-          __FILE__, __FUNCTION__, __LINE__,clientKey);
+      if( 1 == file_exists(clientKey) ) {
+        log_trace("%s::%s(%d) : Setting clientKey to %s", LOG_INF, clientKey);
         (void)curl_easy_setopt(curl, CURLOPT_SSLKEY, clientKey);
       }
-      if( check_file_exists(clientKey) && clientKeyPass ) {
-      log_trace("%s::%s(%d) : Setting clientPassword to %s",
-        __FILE__, __FUNCTION__, __LINE__,clientKeyPass);
+      if( (1 == file_exists(clientKey)) && clientKeyPass ) {
+      log_trace("%s::%s(%d) : Setting clientPassword to %s", LOG_INF,clientKeyPass);
       (void)curl_easy_setopt(curl, CURLOPT_KEYPASSWD, clientKeyPass);
       }
     }   
-#else
-		if( check_file_exists(clientCert) )	{
-      log_trace("%s::%s(%d) : Setting clientCert to %s",
-        __FILE__, __FUNCTION__, __LINE__,clientCert);
-			(void)curl_easy_setopt(curl, CURLOPT_SSLCERT, clientCert);
-		}
-		if( check_file_exists(clientKey) ) {
-      log_trace("%s::%s(%d) : Setting clientKey to %s",
-        __FILE__, __FUNCTION__, __LINE__,clientKey);
-			(void)curl_easy_setopt(curl, CURLOPT_SSLKEY, clientKey);
-		}
-		if( check_file_exists(clientKey) && clientKeyPass )	{
-      log_trace("%s::%s(%d) : Setting clientPassword to %s",
-        __FILE__, __FUNCTION__, __LINE__,clientKeyPass);
-			(void)curl_easy_setopt(curl, CURLOPT_KEYPASSWD, clientKeyPass);
-		}
-#endif
+
 
 		/* Turn on verbose output for tracing */
 		if ( is_log_trace() )	{
@@ -337,8 +310,7 @@ skipTPM:
     ***************************************************************************/
     (void)curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
 		(void)curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData);
-    log_trace("%s::%s(%d): postData = %s", \
-      __FILE__, __FUNCTION__, __LINE__, postData);
+    log_trace("%s::%s(%d): postData = %s", LOG_INF, postData);
     
 
     /***************************************************************************
@@ -350,20 +322,17 @@ skipTPM:
 		long httpCode = 0;
     int res = CURLE_FAILED_INIT;
     int tries = retryCount;
-    /* Begin BL-20654 */
+    
     while (0 < tries)
     {
       res = curl_easy_perform(curl);
       (void)curl_easy_getinfo(curl, CURLINFO_HTTP_CODE, &httpCode);
       // if there was an error & we still have tries left to do
       tries--;
-      log_verbose("%s::%s(%d): curl resp = %d, httpCode = %ld, tries left = %d",
-                  __FILE__, __FUNCTION__, __LINE__,res, httpCode, tries);
+      log_verbose("%s::%s(%d): curl resp = %d, httpCode = %ld, tries left = %d", LOG_INF,res, httpCode, tries);
       if(((CURLE_OK != res) || (httpCode >= 300)) && (0 < tries))
       {
-        log_verbose("%s::%s(%d): Failed curl post. Sleeping %d "
-                    "seconds before retry",\
-                   __FILE__, __FUNCTION__, __LINE__,retryInterval);
+        log_verbose("%s::%s(%d): Failed curl post. Sleeping %d seconds before retry", LOG_INF,retryInterval);
         if ( 0 < retryInterval )
         {
           (void)sleep((unsigned int)retryInterval);
@@ -374,51 +343,61 @@ skipTPM:
         tries = 0; // exit the loop
       }
     }
-    /* End BL-20654 */
+    
 		if(res != CURLE_OK)
 		{
 			/* When tracing, dump the error buffer to stderr */
 			if ( is_log_trace() )
 			{
 				size_t len = strlen( errBuff );
-				log_trace( "%s::%s(%d): libcurl: (%d) ", \
-          __FILE__, __FUNCTION__, __LINE__, res );
-				if ( 0 != len ) {
-					log_trace( "%s::%s(%d): %s%s", __FILE__, __FUNCTION__, __LINE__,
-									errBuff, ((errBuff[len-1] != '\n') ? "\n" : ""));
+				log_error( "%s::%s(%d): libcurl: (%d) ", LOG_INF, res );
+				if ( 0 != len ) 
+        {
+					log_error( "%s::%s(%d): %s%s", LOG_INF,	errBuff, ((errBuff[len-1] != '\n') ? "\n" : ""));
 
-				}	else {
-					log_trace("%s::%s(%d): %s\n", \
-            __FILE__, __FUNCTION__, __LINE__, curl_easy_strerror(res) );
+				}	
+        else 
+        {
+					log_error("%s::%s(%d): %s\n", LOG_INF, curl_easy_strerror(res) );
 				}
 			}
-			log_error("%s::%s(%d): %s", \
-        __FILE__, __FUNCTION__, __LINE__, curl_easy_strerror(res));
+			log_error("%s::%s(%d): %s", LOG_INF, curl_easy_strerror(res));
 			toReturn = res;
-		}	else if(httpCode >= 300) {
-			log_error("%s::%s(%d): HTTP Response: %ld", \
-        __FILE__, __FUNCTION__, __LINE__, httpCode);
+		}	
+    else if(httpCode >= 300) 
+    {
+			log_error("%s::%s(%d): HTTP Response: %ld", LOG_INF, httpCode);
 			toReturn = (int)httpCode;
-		}	else {
-			log_verbose("%s::%s(%d): %lu bytes retrieved -- "
-                  "allocating memory for response",\
-                  __FILE__, __FUNCTION__, __LINE__, (unsigned long)chunk.size);
+		}	
+    else 
+    {
+			log_verbose("%s::%s(%d): %lu bytes retrieved -- allocating memory for response", LOG_INF, (unsigned long)chunk.size);
 			*pRespData = strdup(chunk.memory);
-      log_trace("%s::%s(%d): Response is:\n%s",
-        __FILE__, __FUNCTION__, __LINE__, *pRespData);
-      if ( NULL == *pRespData ) {
-        log_error("%s::%s(%d): Out of memory", \
-          __FILE__, __FUNCTION__, __LINE__);
+      log_trace("%s::%s(%d): Response is:\n%s", LOG_INF, *pRespData);
+      if ( NULL == *pRespData ) 
+      {
+        log_error("%s::%s(%d): Out of memory", LOG_INF);
         toReturn = 255;
-      } else {
+      } 
+      else 
+      {
 			  toReturn = 0;
       }
 		}
 
 		// Cleanup, de-allocate, etc.
-		if (list) { curl_slist_free_all(list); }
-		if (curl) { curl_easy_cleanup(curl); }
-		if (chunk.memory) { free(chunk.memory); }
+		if (list) 
+    { 
+      curl_slist_free_all(list); 
+    }
+		if (curl) 
+    { 
+      curl_easy_cleanup(curl); 
+    }
+		if (chunk.memory) 
+    { 
+      free(chunk.memory); 
+    }
 	}
 
 	return toReturn;

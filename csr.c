@@ -41,15 +41,14 @@ bool generate_keypair(const char* keyType, int keySize)
 {
 	bool bResult = false;
 
-	log_verbose("%s::%s(%d) : Generating key pair with type %s and length %d",
-				__FILE__, __FUNCTION__, __LINE__, keyType, keySize);
+	log_verbose("%s::%s(%d) : Generating key pair with type %s and length %d",	LOG_INF, keyType, keySize);
 	
 	if(strcasecmp(keyType, "RSA") == 0)
 	{
 	#if defined(__TPM__)
-		if ( (NULL == path) || (0 == strcasecmp("",path)) ) {
-			log_error("%s::%s(%d) : Error, you must specify a private key path"
-				"when using a TPM", __FILE__, __FUNCTION__, __LINE__);
+		if ( (NULL == path) || (0 == strcasecmp("",path)) ) 
+		{
+			log_error("%s::%s(%d) : Error, you must specify a private key path when using a TPM", LOG_INF);
 			return false;
 		}
 		bResult = ssl_generate_rsa_keypair(keySize, path);
@@ -59,12 +58,16 @@ bool generate_keypair(const char* keyType, int keySize)
 	}
 	else if(strcasecmp(keyType, "ECC") == 0)
 	{
+#if defined(__TPM__)
+		log_error("%s::%s(%d) : Error, SLB9670 with tpm2tss engine does not support ECC keygen", LOG_INF);
+#else
 		bResult = ssl_generate_ecc_keypair(keySize);
+#endif
 	}
 	else
 	{
 		log_error("%s::%s(%d) : Invalid key type %s", 
-			__FILE__, __FUNCTION__, __LINE__, keyType);
+			LOG_INF, keyType);
 	}
 
 	return bResult;
@@ -80,8 +83,7 @@ bool generate_keypair(const char* keyType, int keySize)
  * @return - success : the CSR string minus the header and footer
  *           failure : NULL
  */
-char* generate_csr(const char* asciiSubject, size_t* csrLen, \
-	char** pMessage, enum AgentApiResultStatus* pStatus) 
+char* generate_csr(const char* asciiSubject, size_t* csrLen, char** pMessage, enum AgentApiResultStatus* pStatus) 
 {
 	char* csrString = NULL;
 	*pStatus = STAT_UNK;

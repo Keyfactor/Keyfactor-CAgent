@@ -31,43 +31,35 @@
 	#endif
 #endif
 
-static int get_inventory_config(const char* sessionToken, const char* jobId, \
-	const char* endpoint, struct ConfigData* config, \
-	struct InventoryConfigResp** pInvConf)
+static int get_inventory_config(const char* sessionToken, const char* jobId, const char* endpoint, struct InventoryConfigResp** pInvConf)
 {
 	char* url = NULL;
 
-	log_verbose("%s::%s(%d) : Sending inventory config request: %s", \
-		__FILE__, __FUNCTION__, __LINE__, jobId);
+	log_verbose("%s::%s(%d) : Sending inventory config request: %s", LOG_INF, jobId);
 	struct CommonConfigReq* req = CommonConfigReq_new();
 	if ( NULL == req )
 	{
-		log_error("%s::%s(%d) : Out of memory in CommonConfigReq_new()", \
-			 __FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Out of memory in CommonConfigReq_new()", LOG_INF);
 		return -1;
 	}
 
 	req->JobId = strdup(jobId);
-	log_trace("%s::%s(%d) : Set job ID to %s", \
-		__FILE__, __FUNCTION__, __LINE__, jobId);
+	log_trace("%s::%s(%d) : Set job ID to %s", LOG_INF, jobId);
 	req->SessionToken = strdup(sessionToken);
-	log_trace("%s::%s(%d) : Set session token to %s", \
-		__FILE__, __FUNCTION__, __LINE__, sessionToken);
+	log_trace("%s::%s(%d) : Set session token to %s", LOG_INF, sessionToken);
 
 	char* jsonReq = CommonConfigReq_toJson(req);
-	log_trace("%s::%s(%d) : Set Common Config Request to %s", \
-		__FILE__, __FUNCTION__, __LINE__, jsonReq);
+	log_trace("%s::%s(%d) : Set Common Config Request to %s", LOG_INF, jsonReq);
 	
 	char* jsonResp = NULL;
 
-	url = config_build_url(config, endpoint, true);
-	log_trace("%s::%s(%d) : Attempting a POST to %s", \
-		__FILE__, __FUNCTION__, __LINE__, url);
+	url = config_build_url(endpoint, true);
+	log_trace("%s::%s(%d) : Attempting a POST to %s", LOG_INF, url);
 
-	int res = http_post_json(url, config->Username, config->Password, \
-		config->TrustStore, config->AgentCert, config->AgentKey, \
-		config->AgentKeyPassword, jsonReq, &jsonResp \
-		,config->httpRetries,config->retryInterval); // BL-20654
+	int res = http_post_json(url, ConfigData->Username, ConfigData->Password, \
+		ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey, \
+		ConfigData->AgentKeyPassword, jsonReq, &jsonResp \
+		,ConfigData->httpRetries,ConfigData->retryInterval); 
 
 	if(res == 0)
 	{
@@ -75,8 +67,7 @@ static int get_inventory_config(const char* sessionToken, const char* jobId, \
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Config retrieval failed with error code %d", \
-			__FILE__, __FUNCTION__, __LINE__, res);
+		log_error("%s::%s(%d) : Config retrieval failed with error code %d", LOG_INF, res);
 	}
 	
 	free(jsonReq);
@@ -87,14 +78,11 @@ static int get_inventory_config(const char* sessionToken, const char* jobId, \
 	return res;
 } /* get_inventory_config */
 
-static int send_inventory_update(const char* sessionToken, const char* jobId, \
-	const char* endpoint, struct ConfigData* config, \
-	struct InventoryUpdateList* newInv, struct InventoryUpdateResp** pUpdResp)
+static int send_inventory_update(const char* sessionToken, const char* jobId, const char* endpoint, struct InventoryUpdateList* newInv, struct InventoryUpdateResp** pUpdResp)
 {
 	char* url = NULL;
 
-	log_verbose("%s::%s(%d) : Sending inventory update request: %s", \
-		__FILE__, __FUNCTION__, __LINE__, jobId);
+	log_verbose("%s::%s(%d) : Sending inventory update request: %s", LOG_INF, jobId);
 	struct InventoryUpdateReq* updReq = calloc(1, sizeof(*updReq));
 	updReq->SessionToken = strdup(sessionToken);
 	updReq->JobId = strdup(jobId);
@@ -104,12 +92,12 @@ static int send_inventory_update(const char* sessionToken, const char* jobId, \
 	
 	char* jsonResp = NULL;
 
-	url = config_build_url(config, endpoint, true);
+	url = config_build_url(endpoint, true);
 
-	int res = http_post_json(url, config->Username, config->Password, \
-		config->TrustStore, config->AgentCert, config->AgentKey, \
-		config->AgentKeyPassword, jsonReq, &jsonResp \
-		,config->httpRetries,config->retryInterval); // BL-20654
+	int res = http_post_json(url, ConfigData->Username, ConfigData->Password, \
+		ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey, \
+		ConfigData->AgentKeyPassword, jsonReq, &jsonResp \
+		,ConfigData->httpRetries,ConfigData->retryInterval); 
 
 	if(res == 0)
 	{
@@ -117,8 +105,7 @@ static int send_inventory_update(const char* sessionToken, const char* jobId, \
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Update submission failed with error code %d", \
-			__FILE__, __FUNCTION__, __LINE__, res);
+		log_error("%s::%s(%d) : Update submission failed with error code %d", LOG_INF, res);
 	}
 	
 	free(jsonReq);
@@ -129,16 +116,11 @@ static int send_inventory_update(const char* sessionToken, const char* jobId, \
 	return res;
 } /* send_inventory_update */
 
-static int send_inventory_job_complete(const char* sessionToken, \
-	const char* jobId, const char* endpoint, struct ConfigData* config, \
-	int jobStatus, long auditId, const char* message, \
-	struct CommonCompleteResp** pInvComp)
+static int send_inventory_job_complete(const char* sessionToken, const char* jobId, const char* endpoint, int jobStatus, long auditId, const char* message, struct CommonCompleteResp** pInvComp)
 {
 	char* url = NULL;
 
-	log_verbose("%s::%s(%d) : Sending inventory complete request: "
-		        "%ld for session: %s",\
-		 		__FILE__, __FUNCTION__, __LINE__, auditId, sessionToken);
+	log_verbose("%s::%s(%d) : Sending inventory complete request: %ld for session: %s",	LOG_INF, auditId, sessionToken);
 
 	struct CommonCompleteReq* req = CommonCompleteReq_new();
 	req->SessionToken = strdup(sessionToken);
@@ -151,12 +133,12 @@ static int send_inventory_job_complete(const char* sessionToken, \
 	
 	char* jsonResp = NULL;
 
-	url = config_build_url(config, endpoint, true);
+	url = config_build_url(endpoint, true);
 
-	int res = http_post_json(url, config->Username, config->Password, \
-		config->TrustStore, config->AgentCert, config->AgentKey, \
-		config->AgentKeyPassword, jsonReq, &jsonResp \
-		,config->httpRetries,config->retryInterval); // BL-20654
+	int res = http_post_json(url, ConfigData->Username, ConfigData->Password, \
+		ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey, \
+		ConfigData->AgentKeyPassword, jsonReq, &jsonResp \
+		,ConfigData->httpRetries,ConfigData->retryInterval); 
 
 	if(res == 0)
 	{
@@ -164,8 +146,7 @@ static int send_inventory_job_complete(const char* sessionToken, \
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Job completion failed with error code %d", \
-			__FILE__, __FUNCTION__, __LINE__, res);
+		log_error("%s::%s(%d) : Job completion failed with error code %d", LOG_INF, res);
 	}
 	
 	free(jsonReq);
@@ -176,13 +157,11 @@ static int send_inventory_job_complete(const char* sessionToken, \
 	return res;
 } /* send_inventory_job_complete */
 
-static void InventoryUpdateList_add(struct InventoryUpdateList* list, \
-	struct InventoryUpdateItem* item)
+static void InventoryUpdateList_add(struct InventoryUpdateList* list, struct InventoryUpdateItem* item)
 {
 	if(list && item)
 	{
-		list->items = realloc(list->items, \
-			(list->count + 1) * sizeof(struct InventoryUpdateItem*));
+		list->items = realloc(list->items, (list->count + 1) * sizeof(struct InventoryUpdateItem*));
 		if (list->items)
 		{
 			list->items[list->count] = item;
@@ -190,8 +169,7 @@ static void InventoryUpdateList_add(struct InventoryUpdateList* list, \
 		}
 		else
 		{
-			log_error("%s::%s(%d) : Out of memory", \
-				__FILE__, __FUNCTION__, __LINE__);
+			log_error("%s::%s(%d) : Out of memory", LOG_INF);
 		}
 	}
 	return;
@@ -216,8 +194,10 @@ static void InventoryUpdateList_free(struct InventoryUpdateList* list)
 				{
 					for(int j = 0; j < list->items[i]->Certificates_count; j++)
 					{
-						if (list->items[i]->Certificates[j]) \
+						if (list->items[i]->Certificates[j]) 
+						{
 							free(list->items[i]->Certificates[j]);
+						}
 					}
 				}
 				free(list->items[i]);
@@ -276,17 +256,12 @@ static int compute_inventory_update(struct InventoryCurrentItem** cmsItems, \
 		for(int j = 0; j < cmsItemCount; ++j)
 		{
 			/* if the thumbprints match, we don't have to do anything */
-			if(
-				strcasecmp(currentPem->thumbprint_string, cmsItems[j]->Alias) \
-				== 0)
+			if(0 == strcasecmp(currentPem->thumbprint_string, cmsItems[j]->Alias))
 			{
-				log_verbose("%s::%s(%d) : Alias %s is UNCHANGED", \
-					__FILE__, __FUNCTION__, __LINE__, \
-					currentPem->thumbprint_string);
+				log_verbose("%s::%s(%d) : Alias %s is UNCHANGED", LOG_INF, currentPem->thumbprint_string);
 				inCms = true;
 
-				struct InventoryUpdateItem* updateItem = \
-					calloc(1, sizeof(*updateItem));
+				struct InventoryUpdateItem* updateItem = calloc(1, sizeof(*updateItem));
 				updateItem->Alias = strdup(cmsItems[j]->Alias);
 				updateItem->ItemStatus = INV_STAT_UNCH;
 				updateItem->PrivateKeyEntry = cmsItems[j]->PrivateKeyEntry;
@@ -299,8 +274,7 @@ static int compute_inventory_update(struct InventoryCurrentItem** cmsItems, \
 
 		if(!inCms)
 		{
-			log_verbose("%s::%s(%d) : Alias %s is ADDED", \
-			   __FILE__, __FUNCTION__, __LINE__, currentPem->thumbprint_string);
+			log_verbose("%s::%s(%d) : Alias %s is ADDED", LOG_INF, currentPem->thumbprint_string);
 
 			updateItem = calloc(1, sizeof(*updateItem));
 			updateItem->Alias = strdup(currentPem->thumbprint_string);
@@ -322,9 +296,7 @@ static int compute_inventory_update(struct InventoryCurrentItem** cmsItems, \
 		{
 			currentPem = fileItemList->items[n];
 
-			if(
-				strcasecmp(currentPem->thumbprint_string, cmsItems[m]->Alias) \
-				== 0)
+			if(0 == strcasecmp(currentPem->thumbprint_string, cmsItems[m]->Alias))
 			{
 				inFile = true;
 				break;
@@ -333,8 +305,7 @@ static int compute_inventory_update(struct InventoryCurrentItem** cmsItems, \
 
 		if(!inFile)
 		{
-			log_verbose("%s::%s(%d) : Alias %s is DELETED", \
-				__FILE__, __FUNCTION__, __LINE__, cmsItems[m]->Alias);
+			log_verbose("%s::%s(%d) : Alias %s is DELETED", LOG_INF, cmsItems[m]->Alias);
 
 			updateItem = calloc(1, sizeof(struct InventoryUpdateItem));
 			updateItem->Alias = strdup(cmsItems[m]->Alias);
@@ -361,14 +332,11 @@ static int compute_inventory_update(struct InventoryCurrentItem** cmsItems, \
  *               b.) A new thumbprint is found (Platform adds the cert)
  * For 4b) the cert is uploaded to the platform as a naked PEM
  *
- * @param  - [Input] : jobInfo = The ID and other params for the inventory job
- * @param  - [Input] : config = the config.json file decoded as a structure
  * @param  - [Input] : sessionToken = the session token for the Platform
  * @return - job not canceled by platform : 0
  *           job was canceled by platform : 1
  */
-int cms_job_inventory(struct SessionJob* jobInfo, struct ConfigData* config, \
-	char* sessionToken)
+int cms_job_inventory(struct SessionJob* jobInfo, char* sessionToken)
 {
 	int res = 0;
 	struct InventoryConfigResp* invConf = NULL;
@@ -376,50 +344,89 @@ int cms_job_inventory(struct SessionJob* jobInfo, struct ConfigData* config, \
 	enum AgentApiResultStatus status = STAT_UNK;
 	
 	int returnable = 0;
-	log_info("%s::%s(%d) : Starting inventory job %s", 
-		__FILE__, __FUNCTION__, __LINE__, jobInfo->JobId);
+	log_info("%s::%s(%d) : Starting inventory job %s", LOG_INF, jobInfo->JobId);
 
-	res = get_inventory_config(sessionToken, jobInfo->JobId, \
-		jobInfo->ConfigurationEndpoint, config, &invConf);
+	res = get_inventory_config(sessionToken, jobInfo->JobId, jobInfo->ConfigurationEndpoint, &invConf);
 
-	if( (res == 0) && \
-		(invConf) && \
-		AgentApiResult_log(invConf->Result, &statusMessage, &status) )
+	// Validate inputs
+	if (invConf)
+	{
+		bool failed = false;
+		if (invConf->Job.StorePath)
+		{		
+			/* Verify the target store isn't a directory */
+			if (is_directory(invConf->Job.StorePath))
+			{
+				log_error("%s::%s(%d) : The store path must be a file and not a directory.", LOG_INF);
+				append_linef(&statusMessage, "The store path must be a file and not a directory.");
+				failed = true;
+			}
+			/* Verify the target store isn't the Agent store */		
+			if (0 == strcasecmp(ConfigData->AgentCert, invConf->Job.StorePath))
+			{
+				
+				log_warn("%s::%s(%d) : Attempting to inventory the agent cert store is not allowed.", LOG_INF);
+				append_linef(&statusMessage, "Attempting to inventory the agent cert store is not allowed.");
+				failed = true;
+			}
+		}
+		else
+		{
+			log_error("%s::%s(%d) : Job doesn't contain a store to inventory.", LOG_INF);
+			append_linef(&statusMessage, "Job doesn't contain a store to inventory.");
+			failed = true;
+		}
+		/* If we failed any test above, then let the platform know about it */			
+		if(failed)
+		{
+			struct CommonCompleteResp* invComp = NULL;
+			send_inventory_job_complete(sessionToken, jobInfo->JobId, jobInfo->CompletionEndpoint, STAT_ERR, invConf->AuditId, statusMessage, &invComp);
+			CommonCompleteResp_free(invComp);
+			goto exit;
+		}
+	}
+	else
+	{
+		log_error("%s::%s(%d) : No inventory configuration was returned from the platform", LOG_INF);
+		goto exit;
+	}
+
+	if( (res == 0) && AgentApiResult_log(invConf->Result, &statusMessage, &status) )
 	{
 		if(invConf->JobCancelled)
 		{
-			log_info("%s::%s(%d) : Job has been cancelled and will not be run",\
-				__FILE__, __FUNCTION__, __LINE__);
+			log_info("%s::%s(%d) : Job has been cancelled and will not be run", LOG_INF);
 			returnable = 1;
 		}
 		else
 		{
 			long auditId = invConf->AuditId;
-			log_verbose("%s::%s(%d) : Audit Id: %ld", \
-				__FILE__, __FUNCTION__, __LINE__, auditId);
+			log_verbose("%s::%s(%d) : Audit Id: %ld", LOG_INF, auditId);
 
 			PemInventoryList* pemList = NULL;
-			log_trace("%s::%s(%d) : Reading inventory store located at %s",
-				__FILE__, __FUNCTION__, __LINE__, invConf->Job.StorePath);
-			res = ssl_read_store_inventory(invConf->Job.StorePath, \
-				invConf->Job.StorePassword, &pemList);
+			log_trace("%s::%s(%d) : Reading inventory store located at %s",	LOG_INF, invConf->Job.StorePath);
+			res = ssl_read_store_inventory(invConf->Job.StorePath, invConf->Job.StorePassword, &pemList);
 
 			if(res == 0)
 			{
 				struct InventoryUpdateList* updateList = NULL;
-				compute_inventory_update(invConf->Job.Inventory, \
-					invConf->Job.Inventory_count, pemList, &updateList);
+				compute_inventory_update(invConf->Job.Inventory, invConf->Job.Inventory_count, pemList, &updateList);
 
 				struct InventoryUpdateResp* updResp = NULL;
-				res = send_inventory_update(sessionToken, jobInfo->JobId, \
-					invConf->InventoryEndpoint, config, updateList, &updResp);
+				res = send_inventory_update(sessionToken, jobInfo->JobId, invConf->InventoryEndpoint, updateList, &updResp);
 				if(res == 0 && updResp)
 				{
 				   AgentApiResult_log(updResp->Result, &statusMessage, &status);
 				}
 
-				if (updateList) InventoryUpdateList_free(updateList);
-				if (updResp) InventoryUpdateResp_free(updResp);
+				if (updateList) 
+				{
+					InventoryUpdateList_free(updateList);
+				}
+				if (updResp)
+				{
+					InventoryUpdateResp_free(updResp);
+				}
 			}
 			else
 			{
@@ -427,15 +434,15 @@ int cms_job_inventory(struct SessionJob* jobInfo, struct ConfigData* config, \
 				append_line(&statusMessage, strerror(res));
 			}
 
-			if (pemList) {
-				log_trace("%s::%s(%d) : Freeing pemList containing %d items", \
-					__FILE__, __FUNCTION__, __LINE__, pemList->item_count);
+			if (pemList) 
+			{
+				log_trace("%s::%s(%d) : Freeing pemList containing %d items", LOG_INF, pemList->item_count);
 				PemInventoryList_free(pemList);
 			}
 
 			struct CommonCompleteResp* invComp = NULL;
 			res = send_inventory_job_complete(sessionToken, jobInfo->JobId, \
-				jobInfo->CompletionEndpoint, config, (status + 1), auditId, \
+				jobInfo->CompletionEndpoint, (status + 1), auditId, \
 				statusMessage, &invComp);
 			if(res == 0 && invComp)
 			{
@@ -444,28 +451,22 @@ int cms_job_inventory(struct SessionJob* jobInfo, struct ConfigData* config, \
 
 			if(status >= STAT_ERR)
 			{
-				log_info("%s::%s(%d) : Inventory job %s failed with error: %s",\
-				 __FILE__, __FUNCTION__, __LINE__, \
-				 jobInfo->JobId, statusMessage);
+				log_error("%s::%s(%d) : Inventory job %s failed with error: %s", LOG_INF, jobInfo->JobId, statusMessage);
 			}
 			else if(status == STAT_WARN)
 			{
-				log_info("%s::%s(%d) : Inventory job %s completed "
-					     "with warning: %s", \
-					     __FILE__, __FUNCTION__, __LINE__, \
-					     jobInfo->JobId, statusMessage);
+				log_warn("%s::%s(%d) : Inventory job %s completed with warning: %s", LOG_INF, jobInfo->JobId, statusMessage);
 			}
 			else
 			{
-				log_info("%s::%s(%d) : Inventory job %s completed "
-					     "successfully", \
-					     __FILE__, __FUNCTION__, __LINE__, jobInfo->JobId);
+				log_info("%s::%s(%d) : Inventory job %s completed successfully", LOG_INF, jobInfo->JobId);
 			}
 
 			CommonCompleteResp_free(invComp);
 		}
 	}
 
+exit:
 	InventoryConfigResp_free(invConf);
 	free(statusMessage);
 	

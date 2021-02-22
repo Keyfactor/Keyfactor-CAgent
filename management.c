@@ -36,19 +36,15 @@
  * @param  - [Input] sessionToken = the GUID for the curl session
  * @param  - [Input] jobId = the platform's GUID for this job
  * @param  - [Input] endpoint = the relative URL to hit for the config request
- * @param  - [Input] config = the config.json file internally converted
  * @param  - [Output] pManConf = The platform's response is placed into this
  * @return - success : 0
  *           failure : an HTTP response code
  */
-static int get_management_config(const char* sessionToken, const char* jobId, \
-	const char* endpoint, struct ConfigData* config, \
-	struct ManagementConfigResp** pManConf)
+static int get_management_config(const char* sessionToken, const char* jobId, const char* endpoint, struct ManagementConfigResp** pManConf)
 {
 	char* url = NULL;
 
-	log_verbose("%s::%s(%d) : Sending management config request: %s", \
-		__FILE__, __FUNCTION__, __LINE__, jobId);
+	log_verbose("%s::%s(%d) : Sending management config request: %s", LOG_INF, jobId);
 	struct CommonConfigReq* req = CommonConfigReq_new();
 	req->JobId = strdup(jobId);
 	req->SessionToken = strdup(sessionToken);
@@ -57,12 +53,12 @@ static int get_management_config(const char* sessionToken, const char* jobId, \
 
 	char* jsonResp = NULL;
 	
-	url = config_build_url(config, endpoint, true);
+	url = config_build_url(endpoint, true);
 
-	int res = http_post_json(url, config->Username, config->Password, \
-		config->TrustStore, config->AgentCert, config->AgentKey, \
-		config->AgentKeyPassword, jsonReq, &jsonResp, \
-		config->httpRetries,config->retryInterval); // BL-20654
+	int res = http_post_json(url, ConfigData->Username, ConfigData->Password, \
+		ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey, \
+		ConfigData->AgentKeyPassword, jsonReq, &jsonResp, \
+		ConfigData->httpRetries,ConfigData->retryInterval); // BL-20654
 	
 	if(res == 0)
 	{
@@ -70,8 +66,7 @@ static int get_management_config(const char* sessionToken, const char* jobId, \
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Config retrieval failed with error code %d", \
-			__FILE__, __FUNCTION__, __LINE__, res);
+		log_error("%s::%s(%d) : Config retrieval failed with error code %d", LOG_INF, res);
 	}
 
 	free(jsonReq);
@@ -90,16 +85,12 @@ static int get_management_config(const char* sessionToken, const char* jobId, \
  * @param  - [Input] jodId = the platform GUID reference for the job
  * @param  - [Input] endpoint = the 
  */
-static int send_management_job_complete(const char* sessionToken, \
-	const char* jobId, const char* endpoint, struct ConfigData* config, \
-	int jobStatus, long auditId, const char* message, \
-	struct ManagementCompleteResp** pManComp)
+static int send_management_job_complete(const char* sessionToken, const char* jobId, const char* endpoint, \
+	int jobStatus, long auditId, const char* message, struct ManagementCompleteResp** pManComp)
 {
 	char* url = NULL;
 
-	log_verbose("%s::%s(%d) : Sending management complete request: "
-		        "%ld for session: %s", \
-				__FILE__, __FUNCTION__, __LINE__, auditId, sessionToken);
+	log_verbose("%s::%s(%d) : Sending management complete request: %ld for session: %s", LOG_INF, auditId, sessionToken);
 	struct CommonCompleteReq* req = CommonCompleteReq_new();
 	req->SessionToken = strdup(sessionToken);
 	req->JobId = strdup(jobId);
@@ -111,12 +102,12 @@ static int send_management_job_complete(const char* sessionToken, \
 
 	char* jsonResp = NULL;
 
-	url = config_build_url(config, endpoint, true);
+	url = config_build_url(endpoint, true);
 
-	int res = http_post_json(url, config->Username, config->Password, \
-		config->TrustStore, config->AgentCert, config->AgentKey, \
-		config->AgentKeyPassword, jsonReq, &jsonResp, \
-		config->httpRetries,config->retryInterval); // BL-20654
+	int res = http_post_json(url, ConfigData->Username, ConfigData->Password, \
+		ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey, \
+		ConfigData->AgentKeyPassword, jsonReq, &jsonResp, \
+		ConfigData->httpRetries,ConfigData->retryInterval); // BL-20654
 	
 	if(res == 0)
 	{
@@ -124,8 +115,7 @@ static int send_management_job_complete(const char* sessionToken, \
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Job completion failed with error code %d", \
-			__FILE__, __FUNCTION__, __LINE__, res);
+		log_error("%s::%s(%d) : Job completion failed with error code %d", LOG_INF, res);
 	}
 
 	free(jsonReq);
@@ -148,8 +138,7 @@ static int send_management_job_complete(const char* sessionToken, \
  * @return - success : 0
  *         - failure : any other integer
  */
-static int add_cert_to_store(const char* storePath, const char* certASCII, \
-	char** pMessage, enum AgentApiResultStatus* pStatus)
+static int add_cert_to_store(const char* storePath, const char* certASCII, char** pMessage, enum AgentApiResultStatus* pStatus)
 {
 	int ret = 0;
 	int i;
@@ -160,32 +149,24 @@ static int add_cert_to_store(const char* storePath, const char* certASCII, \
 	/***************************************************************************
 	 * 1.) Convert the cert to a PemInventoryItem, which has a cert & thumbprint
 	 **************************************************************************/
-	log_trace("%s::%s(%d) : Creating a new PemInventoryItem for certificate",\
-		__FILE__, __FUNCTION__, __LINE__);
+	log_trace("%s::%s(%d) : Creating a new PemInventoryItem for certificate", LOG_INF);
 	if ( !ssl_PemInventoryItem_create(&certToAdd, certASCII) )
 	{
-		log_error("%s::%s(%d) : Error creating cert thumbprint or invalid cert",
-			__FILE__, __FUNCTION__, __LINE__);
-		append_linef(pMessage, "%s::%s(%d) : Error creating cert thumbprint "
-			         "or invalid cert", \
-					__FILE__, __FUNCTION__, __LINE__);
+		log_error("%s::%s(%d) : Error creating cert thumbprint or invalid cert", LOG_INF);
+		append_linef(pMessage, "%s::%s(%d) : Error creating cert thumbprint or invalid cert", LOG_INF);
 		*pStatus = STAT_ERR;
 		return -1;
 	}
-	log_trace("%s::%s(%d) : New certificate has a thumbprint of %s",\
-		__FILE__, __FUNCTION__, __LINE__, certToAdd->thumbprint_string);
+	log_trace("%s::%s(%d) : New certificate has a thumbprint of %s", LOG_INF, certToAdd->thumbprint_string);
 	
 	/**********************************************************
 	 * 2.) Read all the certs in the cert store
 	 *********************************************************/
-	log_trace("%s::%s(%d) : Reading cert store %s's inventory",\
-		__FILE__, __FUNCTION__, __LINE__, storePath);
+	log_trace("%s::%s(%d) : Reading cert store %s's inventory", LOG_INF, storePath);
 	if ( 0 != ssl_read_store_inventory(storePath, NULL, &pemList) )
 	{
-		log_error("%s::%s(%d) : Error reading PEM store at %s",
-			__FILE__, __FUNCTION__, __LINE__, storePath);
-		append_linef(pMessage, "%s::%s(%d) : Error reading PEM store at %s",
-			__FILE__, __FUNCTION__, __LINE__, storePath);
+		log_error("%s::%s(%d) : Error reading PEM store at %s", LOG_INF, storePath);
+		append_linef(pMessage, "%s::%s(%d) : Error reading PEM store at %s", LOG_INF, storePath);
 		if ( certToAdd )
 		{
 			PemInventoryItem_free(certToAdd);
@@ -197,13 +178,10 @@ static int add_cert_to_store(const char* storePath, const char* certASCII, \
 		*pStatus = STAT_ERR;
 		return -1;
 	}
-	log_trace("%s::%s(%d) : Found %d certs in store",\
-		__FILE__, __FUNCTION__, __LINE__, pemList->item_count);
+	log_trace("%s::%s(%d) : Found %d certs in store", LOG_INF, pemList->item_count);
 	for(i = 0; pemList->item_count > i; i++)
 	{
-		log_trace("%s::%s(%d) : Thumbprint #%d found: %s",\
-		__FILE__, __FUNCTION__, __LINE__, i, \
-		pemList->items[i]->thumbprint_string);
+		log_trace("%s::%s(%d) : Thumbprint #%d found: %s", LOG_INF, i, pemList->items[i]->thumbprint_string);
 	}
 
 	/***********************************************************
@@ -211,61 +189,43 @@ static int add_cert_to_store(const char* storePath, const char* certASCII, \
 	 **********************************************************/
 	foundCert = false;
 	i = 0;
-	log_trace("%s::%s(%d) : Checking if cert to add is already in the store",\
-		__FILE__, __FUNCTION__, __LINE__);
+	log_trace("%s::%s(%d) : Checking if cert to add is already in the store", LOG_INF);
 	while ( (pemList->item_count > i) && (false == foundCert) && (certToAdd) )
 	{
-		log_trace("%s::%s(%d) : comparing thubmprints\n%s\n%s",
-			__FILE__, __FUNCTION__, __LINE__, \
-			certToAdd->thumbprint_string, \
-			pemList->items[i]->thumbprint_string);
-		if ( 
-			0 == strcasecmp(certToAdd->thumbprint_string,\
-				            pemList->items[i]->thumbprint_string) )
+		log_trace("%s::%s(%d) : comparing thubmprints\n%s\n%s",LOG_INF, certToAdd->thumbprint_string, pemList->items[i]->thumbprint_string);
+		if ( 0 == strcasecmp(certToAdd->thumbprint_string, pemList->items[i]->thumbprint_string) )
 		{
 			foundCert = true;
 		}
 		i++;
 	}
 
-	log_verbose("%s::%s(%d) : Found cert: %s", \
-			__FILE__, __FUNCTION__, __LINE__, (foundCert ? "yes" : "no"));
+	log_verbose("%s::%s(%d) : Found cert: %s", LOG_INF, (foundCert ? "yes" : "no"));
 
 	/***********************************************************
 	 * 4.) If the cert doesn't exist, add it too the store
 	 **********************************************************/	
 	if( false == foundCert )
 	{
-		log_trace("%s::%s(%d) : Adding cert with thumbprint %s to store %s",\
-			__FILE__, __FUNCTION__, __LINE__, certToAdd->thumbprint_string, \
-			storePath);
+		log_trace("%s::%s(%d) : Adding cert with thumbprint %s to store %s", LOG_INF, certToAdd->thumbprint_string, storePath);
 		if ( !ssl_Store_Cert_add(storePath, certASCII) )
 		{
-			log_error("%s::%s(%d) Error writing cert to store",
-				__FILE__, __FUNCTION__, __LINE__);
-			append_linef(pMessage, "%s::%s(%d) Error writing cert to store",
-				__FILE__, __FUNCTION__, __LINE__);
+			log_error("%s::%s(%d) Error writing cert to store", LOG_INF);
+			append_linef(pMessage, "%s::%s(%d) Error writing cert to store", LOG_INF);
 			*pStatus = STAT_ERR;
 			ret = -1;
 		}
 		else
 		{
-			log_verbose("%s::%s(%d) Certificate successfully written to store",\
-				__FILE__, __FUNCTION__, __LINE__);
+			log_verbose("%s::%s(%d) Certificate successfully written to store", LOG_INF);
 			*pStatus = STAT_SUCCESS;
 			ret = 0;
 		}
 	}
 	else
 	{
-		log_info("%s::%s(%d) : WARNING: Certificate with thumbprint %s was "
-			     "already present in store %s", \
-				__FILE__, __FUNCTION__, __LINE__, \
-				certToAdd->thumbprint_string, storePath);
-		append_linef(pMessage, "%s::%s(%d) : WARNING: Certificate with "
-			         "thumbprint %s was already present in store %s", \
-					__FILE__, __FUNCTION__, __LINE__, \
-					certToAdd->thumbprint_string, storePath);
+		log_warn("%s::%s(%d) : WARNING: Certificate with thumbprint %s was already present in store %s", LOG_INF, certToAdd->thumbprint_string, storePath);
+		append_linef(pMessage, "%s::%s(%d) : WARNING: Certificate with thumbprint %s was already present in store %s", LOG_INF, certToAdd->thumbprint_string, storePath);
 		*pStatus = STAT_WARN;
 		ret = 0;
 	}
@@ -300,13 +260,10 @@ static int remove_cert_from_store(const char* storePath, \
 {
 	int ret = 0;
 
-	if ( 
-		!ssl_remove_cert_from_store(storePath, searchThumb, keyPath, password) )
+	if ( !ssl_remove_cert_from_store(storePath, searchThumb, keyPath, password) )
 	{
-		log_error("%s::%s(%d) : Unable to remove cert from store at %s", \
-			__FILE__, __FUNCTION__, __LINE__, storePath);
-		append_linef(pMessage, "Unable to remove cert from store at %s", \
-			storePath);
+		log_error("%s::%s(%d) : Unable to remove cert from store at %s", LOG_INF, storePath);
+		append_linef(pMessage, "Unable to remove cert from store at %s", storePath);
 		*pStatus = STAT_ERR;
 	}
 	return ret;
@@ -322,124 +279,134 @@ static int remove_cert_from_store(const char* storePath, \
  *		3.) Respond to the platform as to the job's success
  *
  * @param  - [Input] : jobInfo = the details of the job from the platform
- * @param  - [Input] : config = the config.json file in internal structure
  * @param  - [Input] : sessionToken = the GUID for the curl session
  * @param  - [Input] : chainJob = any additional jobs required to run after
  *                                this one -- typically an Inventory job
  * @return - job was run : 0
  *		   - job was canceled : 1
  */
-int cms_job_manage(struct SessionJob* jobInfo, struct ConfigData* config, \
-	char* sessionToken, char** chainJob)
+int cms_job_manage(struct SessionJob* jobInfo, char* sessionToken, char** chainJob)
 {
 	int res = 0;
 	struct ManagementConfigResp* manConf = NULL;
 	char* statusMessage = strdup("");
 	enum AgentApiResultStatus status = STAT_UNK;
 	int returnable = 0;
-	log_info("%s::%s(%d) : Starting management job %s", \
-		__FILE__, __FUNCTION__, __LINE__, jobInfo->JobId);
+	log_info("%s::%s(%d) : Starting management job %s", LOG_INF, jobInfo->JobId);
 
-	res = get_management_config(sessionToken, jobInfo->JobId, \
-		jobInfo->ConfigurationEndpoint, config, &manConf);
+	res = get_management_config(sessionToken, jobInfo->JobId, jobInfo->ConfigurationEndpoint, &manConf);
 
-	if(res == 0 && manConf && AgentApiResult_log(manConf->Result, \
-		&statusMessage, &status))
+	// Validate data
+	if (manConf)
+	{
+		bool failed = false;
+		if (manConf->Job.StorePath)
+		{
+			/* Is the target store a directory and not a file? */
+			if (is_directory(manConf->Job.StorePath))
+			{
+				log_error("%s::%s(%d) : The store path must be a file and not a directory.", LOG_INF);
+				append_linef(&statusMessage, "The store path must be a file and not a directory.");
+				failed = true;
+			}
+			/* Is the target store the Agent store? */
+			if (0 == strcasecmp(ConfigData->AgentCert, manConf->Job.StorePath))
+			{		
+				log_warn("%s::%s(%d) : Attempting a Management job on the agent cert store is not allowed.", LOG_INF);
+				append_linef(&statusMessage, "Attempting a Management job the agent cert store is not allowed.");
+				failed = true;
+			}
+		}
+		else
+		{
+			log_error("%s::%s(%d) : Job doesn't contain a target store to manage.", LOG_INF);
+			append_linef(&statusMessage, "Job doesn't contain a target store to manage.");
+			failed = true;
+		}
+		/* if any test failed, then let the platform know about it. */
+		if (failed) 
+		{
+			struct ManagementCompleteResp* manComp = NULL;
+			send_management_job_complete(sessionToken, jobInfo->JobId, jobInfo->CompletionEndpoint, STAT_ERR, manConf->AuditId, statusMessage, &manComp);
+			ManagementCompleteResp_free(manComp);
+			goto exit;
+		}
+	}
+	else 
+	{
+		log_error("%s::%s(%d) : No managment configuration was returned from the platform.", LOG_INF);
+		goto exit;
+	}
+
+	// Data ok, process job
+	if(res == 0 && AgentApiResult_log(manConf->Result, &statusMessage, &status))
 	{
 		if(manConf->JobCancelled)
 		{
 			returnable = 1;
-			log_info("%s::%s(%d) : Job has been cancelled and will not be run",\
-				__FILE__, __FUNCTION__, __LINE__);
+			log_info("%s::%s(%d) : Job has been cancelled and will not be run", LOG_INF);
 		}
 		else
 		{
 			long auditId = manConf->AuditId;
-			log_verbose("%s::%s(%d) : Audit Id: %ld", \
-				__FILE__, __FUNCTION__, __LINE__, auditId);
+			log_verbose("%s::%s(%d) : Audit Id: %ld", LOG_INF, auditId);
 
 			int opType = manConf->Job.OperationType;
 			switch(opType)
 			{
 			case OP_ADD:
-				log_verbose("%s::%s(%d) : Add certificate operation", \
-					__FILE__, __FUNCTION__, __LINE__);
+				log_verbose("%s::%s(%d) : Add certificate operation", LOG_INF);
 
 				if(manConf->Job.PrivateKeyEntry)
 				{
-					const char* msg = "Adding a PFX is not supported "
-					                  "at this time";
-					log_info("%s::%s(%d) :  %s", \
-						__FILE__, __FUNCTION__, __LINE__, msg);
+					const char* msg = "Adding a PFX is not supported at this time";
+					log_info("%s::%s(%d) :  %s", LOG_INF, msg);
 					status = STAT_ERR;
 					append_line(&statusMessage, msg);
 				}
 				else
 				{
-					log_info("%s::%s(%d) : Attempting to add certificate to "
-						     "the store:\n%s",\
-						__FILE__, __FUNCTION__, __LINE__, \
-						manConf->Job.EntryContents);
-					res = add_cert_to_store(manConf->Job.StorePath, \
-						manConf->Job.EntryContents, &statusMessage, &status);
+					log_info("%s::%s(%d) : Attempting to add certificate to the store:\n%s", LOG_INF, manConf->Job.EntryContents);
+					res = add_cert_to_store(manConf->Job.StorePath, manConf->Job.EntryContents, &statusMessage, &status);
 				}
 				break;
 			case OP_REM:
-				log_verbose("%s::%s(%d) : Remove certificate operation", \
-					__FILE__, __FUNCTION__, __LINE__);
+				log_verbose("%s::%s(%d) : Remove certificate operation", LOG_INF);
 				res = remove_cert_from_store(manConf->Job.StorePath, \
 					manConf->Job.Alias, manConf->Job.PrivateKeyPath, \
 					manConf->Job.StorePassword, &statusMessage, &status);
 				break;
 			default:
-				log_error("%s::%s(%d) : Unsupported operation type: %d", \
-					__FILE__, __FUNCTION__, __LINE__, opType);
-				append_linef(&statusMessage, "Unsupported operation type: %d",\
-					opType);
+				log_error("%s::%s(%d) : Unsupported operation type: %d", LOG_INF, opType);
+				append_linef(&statusMessage, "Unsupported operation type: %d", opType);
 				status = STAT_ERR;
 				break;
 			}
 
 			struct ManagementCompleteResp* manComp = NULL;
 			res = send_management_job_complete(sessionToken, \
-				jobInfo->JobId, jobInfo->CompletionEndpoint, config, status+1, \
+				jobInfo->JobId, jobInfo->CompletionEndpoint, status+1, \
 				auditId, statusMessage, &manComp);
-			if(manComp)
-			{
-				if(
-					AgentApiResult_log(manComp->Result, NULL, NULL) && \
-					manComp->InventoryJob && \
-					chainJob)
-				{
-					*chainJob = strdup(manComp->InventoryJob);
-				}
-			}
+			/* NOTE: Removed chain job due to inventory job running twice */
 
 			if(status >= STAT_ERR)
 			{
-				log_info("%s::%s(%d) : Management job %s failed "
-					     "with error: %s", \
-						__FILE__, __FUNCTION__, __LINE__, \
-						jobInfo->JobId, statusMessage);
+				log_error("%s::%s(%d) : Management job %s failed with error: %s", LOG_INF, jobInfo->JobId, statusMessage);
 			}
 			else if(status == STAT_WARN)
 			{
-				log_info("%s::%s(%d) : Management job %s completed "
-					     "with warning: %s", \
-						__FILE__, __FUNCTION__, __LINE__, \
-						jobInfo->JobId, statusMessage);
+				log_warn("%s::%s(%d) : Management job %s completed with warning: %s", LOG_INF, jobInfo->JobId, statusMessage);
 			}
 			else
 			{
-				log_info("%s::%s(%d) : Management job %s completed "
-					     "successfully", \
-						__FILE__, __FUNCTION__, __LINE__, jobInfo->JobId);
+				log_info("%s::%s(%d) : Management job %s completed successfully", LOG_INF, jobInfo->JobId);
 			}	
 
 			ManagementCompleteResp_free(manComp);
 		}
 	}
 
+exit:
 	ManagementConfigResp_free(manConf);
 	free(statusMessage);
 
