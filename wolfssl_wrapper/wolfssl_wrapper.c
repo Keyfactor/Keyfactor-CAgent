@@ -1767,20 +1767,25 @@ bool ssl_generate_ecc_keypair(int keySize)
 
 	switch(keySize)
 	{
+		case 192:
+			log_trace("%s::%s(%d) : Setting ECC curve to ECC_SECP192K1", LOG_INF);
+			eccNid = ECC_SECP192K1;
+			keySz = 24; /* 192/8 = 24 bytes */
+			break;
 		case 256:
 			log_trace("%s::%s(%d) : Setting ECC curve to ECC_SECP256R1", LOG_INF);
 			eccNid = ECC_SECP256R1; 
-			keySz = 32;// 256/8 = 32 bytes
+			keySz = 32; /* 256/8 = 32 bytes */
 			break;
 		case 384:
 			log_trace("%s::%s(%d) : Setting ECC curve to ECC_SECP384R1", LOG_INF);
 			eccNid = ECC_SECP384R1;
-			keySz = 48; // 384/8 = 48 bytes
+			keySz = 48; /* 384/8 = 48 bytes */
 			break;
 		case 521:
 			log_trace("%s::%s(%d) : Setting ECC curve to ECC_SECP521R1", LOG_INF);
 			eccNid = ECC_SECP521R1;
-			keySz = 66; // 521/8 = 65.125 bytes
+			keySz = 66; /* 521/8 = 65.125 bytes */
 			break;
 		default:
 		log_error("%s::%s(%d) : Invalid ECC key length: %d. Falling back to default curve", LOG_INF, keySize);

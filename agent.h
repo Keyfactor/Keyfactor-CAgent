@@ -47,6 +47,12 @@ extern ENGINE* e;
 /*             * Check if re-enrollment, inventory, or management jobs are targeting */
 /*               the agent certificate & don't run those jobs. */
 /*             * Added agent cert re-enrollment on Error response to reenroll */
-#define AGENT_VERSION 0x0002000500000000
+/* 2.5.1.0 = Added the following: */
+/*             * Fixed a bug in openSSL cleanup causing segfaults */
+/*             * Added a check to the inventory and management jobs to validate cert store exists */
+/*             * Added sanity checks on the intital configuration file */
+/*             * Added ECC 192 key generation */
+/*             * Set default logging level to INFO */
+#define AGENT_VERSION 0x0002000500010000
 
 #endif // AGENT_H_

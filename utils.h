@@ -59,4 +59,17 @@ int file_exists( const char *file );
 /******************************************************************************/
 bool is_directory( const char *file );
 
+/**
+ * Return a substring that is everything up to the last character to find
+ * 
+ * NOTE: Memory is allocated by this function & must be deallocated by the
+ *       calling function.
+ *
+ * @param  - [Input] string = the null terminated string to search
+ * @param  - [Input] find = the character to search within the string
+ * @return - The substring of the string parameter up to the character to find
+ *           NULL if the character is not found
+ */
+char* get_prefix_substring(const char* string, const char find);
+
 #endif /* UTILS_H_ */

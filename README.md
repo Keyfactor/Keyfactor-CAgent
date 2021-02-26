@@ -73,4 +73,23 @@ There are various logging levels available in the agent:
 	./agent -l e lists only error messages
 	./agent -l o turns off all output messages
 
-
+# Agent History
+	version 2.5.1 
+		Fixed a bug in the openSSL wrapper cleanup causing segfaults
+		Added a check to the inventory and management jobs to validate cert store exists
+		Added sanity checks on the initital configuration file
+		Added ECC 192 key generation
+		Set default logging level to INFO
+	version 2.5.0
+		Log to file upon agent shutting down
+		Agent runs through all jobs once, this allows cron to schedule it
+		Added warning log level
+		Added a priority queue for agent jobs upon initial retrieval
+		Ignore chained jobs - all inventory jobs run immediate
+		Check if a store is a directory before reading/writing
+		Check if re-enrollment, inventory, or managment jobs are targeting the agent store & don't run them
+		Added agent cert re-enrollment upon platform requesting it
+	version 2.1.0
+		Added TPM for raspberry pi with Infineon SLB9670 and openSSL
+	version 2.0.0
+		Created wrapper classes to separate Keyfactor Platform from ssl/crypto implementation

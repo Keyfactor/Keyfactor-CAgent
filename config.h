@@ -121,6 +121,16 @@ bool config_save( void );
 char* config_build_url(const char* relPath, bool vdirFromConfig);
 
 /**
+ * Sanity check on the configuration file to check for errors before launching
+ * Should run after the log files are up and running to log errors to disk.
+ *
+ * @param  - none, operates on the global ConfigData variable
+ * @return - success : true
+ *           failure : false
+ */
+bool validate_configuration( void );
+
+/**
  * Release memory associated with the ConfigData element
  *
  * @returns none

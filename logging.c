@@ -44,9 +44,9 @@ static int log_index = 0;
 static bool _trace = false;
 static bool _debug = false;
 static bool _verbose = false;
-static bool _info = false;
-static bool _warn = false;
-static bool _error = true; // default logging level
+static bool _info = true; /* default logging level */
+static bool _warn = true;
+static bool _error = true; 
 static char logFormat[LOG_HEAD_SIZE + MAX_LOG_SIZE + LOG_LEVEL_SIZE];
 static char timeBuf[LOG_HEAD_SIZE];
 
@@ -200,10 +200,12 @@ void log_error(const char* fmt, ...)
 		size_t chars_to_write = vfprintf(stderr, logFormat, args);
 		va_end(args);
 
-		if (config_loaded) {
+		if (config_loaded) 
+		{
 			/* Write to the log buffer, too */
 			char *log_ptr = &LOG_BUFFER[log_index];
-			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) { 
+			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) 
+			{ 
 				resize_log_file();		
 			}
 			get_log_format(logFormat, fmt, ERRORLVL);
@@ -233,10 +235,12 @@ void log_warn(const char* fmt, ...)
 		size_t chars_to_write = vfprintf(stderr, logFormat, args);
 		va_end(args);
 
-	    if (config_loaded) {
+		if (config_loaded) 
+		{
 			/* Write to the log buffer, too */
 			char *log_ptr = &LOG_BUFFER[log_index];
-			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) { 
+			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) 
+			{ 
 				resize_log_file();		
 			}
 			get_log_format(logFormat, fmt, WARNLVL);
@@ -266,10 +270,12 @@ void log_info(const char* fmt, ...)
 		size_t chars_to_write = vfprintf(stderr, logFormat, args);
 		va_end(args);
 
-		if (config_loaded) {
+		if (config_loaded) 
+		{
 			/* Write to the log buffer, too */
 			char *log_ptr = &LOG_BUFFER[log_index];
-			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) { 
+			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) 
+			{ 
 				resize_log_file();		
 			}
 			get_log_format(logFormat, fmt, INFOLVL);
@@ -280,7 +286,7 @@ void log_info(const char* fmt, ...)
 			log_index += char_write;
 			log_is_dirty = true;
 			/* End write to the log buffer, too */
-		}
+		}	
 	}
 }
 
@@ -298,7 +304,6 @@ void log_verbose(const char* fmt, ...)
 		va_start(args, fmt);
 		size_t chars_to_write = vfprintf(stderr, logFormat, args);
 		va_end(args);
-
 #ifdef __DONT_COMPILE_ME__
 		if (config_loaded) {
 			/* Write to the log buffer, too */
@@ -333,7 +338,6 @@ void log_debug(const char* fmt, ...)
 		va_start(args, fmt);
 		size_t chars_to_write = vfprintf(stderr, logFormat, args);
 		va_end(args);
-
 #ifdef __DONT_COMPILE_ME__
 		if (config_loaded) {
 			/* Write to the log buffer, too */
@@ -370,10 +374,12 @@ void log_trace(const char* fmt, ...)
 		va_end(args);
 
 #ifdef __DONT_COMPILE_ME__
-		if (config_loaded) {
+		if (config_loaded) 
+		{
 			/* Write to the log buffer, too */
 			char *log_ptr = &LOG_BUFFER[log_index];
-			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) { 
+			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) 
+			{ 
 				resize_log_file();		
 			}
 			get_log_format(logFormat, fmt, TRACELVL);
@@ -546,6 +552,10 @@ void load_log_buffer( void )
 		log_index = 0;
 	}
 	log_is_dirty = false;
+	if (fp)
+	{
+		fclose(fp);
+	}
 	return;
 } /* load_log_buffer */
 

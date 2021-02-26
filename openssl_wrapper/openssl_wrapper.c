@@ -1532,6 +1532,10 @@ bool ssl_generate_ecc_keypair(int keySize)
 
 	switch(keySize)
 		{
+		case 192:
+			log_trace("%s::%s(%d) : Setting ECC curve to NID_secp192k1", LOG_INF);
+			eccNid = NID_secp192k1;
+			break;
 		case 256:
 			log_trace("%s::%s(%d) : Setting ECC curve to NID_X9_62_prime256v1",	LOG_INF);
 			eccNid = NID_X9_62_prime256v1;
@@ -2169,8 +2173,7 @@ void ssl_cleanup(void)
 {
 	log_trace("%s::%s(%d) : Cleaning up openssl", LOG_INF);
 	if (keyPair) EVP_PKEY_free(keyPair);
-	if (newRsa) OPENSSL_free(newRsa);
-	if (newEcc) OPENSSL_free(newEcc);
+	/* NOTE: The RSA and ECC key are freed by this call */
     EVP_cleanup();
     CRYPTO_cleanup_all_ex_data();
     ERR_free_strings();

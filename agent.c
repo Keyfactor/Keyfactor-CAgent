@@ -337,7 +337,16 @@ int init_platform( int argc, char* argv[] )
 	}
 
 	/***************************************************************************
-	  4. If we are using a TPM, then initialize it & set it to be the source for
+	 * 4. Validate configuration data is acceptable
+	 **************************************************************************/
+	if (!validate_configuration())
+	{
+		log_error("%s::%s(%d) : Configuration file has errors!", LOG_INF);
+		return 0;
+	}
+
+	/***************************************************************************
+	  5. If we are using a TPM, then initialize it & set it to be the source for
 	     all cryptographic calls to openSSL
 	 **************************************************************************/
 #ifdef __TPM__
@@ -351,7 +360,7 @@ int init_platform( int argc, char* argv[] )
 #endif
 
 	/***************************************************************************
-	 * 5. Initalize the SSL wrapper and curl
+	 * 6. Initalize the SSL wrapper and curl
 	 **************************************************************************/
 	ssl_init();
 
@@ -364,7 +373,7 @@ int init_platform( int argc, char* argv[] )
 	curlLoaded = true;
 
 	/***************************************************************************
-	 * 6. If required, serialize the agent
+	 * 7. If required, serialize the agent
 	 **************************************************************************/
 	if (ConfigData->Serialize) 
 	{

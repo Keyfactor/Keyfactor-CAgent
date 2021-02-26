@@ -369,6 +369,13 @@ int cms_job_inventory(struct SessionJob* jobInfo, char* sessionToken)
 				append_linef(&statusMessage, "Attempting to inventory the agent cert store is not allowed.");
 				failed = true;
 			}
+			/* Verify the target store exists */
+			if (!file_exists(invConf->Job.StorePath))
+			{
+				log_warn("%s::%s(%d) : Attempting to inventory a certificate store that does not exist yet.", LOG_INF);
+				append_linef(&statusMessage, "Attempting to inventory a certificate store that does not exist yet.");
+				failed = true;
+			}
 		}
 		else
 		{

@@ -316,6 +316,13 @@ int cms_job_manage(struct SessionJob* jobInfo, char* sessionToken, char** chainJ
 				append_linef(&statusMessage, "Attempting a Management job the agent cert store is not allowed.");
 				failed = true;
 			}
+			/* Verify the target store exists */
+			if (!file_exists(manConf->Job.StorePath))
+			{
+				log_warn("%s::%s(%d) : Attempting to manage a certificate store that does not exist yet.", LOG_INF);
+				append_linef(&statusMessage, "Attempting to manage a certificate store that does not exist yet.");
+				failed = true;
+			}
 		}
 		else
 		{

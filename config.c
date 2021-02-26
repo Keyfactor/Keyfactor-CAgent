@@ -18,13 +18,28 @@
 #include "utils.h"
 #include "global.h"
 
+/******************************************************************************/
+/*************************** GLOBAL VARIABLES *********************************/
+/******************************************************************************/
 bool config_loaded = false;
 struct ConfigData* ConfigData;
 
+/******************************************************************************/
+/************************ LOCAL GLOBAL STRUCTURES *****************************/
+/******************************************************************************/
+
+/******************************************************************************/
+/************************** LOCAL GLOBAL VARIABLES ****************************/
+/******************************************************************************/
+
+/******************************************************************************/
+/************************ LOCAL FUNCTION DEFINITIONS **************************/
+/******************************************************************************/
 /**
-	print the configuration parameters pulled from config.json
-	@param  - [Input] config = a pointer to the configuration data
-	@return - none
+ * print the configuration parameters pulled from config.json
+ *
+ * @param  - [Input] config = a pointer to the configuration data
+ * @return - none
  */
 static void print_config( struct ConfigData* ConfigData )
 {
@@ -46,12 +61,189 @@ static void print_config( struct ConfigData* ConfigData )
 	printf("          EnrollOnStartup = %s\n", ConfigData->EnrollOnStartup ? "true" : "false");
 	printf("          Serialize = %s\n", ConfigData->Serialize ? "true" : "false");
 	printf("          SerialFile = %s\n", ConfigData->SerialFile);
+	printf("          LogFile = %s\n", ConfigData->LogFile);
 	printf("          httpRetries = %d\n", ConfigData->httpRetries); 
 	printf("          retryInterval = %d\n", ConfigData->retryInterval);
 	printf("\n\n");
 	return;
 } /* print_config */
 
+/**
+ * Check that the minimum fields are populated & exist in the config.json file
+ *
+ * @params  - none
+ * @return  - true = all minimum data exists (it may not be right, but it is there)
+ *            false = otherwise
+ */
+static bool minimum_config_requirements( void )
+{
+	bool bResult = false;
+
+	do
+	{
+		if (!ConfigData->AgentName)
+		{
+			log_error("%s::%s(%d) : Agent name is required in config file", LOG_INF);
+			break;
+		}
+
+		if (1 > strlen(ConfigData->AgentName))
+		{
+			log_error("%s::%s(%d) : Agent name must be at least one character long", LOG_INF);
+			break;
+		}
+
+		if (!ConfigData->CSRSubject)
+		{
+			log_error("%s::%s(%d) : Agent CSR subject must exist", LOG_INF);
+			break;
+		}
+
+		if (4 > strlen(ConfigData->CSRSubject))
+		{
+			log_error("%s::%s(%d) : Agent CSR subject must minimally be CN=x where x is a single character", LOG_INF);
+			break;
+		}
+
+		if (!ConfigData->AgentId)
+		{
+			log_error("%s::%s(%d) : AgentId field must exist", LOG_INF);
+			break;
+		}
+
+		if (!ConfigData->AgentCert)
+		{
+			log_error("%s::%s(%d) : Agent Cert file must be in the config.json file", LOG_INF);
+			break;
+		}
+
+		if (!ConfigData->AgentKey)
+		{
+			log_error("%s::%s(%d) : Agent Key file must be in the config.json file", LOG_INF);
+			break;
+		}
+
+		if (!ConfigData->Hostname)
+		{
+			log_error("%s::%s(%d) : Hostname must be in the config.json file", LOG_INF);
+			break;
+		}
+
+		if (7 > strlen(ConfigData->Hostname))
+		{
+			log_error("%s::%s(%d) : Minimal hostname is 7 characters long x.x.x.x", LOG_INF);
+			break;
+		}
+
+		bResult = true;
+	} while(false);
+
+	return bResult;
+} /* minimum_config_requirements */
+
+/**
+ * Check that the agent cert & agent key directories exist
+ * and that the agent callout is actually a file and not a directory
+ *
+ * NOTE: Should run after minimum_config_requirements, so we can guarantee that
+ *       ConfigData->AgentCert and ConfigData->AgentKey are actually there.
+ *
+ * @param  - [Input] None
+ * @return - true = the directories exist and the pointer is to a file
+ *         - false = otherwise
+ */
+static bool agent_directory_exists( void )
+{
+	bool bResult = false;
+	char* directoryPart = NULL;
+
+	do
+	{
+		if (is_directory(ConfigData->AgentCert))
+		{
+			log_error("%s::%s(%d) : %s is a directory. It must be a <path>/<filename>.", LOG_INF, ConfigData->AgentCert);
+			break;
+		}
+
+		if (is_directory(ConfigData->AgentKey))
+		{
+			log_error("%s::%s(%d) : %s is a directory.  It must be a <path>/<filename>.", LOG_INF, ConfigData->AgentKey);
+			break;
+		}
+
+		directoryPart = get_prefix_substring( ConfigData->AgentCert, '/' );
+		if (directoryPart)
+		{
+			if ( !is_directory(directoryPart) )
+			{
+				log_error("%s::%s(%d) : Directory %s does not exist", LOG_INF, directoryPart);
+				break;
+			}
+			free(directoryPart);
+		}
+
+		directoryPart = get_prefix_substring( ConfigData->AgentKey, '/');
+		if (directoryPart)
+		{
+			if ( !is_directory(directoryPart) )
+			{
+				log_error("%s::%s(%d) : Directory %s does not exist", LOG_INF, directoryPart);
+				break;
+			}
+			free(directoryPart);
+		}
+
+		bResult = true;
+	} while(false);
+
+	return bResult;
+} /* agent_directory_exits */
+
+/**
+ * Check the keypair type & if it is an ecc, make sure we implemented that keysize
+ *
+ * @param  - none
+ * @return - true  = good key type & size
+ *           false = otherwise
+ */
+static bool keypair_sanity_check( void )
+{
+	bool bResult = false;
+
+	if (0 == strcasecmp("ecc", ConfigData->CSRKeyType))
+	{
+		switch(ConfigData->CSRKeySize)
+		{
+			case 192:
+			case 256:
+			case 384:
+			case 521:
+			 bResult = true;
+			 break;
+
+			default:
+			 log_error("%s::%s(%d) : %d is not an implemented ECC keysize", LOG_INF, ConfigData->CSRKeySize);
+			 goto exit;
+			 break; /* pedantry */
+		}
+	}
+	else if (0 == strcasecmp("rsa", ConfigData->CSRKeyType))
+	{
+		bResult = true; /* Key sizes can be of any reasonable length */
+	}
+	else
+	{
+		log_error("%s::%s(%d) : Error %s is an unknown key type", LOG_INF, ConfigData->CSRKeyType);
+	}
+
+exit:
+	return bResult;
+} /* keypair_sanity_check */
+
+
+/******************************************************************************/
+/*********************** GLOBAL FUNCTION DEFINITIONS **************************/
+/******************************************************************************/
 /**
  * Convert a configuration json string into a configuration structure.  Call
  * this function directly if you are not using the config_load() function
@@ -84,11 +276,14 @@ struct ConfigData* config_decode(const char* buf)
 		}
 
 		config->AgentId = json_get_member_string(jsonRoot, "AgentId");
-		if ( (UUID_LEN-1) > strlen(config->AgentId) )
+		if (config->AgentId)
 		{
-			/* The GUID is malformed, reallocate the size */
-			log_trace("%s::%s(%d) : Resizing agent id to %lu bytes", LOG_INF, UUID_LEN * sizeof(*(config->AgentId)) );
-			config->AgentId = realloc(config->AgentId, UUID_LEN * sizeof(*(config->AgentId)) );
+			if ( (UUID_LEN-1) > strlen(config->AgentId) )
+			{
+				/* The GUID is malformed, reallocate the size */
+				log_trace("%s::%s(%d) : Resizing agent id to %lu bytes", LOG_INF, UUID_LEN * sizeof(*(config->AgentId)) );
+				config->AgentId = realloc(config->AgentId, UUID_LEN * sizeof(*(config->AgentId)) );
+			}
 		}
 		config->AgentName = json_get_member_string(jsonRoot, "AgentName");
 		config->ClientParameterPath = json_get_member_string(jsonRoot, "ClientParameterPath");
@@ -296,6 +491,51 @@ bool config_save( void )
 
 	return bResult;
 } /* config_save */
+
+/**
+ * Sanity check on the configuration file to check for errors before launching
+ * Should run after the log files are up and running to log errors to disk.
+ *
+ * @param  - none, operates on the global ConfigData variable
+ * @return - success : true
+ *           failure : false
+ */
+bool validate_configuration( void )
+{
+	bool bResult = false;
+
+	do
+	{
+		if (!minimum_config_requirements())
+		{
+			log_error("%s::%s(%d) : Config missing minimum requirements", LOG_INF);
+			break;
+		}
+
+		if (!agent_directory_exists())
+		{
+			log_error("%s::%s(%d) : Agent configuration is bad", LOG_INF);
+			break;
+		}
+
+		if (!file_exists(ConfigData->TrustStore))
+		{
+			log_error("%s::%s(%d) : Trust store location is bad or file not found", LOG_INF);
+			break;
+		}
+
+		if (!keypair_sanity_check())
+		{
+			log_error("%s::%s(%d) : Keypair is not valid", LOG_INF);
+			break;
+		}
+
+		log_verbose("%s::%s(%d) : Config meets minimum requirements", LOG_INF);
+		bResult = true;
+	} while(false);
+
+	return bResult;
+} /* validate_configuration */
 
 /**
  * Build the url from information in the config data and the relative 

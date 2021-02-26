@@ -18,6 +18,40 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+/**
+ * Return a substring that is everything up to the last character to find
+ * 
+ * NOTE: Memory is allocated by this function & must be deallocated by the
+ *       calling function.
+ *
+ * @param  - [Input] string = the null terminated string to search
+ * @param  - [Input] find = the character to search within the string
+ * @return - The substring of the string parameter up to the character to find
+ *           NULL if the character is not found
+ */
+char* get_prefix_substring(const char* string, const char find)
+{
+	char* subString = NULL;
+
+	log_trace("%s::%s(%d) : Find character %c in string %s", LOG_INF, find, string);
+	char* ptr = strrchr(string,find);
+
+	if ( ptr )
+	{
+		log_trace("%s::%s(%d) : Character found", LOG_INF);
+		size_t len = (size_t)(ptr-string);
+		subString = strdup(string);
+		subString = (char*)realloc(subString,(len+1));
+		subString[len] = '\0';
+	}
+	else
+	{
+		log_trace("%s::%s(%d) : Character not found", LOG_INF);
+	}
+
+	return subString;
+} /* get_prefix_substring */
+
 /******************************************************************************/
 /** @fn int file_exists( const char *file )
 	@brief checks if a file exists already
@@ -41,7 +75,7 @@ int file_exists( const char *file )
 	}
 
 	return retval;
-} // file_exists
+} /* file_exists */
 
 /******************************************************************************/
 /** @fn is_directory( const char *file )
@@ -56,6 +90,7 @@ bool is_directory( const char *file )
 	bool bResult = false;
 	struct stat file_stat;
 	stat(file, &file_stat);
+	log_trace("%s::%s(%d) : %s = %d", LOG_INF, file, S_ISDIR(file_stat.st_mode));
 	if ( 0 != S_ISDIR(file_stat.st_mode) )
 	{
 		bResult = true;
