@@ -432,10 +432,12 @@ static bool PemInventoryItem_populate(PemInventoryItem* pem, X509* cert)
 		thumb = compute_thumbprint(cert);
 		log_verbose("%s::%s(%d) : Thumbprint: %s", LOG_INF, NULL == thumb ? "" : thumb);
 		contLen = i2d_X509(cert, &certContent);
+		log_trace("%s::%s(%d) : contLen = %d", LOG_INF, contLen);
 
 		if (0 < contLen)
 		{
 			/* Store the b64 encoded DER version of the pem in here */
+			log_trace("%s::%s(%d) : Storing certContent into PEMInventoryItem", LOG_INF);
 			pem->cert = base64_encode(certContent, contLen, false, NULL);
 			pem->thumbprint_string = strdup(thumb);
 			pem->has_private_key = false;
@@ -917,22 +919,26 @@ static unsigned long write_cert_bio(BIO* bio, const char* b64cert)
 	certBytePtr = base64_decode(b64cert, -1, &outLen);
 	const unsigned char** tempPtrPtr = (const unsigned char**)&(certBytePtr);
 
-	// Long way around, but PEM_write was segfaulting
-	if (d2i_X509(&certStruct, tempPtrPtr, outLen)) {
-		if (PEM_write_bio_X509(bio, certStruct)) {
+	/* Long way around, but PEM_write was segfaulting */
+	if (d2i_X509(&certStruct, tempPtrPtr, outLen)) 
+	{
+		if (PEM_write_bio_X509(bio, certStruct)) 
+		{
 			result = true;
 		}
 	}
 
-	if(result)	{
-		log_verbose("%s::%s(%d) : Cert written to BIO", 
-			LOG_INF);
+	if(result)	
+	{
+		log_verbose("%s::%s(%d) : Cert written to BIO", LOG_INF);
 	}
-	else {
+	else 
+	{
 		errNum = ERR_peek_last_error();
 	}
 
-	if ( certStruct ) {
+	if ( certStruct ) 
+	{
 		X509_free(certStruct);
 	}
 
@@ -1853,20 +1859,29 @@ bool ssl_PemInventoryItem_create(struct PemInventoryItem** pem, const char* cert
 	bool bResult = false;
 	X509* cert = NULL;
 	size_t certLen = 0;
-	char* certPEM = NULL;
-	/* Decode the b64 encoded certificate to create the PEM format */
-	certPEM = base64_decode(certASCII, -1, &certLen);
+	BIO* cbio = NULL;
+	char* certDER = NULL;
 
-	/* Place the PEM into a BIO structure to be decoded */
-	BIO *cbio = BIO_new(BIO_s_mem());
-	BIO_puts(cbio, certPEM);
+	/* Convert the naked PEM to a DER */
+	log_trace("%s::%s(%d) : Converting PEM to DER:\n%s", LOG_INF, certASCII);
+	certDER = base64_decode(certASCII, -1, &certLen);
+
+	/* Convert the DER to an internal structure */
+	const unsigned char** tempPtrPtr = (const unsigned char**)&certDER;
+	log_trace("%s::%s(%d) : Converting DER to internal cert", LOG_INF);
+	if (d2i_X509(&cert, tempPtrPtr, certLen))
+	{
+		log_trace("%s::%s(%d) : Converting cert to X509", LOG_INF);
+		cbio = BIO_new(BIO_s_mem());
+		PEM_write_bio_X509(cbio, cert);
+	}
 	
-	if (cbio && certPEM)
+	if (cbio)
 	{
 		cert = PEM_read_bio_X509(cbio, NULL, 0, NULL);
 		if ( NULL == cert )
 		{
-			log_error("%s::%s(%d) : This is not a valid X509 cert: \n%s", LOG_INF, certPEM);
+			log_error("%s::%s(%d) : This is not a valid X509 cert: \n%s", LOG_INF, certASCII);
 			goto cleanup;
 		}
 		/* cert now contains the X509 cert */
@@ -1891,9 +1906,22 @@ bool ssl_PemInventoryItem_create(struct PemInventoryItem** pem, const char* cert
 	}
 
 cleanup:
-	if (certPEM) { free(certPEM); }
-	if (cert) { X509_free(cert); }
-	if (cbio) { BIO_free(cbio); }
+	if (certDER) 
+	{ 
+		log_trace("%s::%s(%d) : Freeing certDER", LOG_INF);
+		certDER -= certLen; /* Remember d2i forwarded this, so set it back */
+		free(certDER); 
+	}
+	if (cert) 
+	{ 
+		log_trace("%s::%s(%d) : Freeing cert", LOG_INF);
+		X509_free(cert); 
+	}
+	if (cbio) 
+	{ 
+		log_trace("%s::%s(%d) : Freeing cbio", LOG_INF);
+		BIO_free(cbio); 
+	}
 
 	return bResult;
 } /* ssl_PemInventoryItem_create */
@@ -1912,19 +1940,28 @@ bool ssl_Store_Cert_add(const char* storePath, const char* certASCII)
 	int ret = 0;
 	X509* cert = NULL;
 	size_t certLen;
-	char* certPEM = base64_decode(certASCII, -1, &certLen);
+	BIO *cbio = NULL;
 
-	log_trace("%s::%s(%d) : Converting cert to X509", LOG_INF);
-	/* Place the PEM into a BIO structure to be decoded */
-	BIO *cbio = BIO_new(BIO_s_mem());
-	BIO_puts(cbio, certPEM);
+	/* Convert the naked PEM to a DER */
+	log_trace("%s::%s(%d) : Converting PEM to DER:\n%s", LOG_INF, certASCII);
+	char* certDER = base64_decode(certASCII, -1, &certLen);
 
-	if (cbio && certPEM)
+	/* Convert the DER to an internal structure */
+	const unsigned char** tempPtrPtr = (const unsigned char**)&certDER;
+	log_trace("%s::%s(%d) : Converting DER to internal cert", LOG_INF);
+	if (d2i_X509(&cert, tempPtrPtr, certLen))
+	{
+		log_trace("%s::%s(%d) : Converting cert to X509", LOG_INF);
+		cbio = BIO_new(BIO_s_mem());
+		PEM_write_bio_X509(cbio, cert);
+	}
+
+	if (cbio && certDER)
 	{
 		cert = PEM_read_bio_X509(cbio, NULL, 0, NULL);
 		if ( NULL == cert )
 		{
-			log_error("%s::%s(%d) : This is not a valid cert:\n%s", LOG_INF, certPEM);
+			log_error("%s::%s(%d) : This is not a valid cert:\n%s", LOG_INF, certASCII);
 			return bResult;
 		}
 
@@ -1952,9 +1989,22 @@ bool ssl_Store_Cert_add(const char* storePath, const char* certASCII)
 		log_error("%s::%s(%d) : Out of memory",	LOG_INF);
 	}
 
-	if ( cert ) { X509_free(cert); }
-	if ( certPEM ) { free(certPEM); }
-	if ( cbio )	{ BIO_free(cbio); }
+	if (certDER) 
+	{ 
+		log_trace("%s::%s(%d) : Freeing certDER", LOG_INF);
+		certDER -= certLen; /* Remember d2i forwarded this, so set it back */
+		free(certDER); 
+	}
+	if (cert) 
+	{ 
+		log_trace("%s::%s(%d) : Freeing cert", LOG_INF);
+		X509_free(cert); 
+	}
+	if (cbio) 
+	{ 
+		log_trace("%s::%s(%d) : Freeing cbio", LOG_INF);
+		BIO_free(cbio); 
+	}
 
 	return bResult;
 } /* ssl_Store_Cert_add */

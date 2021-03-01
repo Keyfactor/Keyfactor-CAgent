@@ -53,6 +53,7 @@ extern ENGINE* e;
 /*             * Added sanity checks on the intital configuration file */
 /*             * Added ECC 192 key generation */
 /*             * Set default logging level to INFO */
-#define AGENT_VERSION 0x0002000500010000
+/* 2.5.2.0 = Fixed bugs in openSSL layer when performing management jobs */
+#define AGENT_VERSION 0x0002000500020000
 
 #endif // AGENT_H_
