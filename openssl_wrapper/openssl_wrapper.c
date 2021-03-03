@@ -1420,23 +1420,30 @@ bool ssl_generate_rsa_keypair(int keySize)
 	int setWordResult = 0;
 	bool bResult = false;
 
+	log_trace("%s::%s(%d) : Assigning space for big number", LOG_INF);
 	exp = BN_new();
-
 	if (!exp) {
         log_error("%s::%s(%d) : out of memory when creating exponent in genkey_rsa", LOG_INF);
         return NULL;
     }
 
+    log_trace("%s::%s(%d) : Generating big number exp for RSA keygen", LOG_INF);
 	setWordResult = BN_set_word(exp, RSA_DEFAULT_EXP);
-
 	if ( 0 == setWordResult ) {
 		log_error("%s::%s(%d) : Failed assigning exp for RSA keygen", LOG_INF);
 		return NULL;
 	}
 
-	if (newRsa) OPENSSL_free(newRsa);
-	newRsa = RSA_new();
+	if (keyPair) 
+	{
+		log_trace("%s::%s(%d) : Freeing newRsa & EVP keyPair", LOG_INF);
+		EVP_PKEY_free(keyPair); /* Note this frees both structures */
+		newRsa = NULL;
+		keyPair = NULL;
+	}
 
+	log_trace("%s::%s(%d) : Creating new RSA space", LOG_INF);
+	newRsa = RSA_new();
 	if (!newRsa) {
         log_error("%s::%s(%d) : out of memory when creating RSA variable in genkey_rsa", LOG_INF);
         if ( exp ) 
@@ -1486,20 +1493,24 @@ bool ssl_generate_rsa_keypair(int keySize)
 	/***************************************************************************
 	 * Create keypair using standard openSSL engine
 	 **************************************************************************/
-	if(RSA_generate_key_ex(newRsa, keySize, exp, NULL))	{
-		if ( NULL != keyPair ) 
+	log_trace("%s::%s(%d) : Generating the RSA key", LOG_INF);
+	if(RSA_generate_key_ex(newRsa, keySize, exp, NULL))	
+	{
+		log_trace("%s::%s(%d) : RSA Key generated, converting to EVP structure", LOG_INF);
+		if ( keyPair ) 
 		{
-			EVP_PKEY_free(keyPair);
+			log_warn("%s::%s(%d) : EVP keyPair wasn't freed possible memory leak", LOG_INF);			
 			keyPair = NULL;
 		}
+		
 		keyPair = EVP_PKEY_new();
-
 		if (!keyPair) 
 		{
 			log_error("%s::%s(%d) : Out of memory allocating keypair", LOG_INF);
 			goto exit;
 		}
 
+		log_trace("%s::%s(%d) : Assigning newRsa to keyPair", LOG_INF);
 		EVP_PKEY_assign_RSA(keyPair, newRsa);
 		bResult = true;
 	}
@@ -1512,7 +1523,11 @@ bool ssl_generate_rsa_keypair(int keySize)
 #endif
 
 exit:
-	if ( exp ) BN_free(exp); 
+	if ( exp ) 
+	{
+		log_trace("%s::%s(%d) : Freeing big number", LOG_INF);
+		BN_free(exp); 
+	}
 	/* NOTE: Do NOT free newRsa, it will corrupt EVP_PKEY */
 	return bResult;
 } /* generate_rsa_keypair */
@@ -1564,18 +1579,30 @@ bool ssl_generate_ecc_keypair(int keySize)
 		 * Create keypair using standard openSSL engine
 		 **********************************************************************/
 
-		if (newEcc) OPENSSL_free(newEcc);
+		if (keyPair) 
+		{
+			log_trace("%s::%s(%d) : Freeing newEcc & EVP keyPair", LOG_INF);
+			EVP_PKEY_free(keyPair); /* Note this frees both structures */
+			newEcc = NULL;
+			keyPair = NULL;
+		}
+		log_trace("%s::%s(%d) : Creating new ECC structure with named curve", LOG_INF);
 		newEcc = EC_KEY_new_by_curve_name(eccNid);
+		log_trace("%s::%s(%d) : set asn1 flag to Named Curve", LOG_INF);
 		EC_KEY_set_asn1_flag(newEcc, OPENSSL_EC_NAMED_CURVE);
+		log_trace("%s::%s(%d) : Generating new ECC key", LOG_INF);
 		if(EC_KEY_generate_key(newEcc))
 		{
-			if( NULL != keyPair )
+
+			if( keyPair )
 			{
-				EVP_PKEY_free(keyPair);
+				log_warn("%s::%s(%d) : keyPair was not freed, possible memory leak", LOG_INF);
 				keyPair = NULL;
 			}
+			log_trace("%s::%s(%d) : Creating EVP keyPair structure", LOG_INF);
 			keyPair = EVP_PKEY_new();
 			
+			log_trace("%s::%s(%d) : New keypair created, assigning to EVP keyPair", LOG_INF);
 			if(0 == EVP_PKEY_assign_EC_KEY(keyPair, newEcc))
 			{
 				log_error("%s::%s(%d) : Error assigning keyPair", LOG_INF);

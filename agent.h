@@ -54,6 +54,8 @@ extern ENGINE* e;
 /*             * Added ECC 192 key generation */
 /*             * Set default logging level to INFO */
 /* 2.5.2.0 = Fixed bugs in openSSL layer when performing management jobs */
-#define AGENT_VERSION 0x0002000500020000
+/* 2.6.0.0 = Modified Agent to work with Keyfactor Platform v8.5.2 */
+/*           Includes fixes to wrapper layers for managing keypairs */
+#define AGENT_VERSION 0x0002000600000000
 
 #endif // AGENT_H_

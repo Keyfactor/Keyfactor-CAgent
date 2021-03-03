@@ -1653,15 +1653,15 @@ bool ssl_generate_rsa_keypair(int keySize)
 
 	log_trace("%s::%s(%d) : Received request to generate RSA key of length %d", LOG_INF, keySize);
 
-	if (pPrivateKey) { wolfSSL_EVP_PKEY_free(pPrivateKey); }
-	pDer = calloc((keySize+1),sizeof(*pDer));
-	
-	if(!pPrivateKey || !pDer)
+	log_trace("%s::%s(%d) : Allocating space for DER", LOG_INF);
+	pDer = calloc((keySize+1),sizeof(*pDer));	
+	if(!pDer)
 	{
 		log_error("%s::%s(%d) : Out of memory", LOG_INF);
 		goto fail_cleanup;
 	}
 
+	log_trace("%s::%s(%d) : Seeding the RNG", LOG_INF);
 	errNum = wc_InitRng(&rng);
 	if ( 0 != errNum )
 	{
@@ -1669,20 +1669,20 @@ bool ssl_generate_rsa_keypair(int keySize)
 		goto fail_cleanup;
 	}
 	
-	
-	errNum = wc_InitRsaKey(&rsaKey, NULL); // not using heap hint.
+	log_trace("%s::%s(%d) : Initializing RSA key", LOG_INF);
+	errNum = wc_InitRsaKey(&rsaKey, NULL); /* not using heap hint. */
 	if ( 0 != errNum )
 	{
 		log_error("%s::%s(%d) : Error initializing RSA key", LOG_INF);
 		goto fail_cleanup;
 	}
 
+	log_trace("%s::%s(%d) : Generating RSA key", LOG_INF);
 	errNum = wc_MakeRsaKey(&rsaKey, keySize, RSA_DEFAULT_EXP, &rng);
 	if ( 0 == errNum )
 	{
-		log_verbose("%s::%s(%d) : Successfully created RSA keypair", LOG_INF);
+		log_verbose("%s::%s(%d) : Successfully created RSA keypair - converting to DER", LOG_INF);
 		derSz = wc_RsaKeyToDer(&rsaKey, pDer, (keySize+1));
-
 		if (0 >= derSz)
 		{
 			log_error("%s::%s(%d) Error converting key to DER", LOG_INF);
@@ -1755,11 +1755,10 @@ bool ssl_generate_ecc_keypair(int keySize)
 	const unsigned char** ppDer = NULL;
 	int derSz = 0;
 
-	
+	log_trace("%s::%s(%d) : Allocating memory for DER", LOG_INF);
 	pDer = calloc(ONEK_SIZE, sizeof(*pDer));
-	if ( pPrivateKey ) wolfSSL_EVP_PKEY_free(pPrivateKey);
 
-	if ( !pDer || !pPrivateKey ) 
+	if ( !pDer ) 
 	{
 		log_error("%s::%s(%d) : Out of memory", LOG_INF);
 		goto fail_cleanup;
@@ -1797,6 +1796,7 @@ bool ssl_generate_ecc_keypair(int keySize)
 	/***********************************************************************
 	 * Create keypair using wolfcrypt
 	 **********************************************************************/
+	log_trace("%s::%s(%d) : Initializing ECC key", LOG_INF);
 	errNum = wc_ecc_init(&eccKey);
 	if ( errNum != 0 )
 	{
@@ -1804,6 +1804,7 @@ bool ssl_generate_ecc_keypair(int keySize)
 		goto fail_cleanup;
 	}
 
+	log_trace("%s::%s(%d) : Initializing RNG", LOG_INF);
 	errNum = wc_InitRng(&rng);
 	if ( 0 != errNum )
 	{
@@ -1811,6 +1812,7 @@ bool ssl_generate_ecc_keypair(int keySize)
 		goto fail_cleanup;
 	}
 
+	log_trace("%s::%s(%d) : Generating ECC key", LOG_INF);
 	errNum = wc_ecc_make_key_ex(&rng, keySz, &eccKey, eccNid);
 	if (errNum != 0)
 	{
@@ -1818,6 +1820,7 @@ bool ssl_generate_ecc_keypair(int keySize)
 		goto fail_cleanup;
 	}
 
+	log_trace("%s::%s(%d) : Converting ECC to der", LOG_INF);
 	derSz = wc_EccKeyToDer(&eccKey, pDer, ONEK_SIZE);
 	if (0 >= derSz)
 	{
@@ -1825,11 +1828,12 @@ bool ssl_generate_ecc_keypair(int keySize)
 		goto fail_cleanup;
 	}
 
+	log_trace("%s::%s(%d) : Converting DER to EVP_PKEY structure", LOG_INF);
 	ppDer = (const unsigned char**)&pDer;
 	pPrivateKey = wolfSSL_d2i_PrivateKey(EVP_PKEY_EC, &pPrivateKey, ppDer, derSz);
 	if ( pPrivateKey )
 	{
-		log_trace("%s::%s(%d) : Successfully converted ECC keypair to DER", LOG_INF);
+		log_trace("%s::%s(%d) : Successfully converted ECC keypair to EVP_PKEY", LOG_INF);
 	}
 	else
 	{
@@ -1854,11 +1858,6 @@ fail_cleanup:
 	{
 		free(pDer);
 		pDer = NULL;
-	}
-	if ( pPrivateKey )
-	{
-		log_trace("%s::%s(%d) : Freeing EVP_PKEY Structure", LOG_INF);
-		wolfSSL_EVP_PKEY_free(pPrivateKey);
 	}
 	keyType = NO_KEY_TYPE;
 	return bResult;
