@@ -56,6 +56,7 @@ extern ENGINE* e;
 /* 2.5.2.0 = Fixed bugs in openSSL layer when performing management jobs */
 /* 2.6.0.0 = Modified Agent to work with Keyfactor Platform v8.5.2 */
 /*           Includes fixes to wrapper layers for managing keypairs */
-#define AGENT_VERSION 0x0002000600000000
+/* 2.6.1.0 = Added -c switch to allow config file to be passed as a parameter */
+#define AGENT_VERSION 0x0002000600010000
 
 #endif // AGENT_H_

@@ -82,49 +82,63 @@ static bool inventory_ran = false;
  */
 static int parse_parameters( int argc, char *argv[] )
 {
+	bool foundConfig = false;
 	#ifdef __TPM__
 		int foundEngine = 0;
 		const char* default_engine = "dynamic"; // the default engine to choose
 	#endif
-	for(int i = 1; i < argc; ++i) {
-		if(0 == strcmp(argv[i], "-v")) {
+	for(int i = 1; i < argc; ++i) 
+	{
+		if(0 == strcmp(argv[i], "-v")) 
+		{
 			log_set_verbosity(true);
 		}
-		else if (0 == strcmp(argv[i], "-l")) {
-			if ( argc <= i ) {
+		else if (0 == strcmp(argv[i], "-l")) 
+		{
+			if ( argc <= i ) 
+			{
 				fprintf(stderr,
 					 "You must supply a switch variable with the -l command\n");
 				return 0;
 			} // if argc
-			else {
-				if (0 == strcmp(argv[i+1], "v")) {
+			else 
+			{
+				if (0 == strcmp(argv[i+1], "v")) 
+				{
 					log_set_verbosity(true);
 					i++;
 				}
-				else if (0 == strcmp(argv[i+1], "i")) {
+				else if (0 == strcmp(argv[i+1], "i")) 
+				{
 					log_set_info(true);
 					i++;
 				}
-				else if (0 == strcmp(argv[i+1], "e")) {
+				else if (0 == strcmp(argv[i+1], "e")) 
+				{
 					log_set_error(true);
 					i++;
 				}
-				else if (0 == strcmp(argv[i+1], "o")) {
+				else if (0 == strcmp(argv[i+1], "o")) 
+				{
 					log_set_off(true);
 					i++;
 				}
-				else if (0 == strcmp(argv[i+1], "d")) {
+				else if (0 == strcmp(argv[i+1], "d")) 
+				{
 					log_set_debug(true);
 					i++;
 				}
-				else if (0 == strcmp(argv[i+1], "t")) {
+				else if (0 == strcmp(argv[i+1], "t")) 
+				{
 					log_set_trace(true);
 					i++;
 				}
-				else if (0 == strcmp(argv[i+1], "w")) {
+				else if (0 == strcmp(argv[i+1], "w")) 
+				{
 					log_set_warn(true);
 				}
-				else {
+				else 
+				{
 				   fprintf(stderr,"Unknown -l switch variable %s\n", argv[i+1]);
 					return 0;
 				}
@@ -141,12 +155,23 @@ static int parse_parameters( int argc, char *argv[] )
 			}
 		}
 #endif
+		else if (0 == strcmp(argv[i], "-c"))
+		{
+			if ( argc > i )
+			{
+				if ( 0 < strlen(argv[++i]) )
+				{
+					config_location = calloc(strlen(argv[i])+1, sizeof(*config_location));
+					config_location = strncpy( config_location, argv[i], strlen(argv[i]) );
+					foundConfig = true;
+				}
+			}
+		}
 		else {
 			log_verbose( "%s::%s(%d) : Unknown switch: %s", \
 				LOG_INF, argv[i] );
 		}
 	}
-
 #ifdef __TPM__
 	if ( !foundEngine )
 	{
@@ -155,6 +180,10 @@ static int parse_parameters( int argc, char *argv[] )
 		eng = strncpy( eng, default_engine, 20 );
 	}
 #endif
+	if ( !foundConfig )
+	{
+		config_location = strdup( "config.json" );
+	}
 	return 1;
 } // parse_parameters
 
@@ -311,7 +340,17 @@ int run_job(struct SessionJob* job)
 int init_platform( int argc, char* argv[] )
 {
 	/***************************************************************************
-	* 1. Load the configuration data
+	 * 1. Parse the command line parameters.
+	 **************************************************************************/
+	log_trace("%s::%s(%d) : Parsing Parameters", LOG_INF);
+	if ( 0 == parse_parameters( argc, &argv[0] ) ) 
+	{
+		log_error("%s::%s(%d) : Failed to parse command line parameters", LOG_INF);
+		return 0;
+	}
+
+	/***************************************************************************
+	* 2. Load the configuration data
 	***************************************************************************/
 	printf("%s::%s(%d) : Loading configuration data", LOG_INF);
 	ConfigData = config_load();
@@ -322,19 +361,9 @@ int init_platform( int argc, char* argv[] )
 	}
 
 	/***************************************************************************
-	 * 2. Initialize logging
+	 * 3. Initialize logging
 	 **************************************************************************/
 	load_log_buffer();
-
-	/***************************************************************************
-	 * 3. Parse the command line parameters.
-	 **************************************************************************/
-	log_trace("%s::%s(%d) : Parsing Parameters", LOG_INF);
-	if ( 0 == parse_parameters( argc, &argv[0] ) ) 
-	{
-		log_error("%s::%s(%d) : Failed to parse command line parameters", LOG_INF);
-		return 0;
-	}
 
 	/***************************************************************************
 	 * 4. Validate configuration data is acceptable
@@ -420,6 +449,10 @@ bool release_platform(void)
 	{
 		log_trace("%s::%s(%d) : Free config data", LOG_INF);
 		ConfigData_free();
+		if ( config_location )
+		{
+			free( config_location );
+		}
 	}
 
 	bResult = true;

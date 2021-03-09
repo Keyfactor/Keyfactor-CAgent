@@ -23,6 +23,7 @@
 /******************************************************************************/
 bool config_loaded = false;
 struct ConfigData* ConfigData;
+char* config_location = NULL;
 
 /******************************************************************************/
 /************************ LOCAL GLOBAL STRUCTURES *****************************/
@@ -322,7 +323,7 @@ struct ConfigData* config_decode(const char* buf)
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Contents of %s are not valid JSON", LOG_INF, CONFIG_LOCATION);
+		log_error("%s::%s(%d) : Contents of %s are not valid JSON", LOG_INF, config_location);
 	}
 
 	return config;
@@ -341,9 +342,9 @@ struct ConfigData* config_load( void )
 {
 	char buf[MAX_CONFIG_FILE_LEN]; 
 
-	if (file_exists(CONFIG_LOCATION))
+	if (file_exists(config_location))
 	{
-		FILE* fp = fopen(CONFIG_LOCATION, "r");
+		FILE* fp = fopen(config_location, "r");
 		if(fp)
 		{	
 			size_t len = fread(buf, 1, MAX_CONFIG_FILE_LEN-1, fp);
@@ -353,13 +354,13 @@ struct ConfigData* config_load( void )
 		else
 		{
 			int err = errno;
-			log_error("%s::%s(%d) : Unable to open config file %s: %s", LOG_INF, CONFIG_LOCATION, strerror(err));
+			log_error("%s::%s(%d) : Unable to open config file %s: %s", LOG_INF, config_location, strerror(err));
 			return NULL;
 		}
 	}
 	else
 	{
-		log_error("%s::%s(%d) : Either %s does not exist or is a directory", LOG_INF, CONFIG_LOCATION);
+		log_error("%s::%s(%d) : Either %s does not exist or is a directory", LOG_INF, config_location);
 		return NULL;
 	}
 
@@ -474,7 +475,7 @@ bool config_save( void )
 	char* confString = config_to_json();
 	
 	char eol[1] = {'\n'};
-	FILE* fp = fopen(CONFIG_LOCATION, "w");
+	FILE* fp = fopen(config_location, "w");
 	if(fp)
 	{
 		fwrite(confString, 1, strlen(confString), fp);
@@ -486,7 +487,7 @@ bool config_save( void )
 	else
 	{
 		int err = errno;
-		log_error("%s::%s(%d) : Unable to open config file %s: %s", LOG_INF, CONFIG_LOCATION, strerror(err));
+		log_error("%s::%s(%d) : Unable to open config file %s: %s", LOG_INF, config_location, strerror(err));
 	}
 
 	return bResult;

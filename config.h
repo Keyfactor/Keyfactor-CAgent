@@ -12,7 +12,6 @@
 
 #include <stdbool.h>
 
-#define CONFIG_LOCATION "config.json"
 #define MAX_CONFIG_FILE_LEN 4096 /* Config file should never be this long */
 #define DATE_TIME_LEN 14 /* YYYYMMDDHHMMSS */
 
@@ -46,6 +45,7 @@ struct ConfigData
 /******************************************************************************/
 extern struct ConfigData* ConfigData;
 extern bool config_loaded;
+extern char* config_location;
 
 /******************************************************************************/
 /***************************** GLOBAL FUNCTIONS *******************************/
