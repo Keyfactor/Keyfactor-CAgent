@@ -74,6 +74,12 @@ There are various logging levels available in the agent:
 	./agent -l o turns off all output messages
 
 # Agent History
+	version 2.6.1
+		Added -c switch to allow configuration file location to be passed to the agent
+	version 2.6.0
+		Updated agent for v8.5.2 of the Keyfactor Platform
+	version 2.5.2
+		Fixed bugs in openSSL layer when performing management jobs
 	version 2.5.1 
 		Fixed a bug in the openSSL wrapper cleanup causing segfaults
 		Added a check to the inventory and management jobs to validate cert store exists
