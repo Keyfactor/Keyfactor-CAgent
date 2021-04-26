@@ -18,12 +18,21 @@
 #include "utils.h"
 #include "global.h"
 
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#define DATE_TIME_LEN 14 /* YYYYMMDDHHMMSS */
+
 /******************************************************************************/
 /*************************** GLOBAL VARIABLES *********************************/
 /******************************************************************************/
 bool config_loaded = false;
 struct ConfigData* ConfigData;
 char* config_location = NULL;
+bool use_host_as_agent_name = false;
 
 /******************************************************************************/
 /************************ LOCAL GLOBAL STRUCTURES *****************************/
@@ -241,6 +250,87 @@ exit:
 	return bResult;
 } /* keypair_sanity_check */
 
+/**
+ * Get the agent name and CN from the $HOSTNAME and datetime instead of the
+ * config.json.
+ * 
+ * If this function fails, it does not modify AgentName and Subject in the
+ * configuration file.
+ *
+ * @param  - config = pointer to the configuration data structure to modify
+ * @return - none
+ */
+static void set_agent_name( struct ConfigData* config )
+{
+	bool bResult = false;
+
+	char hostbuffer[256];
+	struct hostent* host_entry;
+	int hostname;
+	size_t agentNameSz;
+
+	struct tm* tm = NULL;
+	time_t t;
+	char tBuf[DATE_TIME_LEN+1];
+
+	char* newAgentName = NULL;
+	char* newSubject = NULL;
+
+	log_verbose("%s::%s(%d) : Retrieving hostname", LOG_INF);
+	hostname = gethostname(hostbuffer, sizeof(hostbuffer));
+	if (-1 == hostname)
+	{
+		log_error("%s::%s(%d) : Failed to retrieve hostname from host OS", 
+			LOG_INF);
+		goto cleanup;
+	}
+	log_info("%s::%s(%d) : Hostname found as %s", LOG_INF, hostbuffer);
+	agentNameSz = strlen(hostbuffer);
+
+	log_verbose("%s::%s(%d) : Retrieving time from OS", LOG_INF);
+	if ( !time(&t) ) {
+		log_error("%s::%s(%d) : Error getting time from OS", LOG_INF);
+		goto cleanup;
+	}
+	tm = gmtime(&t);
+	(void)strftime(tBuf, DATE_TIME_LEN+1, "%Y%m%d%H%M%S", tm);
+	log_verbose("%s::%s(%d) : Date time is %s", LOG_INF, tBuf);
+	agentNameSz += DATE_TIME_LEN;
+	agentNameSz++; /* Remember to add one for the _ */
+	agentNameSz++; /* And for the \0 */
+
+	newAgentName = calloc(agentNameSz, sizeof(*newAgentName));
+	newSubject = calloc(agentNameSz+3, sizeof(*newSubject));
+	if ( !newSubject || !newAgentName )
+	{
+		log_error("%s::%s(%d) : Out of memory!", LOG_INF);
+		goto cleanup;
+	}
+	(void)snprintf(newAgentName, agentNameSz, "%s_%s", hostbuffer, tBuf);
+	(void)snprintf(newSubject, agentNameSz+3, "%s%s_%s", "CN=", hostbuffer, tBuf);
+
+	
+	if (config->AgentName)
+	{
+		free(config->AgentName);
+		config->AgentName = NULL;
+	}
+	if (config->CSRSubject)
+	{
+		free(config->CSRSubject);
+		config->CSRSubject = NULL;
+	}
+	
+	config->AgentName = newAgentName;
+	log_info("%s::%s(%d) : Agent name set to %s", LOG_INF, config->AgentName);
+	config->CSRSubject = newSubject;
+	log_info("%s::%s(%d) : Agent subject set to %s", LOG_INF, config->CSRSubject);
+	bResult = true;
+
+cleanup:
+	return;
+} /* set_agent_name */
+
 
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
@@ -312,6 +402,11 @@ struct ConfigData* config_decode(const char* buf)
 		config->retryInterval = json_get_member_number(jsonRoot, "retryInterval", 1); 
 
 		json_delete(jsonRoot);
+
+		if (use_host_as_agent_name && config->EnrollOnStartup)
+		{
+			set_agent_name(config);
+		}
 
 		if ( is_log_verbose() )
 		{

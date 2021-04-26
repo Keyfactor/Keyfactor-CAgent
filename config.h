@@ -46,6 +46,7 @@ struct ConfigData
 extern struct ConfigData* ConfigData;
 extern bool config_loaded;
 extern char* config_location;
+extern bool use_host_as_agent_name;
 
 /******************************************************************************/
 /***************************** GLOBAL FUNCTIONS *******************************/

@@ -6,7 +6,6 @@
  * For hardware key storage or TPM support, libraries such as WolfSSL may also
  * be used in place of OpenSSL.
  ******************************************************************************/
-/** @file agent.c */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -166,6 +165,12 @@ static int parse_parameters( int argc, char *argv[] )
 					foundConfig = true;
 				}
 			}
+		}
+		else if (0 == strcmp(argv[i], "-h"))
+		{
+			/* Tell the system to use the host as the agent name if */
+			/* Enroll on startup = true */
+			use_host_as_agent_name = true;
 		}
 		else {
 			log_verbose( "%s::%s(%d) : Unknown switch: %s", \

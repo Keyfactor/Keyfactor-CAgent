@@ -39,6 +39,7 @@
 #include "global.h"
 
 #define MANAGEMENT_ADD_PRIORITY 3
+#define PLATORM_ENROLL_STORES "registration-enroll-stores"
 
 /******************************************************************************/
 /************************ LOCAL GLOBAL STRUCTURES *****************************/
@@ -278,6 +279,85 @@ static bool register_add_capabilities(struct SessionRegisterReq* sessionReq)
 }
 
 /**
+ * We need to hit the /Session/Register a second time to get the platform to
+ * assign store re-enrollment jobs the first time the agent calls in.
+ * This can't be done via a blueprint, but can be done via a call to 
+ * /Session/Register without a CSR.  The registration handler will see this &
+ * instead of creating a new PKI request, it will hit the re-enrollment API
+ * as long as we add the RegistrationRequest to the client parameters 
+ *
+ * @param  [Input] : config = Config.json converted to a data structure
+ * @param  [Output] : session (allocated before calling) a session data
+ *                    structure in which we populate the Token, AgentId,
+ *                    and other information associated with the session
+ * @param  [Output] : pJobList = a pointer to a job list structure (allocated
+ *                    before calling this function)
+ * @param  [Input] : agentVersion = the version of the Agent
+ * @return failure : 998 or a failed http code
+ *         success : 200 
+ */
+static int do_second_registration(struct SessionInfo* session, 
+	struct ScheduledJob** pJobList, uint64_t agentVersion)
+{
+	char* url = NULL;
+	char* reqString = NULL;
+	char* respString = NULL;
+	int httpRes = 998;
+	struct SessionRegisterResp* resp = NULL;
+	char* status;
+	char schedule[10];
+	struct SessionRegisterReq* sessionReq = SessionRegisterReq_new(ConfigData->ClientParameterPath);
+
+	log_info("%s::%s(%d): Registering new session", LOG_INF);
+
+	if(ConfigData->AgentName) sessionReq->ClientMachine = strdup(ConfigData->AgentName);
+	if(ConfigData->AgentId)   sessionReq->AgentId = strdup(ConfigData->AgentId);
+	sessionReq->AgentPlatform = PLAT_NATIVE;
+	sessionReq->AgentVersion = agentVersion;
+	/* Add the agent's capabilities, so the Platform knows what to expect */
+	register_add_capabilities(sessionReq);
+	/* Now add a parameter to let the registration handler know it */
+	/* Needs to create the re-enrollment job on the CGM Cert Store */
+	SessionRegisterReq_addNewClientParameter(sessionReq, "RegistrationRequest", PLATORM_ENROLL_STORES);
+	
+	reqString = SessionRegisterReq_toJson(sessionReq);
+	SessionRegisterReq_free(sessionReq);
+	url = config_build_url("/Session/Register", true);
+	httpRes = http_post_json(url, ConfigData->Username, ConfigData->Password, \
+			ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey, \
+			ConfigData->AgentKeyPassword, reqString, &respString, \
+			ConfigData->httpRetries, ConfigData->retryInterval); // BL-20654
+
+	if (0 == httpRes)
+	{
+		resp = SessionRegisterResp_fromJson(respString);
+		log_debug("%s::%s(%d): response decoded.  Now parsing response.", LOG_INF);
+		if(resp->Session.Token)	{
+			log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF, 
+				resp->Session.Token, resp->Session.Jobs_count);
+
+			strcpy(session->AgentId, resp->Session.AgentId);
+			strcpy(session->Token, resp->Session.Token);
+			session->UnreachableCount = 0;
+
+			sprintf(schedule, "I_%d", resp->Session.HeartbeatInterval);
+			session->NextExecution = next_execution(schedule, time(NULL));  
+			clear_job_schedules(pJobList);
+
+			/* Schedule the jobs based on priority */
+			prioritize_jobs(pJobList, resp);
+		}
+	}
+
+	if (resp) SessionRegisterResp_free(resp);
+	free(reqString);
+	free(respString);
+	free(url);
+
+	return httpRes;
+} /* do_second_registration */
+
+/**
  * Re-register the agent's cert with the platform..
  *
  * @param  [Output] : session (allocated before calling) a session data
@@ -415,6 +495,8 @@ int register_session(struct SessionInfo* session, struct ScheduledJob** pJobList
 	enum AgentApiResultStatus statusCode;
 	char schedule[10];
 	struct SessionRegisterReq* sessionReq = SessionRegisterReq_new(ConfigData->ClientParameterPath);
+	bool firstAgentRegistration = false;
+	bool gotCertificate = false;
 
 	log_info("%s::%s(%d): Registering new session", LOG_INF);
 
@@ -439,6 +521,7 @@ int register_session(struct SessionInfo* session, struct ScheduledJob** pJobList
 			if ( sessionReq ) SessionRegisterReq_free( sessionReq );
 			return 998;
 		}
+		firstAgentRegistration = true;
 	}
 
 	/* Add the agent's capabilities, so the Platform knows what to expect */
@@ -472,35 +555,43 @@ int register_session(struct SessionInfo* session, struct ScheduledJob** pJobList
 		{			
 			if(resp && AgentApiResult_log(resp->Result, NULL, NULL))
 			{
-				if(ConfigData->EnrollOnStartup) {
-					/* Check to see if we should update the AgentId */
-					log_trace("%s::%s(%d): Updating config from session", LOG_INF);
-					update_agentid_from_session(resp);
-				}
-
-				if(resp->Session.Certificate) {
-					log_info("%s::%s(%d): Agent certificate recieved from platform.  Saving Agent Specific Keypair and Agent Specific Cert.", LOG_INF);
-					save_cert_key(ConfigData->AgentCert, ConfigData->AgentKey, ConfigData->AgentKeyPassword, resp->Session.Certificate, \
-						&status, &statusCode);
-					update_config_from_session(resp);
-				}
-				else
+				if (firstAgentRegistration)
 				{
-					log_verbose("%s::%s(%d): Certificate not found", LOG_INF);
+					if(ConfigData->EnrollOnStartup) {
+						/* Check to see if we should update the AgentId */
+						log_trace("%s::%s(%d): Updating config from session", LOG_INF);
+						update_agentid_from_session(resp);
+					}
+
+					if(resp->Session.Certificate) {
+						gotCertificate = true;
+						log_info("%s::%s(%d): Agent certificate recieved from platform.  Saving Agent Specific Keypair and Agent Specific Cert.", LOG_INF);
+						save_cert_key(ConfigData->AgentCert, ConfigData->AgentKey, ConfigData->AgentKeyPassword, resp->Session.Certificate, \
+							&status, &statusCode);
+						update_config_from_session(resp);
+					}
+					else
+					{
+						log_verbose("%s::%s(%d): Certificate not found", LOG_INF);
+	 				}
  				}
+ 				else
+ 				{
+ 					/* If we hit the first agent registration, don't do any jobs */
+ 					/* Instead, wait until we finish the second agent registration */
+					log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF, resp->Session.Token, resp->Session.Jobs_count);
 
-				log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF, resp->Session.Token, resp->Session.Jobs_count);
+					strcpy(session->AgentId, resp->Session.AgentId);
+					strcpy(session->Token, resp->Session.Token);
+					session->UnreachableCount = 0;
 
-				strcpy(session->AgentId, resp->Session.AgentId);
-				strcpy(session->Token, resp->Session.Token);
-				session->UnreachableCount = 0;
+					sprintf(schedule, "I_%d", resp->Session.HeartbeatInterval);
+					session->NextExecution = next_execution(schedule, time(NULL));  
+					clear_job_schedules(pJobList);
 
-				sprintf(schedule, "I_%d", resp->Session.HeartbeatInterval);
-				session->NextExecution = next_execution(schedule, time(NULL));  
-				clear_job_schedules(pJobList);
-
-				/* Schedule the jobs based on priority */
-				prioritize_jobs(pJobList, resp);
+					/* Schedule the jobs based on priority */
+					prioritize_jobs(pJobList, resp);
+				}
 			}
 			else if(resp && 
 				    resp->Result.Status == STAT_ERR	&& 
@@ -539,6 +630,21 @@ int register_session(struct SessionInfo* session, struct ScheduledJob** pJobList
 	free(reqString);
 	free(respString);
 	free(url);
+
+	/* If this was the first agent registration & we got a certificate */
+	/* Then poke the platform a second time to force the re-enrollment */
+	/* jobs to be generated.                                           */
+	if (gotCertificate && firstAgentRegistration) {
+		log_trace("%s::%s(%d) Performing second registration session.", LOG_INF);
+		httpRes = do_second_registration(session, pJobList, agentVersion);
+		if (0 == httpRes) {
+			log_info("%s::%s(%d): Re-enrollment jobs set up successfully", LOG_INF);			
+		} else {
+			// Session failed, so we need to re-register the agent on the next trigger
+			ConfigData->EnrollOnStartup = true;
+			log_trace("%s::%s(%d) : Re-registering agent", LOG_INF);
+		}
+	}
 
 	return httpRes;
 #endif   // If debug was defined, don't run HTTP POST
