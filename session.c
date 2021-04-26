@@ -306,32 +306,40 @@ static int do_second_registration(struct SessionInfo* session,
 	struct SessionRegisterResp* resp = NULL;
 	char* status;
 	char schedule[10];
-	struct SessionRegisterReq* sessionReq = SessionRegisterReq_new(ConfigData->ClientParameterPath);
+	struct SessionRegisterReq* sessionReq;
+	sessionReq = SessionRegisterReq_new(ConfigData->ClientParameterPath);
 
-	log_info("%s::%s(%d): Registering new session", LOG_INF);
+	log_info("%s::%s(%d): Register 2nd Session, ask for enrollment jobs", 
+		LOG_INF);
 
-	if(ConfigData->AgentName) sessionReq->ClientMachine = strdup(ConfigData->AgentName);
-	if(ConfigData->AgentId)   sessionReq->AgentId = strdup(ConfigData->AgentId);
+	if(ConfigData->AgentName) 
+		sessionReq->ClientMachine = strdup(ConfigData->AgentName);
+	if(ConfigData->AgentId)
+		sessionReq->AgentId = strdup(ConfigData->AgentId);
+
 	sessionReq->AgentPlatform = PLAT_NATIVE;
 	sessionReq->AgentVersion = agentVersion;
 	/* Add the agent's capabilities, so the Platform knows what to expect */
 	register_add_capabilities(sessionReq);
+
 	/* Now add a parameter to let the registration handler know it */
 	/* Needs to create the re-enrollment job on the CGM Cert Store */
-	SessionRegisterReq_addNewClientParameter(sessionReq, "RegistrationRequest", PLATORM_ENROLL_STORES);
+	SessionRegisterReq_addNewClientParameter(sessionReq, "RegistrationRequest", 
+		PLATORM_ENROLL_STORES);
 	
 	reqString = SessionRegisterReq_toJson(sessionReq);
 	SessionRegisterReq_free(sessionReq);
 	url = config_build_url("/Session/Register", true);
-	httpRes = http_post_json(url, ConfigData->Username, ConfigData->Password, \
-			ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey, \
-			ConfigData->AgentKeyPassword, reqString, &respString, \
+	httpRes = http_post_json(url, ConfigData->Username, ConfigData->Password, 
+			ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey, 
+			ConfigData->AgentKeyPassword, reqString, &respString, 
 			ConfigData->httpRetries, ConfigData->retryInterval); // BL-20654
 
 	if (0 == httpRes)
 	{
 		resp = SessionRegisterResp_fromJson(respString);
-		log_debug("%s::%s(%d): response decoded.  Now parsing response.", LOG_INF);
+		log_debug("%s::%s(%d): response decoded.  Now parsing response.", 
+			LOG_INF);
 		if(resp->Session.Token)	{
 			log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF, 
 				resp->Session.Token, resp->Session.Jobs_count);
