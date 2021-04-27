@@ -59,6 +59,7 @@ extern ENGINE* e;
 /* 2.6.1.0 = Added -c switch to allow config file to be passed as a parameter */
 /* 2.7.0.0 = Added -h switch to use hostname_datetime for agent name */
 /*           Added second registration hit for use with RegistrationHandler */
-#define AGENT_VERSION 0x0002000700000000
+/* 2.7.0.1 = Fixed bug with agent cert expiry */
+#define AGENT_VERSION 0x0002000700010000
 
 #endif // AGENT_H_

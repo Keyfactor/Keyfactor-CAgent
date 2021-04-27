@@ -74,6 +74,8 @@ There are various logging levels available in the agent:
 	./agent -l o turns off all output messages
 
 # Agent History
+	version 2.7.1
+		Fixed bug with agent cert expiry
 	version 2.7.0
 		Added -h switch.  Use this to have the AgentName = hostname_datetime
 		Added second hit to /Session/Register with client parameters used by the Registration Handler to configure re-enrollment jobs on the certificate stores.

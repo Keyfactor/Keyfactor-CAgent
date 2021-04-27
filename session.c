@@ -601,19 +601,19 @@ int register_session(struct SessionInfo* session, struct ScheduledJob** pJobList
 					prioritize_jobs(pJobList, resp);
 				}
 			}
-			else if(resp && 
-				    resp->Result.Status == STAT_ERR	&& 
-					resp->Result.Error.CodeString && 
-					strcasecmp("A0100007", resp->Result.Error.CodeString))
-			{
-				log_info("%s::%s(%d): Re-enrolling Agent authentication certificate", LOG_INF);
-				httpRes = re_register_agent(session, pJobList, agentVersion, false);
-			}
 			else
 			{
 				sprintf(schedule, "I_%d", session->Interval);
 				session->NextExecution = next_execution(schedule, session->NextExecution);
 			}
+		}
+		else if(resp && 
+			    resp->Result.Status == STAT_ERR	&& 
+				resp->Result.Error.CodeString && 
+				strcasecmp("A0100007", resp->Result.Error.CodeString))
+		{
+			log_info("%s::%s(%d): Re-enrolling Agent authentication certificate", LOG_INF);
+			httpRes = re_register_agent(session, pJobList, agentVersion, false);
 		}
 		else
 		{
