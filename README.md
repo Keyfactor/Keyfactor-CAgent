@@ -61,10 +61,11 @@ Only build one version of the agent, either openSSL or wolfSSL:
 
 	make opentest -j$(nproc) <-------- The openssl build 
 	make wolftest -j$(nproc) <-------- The wolfssl build 
+	make tpm -j$(nproc) <------------- For use with the SLB9670 & Raspberry Pi
 	
 # Running the agent
-There are various logging levels available in the agent:
 
+	./agent -l <switch_see_below>  enables logging (default is info)
 	./agent -l t is the greatest detail mode and includes traced curl output
 	./agent -l d lists all message details other than trace details
 	./agent -l v lists all verbose and below messages
@@ -73,7 +74,19 @@ There are various logging levels available in the agent:
 	./agent -l e lists only error messages
 	./agent -l o turns off all output messages
 
+	./agent -c <path_and_filename> overrides the default configuration file
+
+	./agent -h overrides the agent name with $HOSTNAME_$DATETIME
+
+	./agent -e <engine> the crypto engine to use (e.g., tpm2tss) NOTE:
+		 				must compile the TPM version of the agent
+
 # Agent History
+	version 2.8.0
+		Added support for bootstrap certificates (defined in config.json)
+		Updated Licensing information
+	version 2.7.2
+		Fixed a bug where CodeString isn't sent by platform, but HResult is
 	version 2.7.1
 		Fixed bug with agent cert expiry
 	version 2.7.0

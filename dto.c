@@ -1,12 +1,15 @@
-/******************************************************************************
- * Usage of this file and the SDK is subject to the SOFTWARE DEVELOPMENT KIT 
- * LICENSE included here as README-LICENSE.txt.  Additionally, this C Agent 
- * Reference Implementation uses the OpenSSL encryption libraries, which are 
- * not included as a part of this distribution.  
- * For hardware key storage or TPM support, libraries such as WolfSSL may also
- * be used in place of OpenSSL.
- ******************************************************************************/
-/** @file dto.c */
+/******************************************************************************/
+/* Copyright 2021 Keyfactor                                                   */
+/* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
+/* not use this file except in compliance with the License.  You may obtain a */
+/* copy of the License at http://www.apache.org/licenses/LICENSE-2.0.  Unless */
+/* required by applicable law or agreed to in writing, software distributed   */
+/* under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES   */
+/* OR CONDITIONS OF ANY KIND, either express or implied. See the License for  */
+/* thespecific language governing permissions and limitations under the       */
+/* License.                                                                   */
+/******************************************************************************/
+
 #include "dto.h"
 #include <stdlib.h>
 #include <errno.h>
@@ -16,8 +19,22 @@
 #include <string.h>
 #include <stdbool.h>
 
+/******************************************************************************/
+/***************************** LOCAL DEFINES  *********************************/
+/******************************************************************************/
 #define MAX_BUF_LEN 1024 /* Maximum buffer length */
 
+/******************************************************************************/
+/************************ LOCAL GLOBAL STRUCTURES *****************************/
+/******************************************************************************/
+
+/******************************************************************************/
+/************************** LOCAL GLOBAL VARIABLES ****************************/
+/******************************************************************************/
+
+/******************************************************************************/
+/************************ LOCAL FUNCTION DEFINITIONS **************************/
+/******************************************************************************/
 static void AgentApiResult_free(struct AgentApiResult result)
 {
 	if(result.Error.Message)
@@ -36,6 +53,7 @@ static struct AgentApiResult AgentApiResult_fromJsonNode(JsonNode* jsonResult)
 {
 	struct AgentApiResult result;
 	JsonNode* jsonError = NULL;
+	char* tempString = NULL;
 
 	if(jsonResult)
 	{
@@ -43,15 +61,23 @@ static struct AgentApiResult AgentApiResult_fromJsonNode(JsonNode* jsonResult)
 
 		jsonError = json_find_member(jsonResult, "Error");
 		result.Error.Code = json_get_member_number(jsonError, "Code", 0);
-		result.Error.CodeString = \
-			json_get_member_string(jsonError, "CodeString");
+		tempString = json_get_member_string(jsonError, "CodeString");
+		if (NULL == tempString)
+		{
+			result.Error.CodeString = 
+				json_get_member_string(jsonError, "HResult");
+		}
+		else
+		{
+			result.Error.CodeString = tempString;
+		}
 		result.Error.Message = json_get_member_string(jsonError, "Message");
 	}
 
 	return result;
 }
 
-bool AgentApiResult_log(struct AgentApiResult result, \
+bool AgentApiResult_log(struct AgentApiResult result, 
 	char** pMessage, enum AgentApiResultStatus* pStatus)
 {
 	int messageLen = 20;
@@ -67,11 +93,11 @@ bool AgentApiResult_log(struct AgentApiResult result, \
 
 	if(result.Status == STAT_ERR || result.Status == STAT_WARN)
 	{
-		introBuf = (result.Status == STAT_ERR ? \
+		introBuf = (result.Status == STAT_ERR ? 
 			strdup("Error") : strdup("Warning"));
 		if(result.Error.Message && result.Error.CodeString)
 		{
-			messageLen = 20 + strlen(result.Error.Message) + \
+			messageLen = 20 + strlen(result.Error.Message) + 
 				strlen(result.Error.CodeString);
 			
 		}
@@ -80,7 +106,7 @@ bool AgentApiResult_log(struct AgentApiResult result, \
 			messageLen = 20 + strlen(result.Error.Message);
 		}
 		
-		snprintf(buf, (size_t)messageLen, "%s: %s (%s)\n", \
+		snprintf(buf, (size_t)messageLen, "%s: %s (%s)\n", 
 			introBuf, result.Error.Message, result.Error.CodeString);
 		log_error("%s::%s(%d) : %s", LOG_INF, buf);
 
@@ -98,7 +124,7 @@ bool AgentApiResult_log(struct AgentApiResult result, \
 	return (result.Status != STAT_ERR);
 }
 
-static struct ClientParameter* ClientParameter_new(const char* key, \
+static struct ClientParameter* ClientParameter_new(const char* key, 
 	const char* value)
 {
 	struct ClientParameter* cp = calloc(1, sizeof(struct ClientParameter));
@@ -126,17 +152,19 @@ static void ClientParameter_free(struct ClientParameter* cliParam)
 	}
 }
 
-/**
- * Add an additional ClientParameter to the session after the 
- * ClientParameterPath has been processed.
- *
- * @param  - [Input/Output] req: A pointer to the SessionRegisterRequest 
- * @param  - [Input] key: The string to add to the key variable client parameter
- * @param  - [Input] value: The string to add to the value variable client parameter
- * @return - Success: true
- *           Failure: false
- */
-bool SessionRegisterReq_addNewClientParameter(struct SessionRegisterReq* req, \
+/**                                                                           */
+/* Add an additional ClientParameter to the session after the                 */
+/* ClientParameterPath has been processed.                                    */
+/*                                                                            */
+/* @param  - [Input/Output] req: A pointer to the SessionRegisterRequest      */
+/* @param  - [Input] key: The string to add to the key variable client        */
+/*                   parameter                                                */
+/* @param  - [Input] value: The string to add to the value variable client    */
+/*                   parameter                                                */
+/* @return - Success: true                                                    */
+/*           Failure: false                                                   */
+/*                                                                            */
+bool SessionRegisterReq_addNewClientParameter(struct SessionRegisterReq* req, 
 	const char* key, const char* value)
 {
 	bool bResult = false;
@@ -145,7 +173,7 @@ bool SessionRegisterReq_addNewClientParameter(struct SessionRegisterReq* req, \
 	req->ClientParameters_count++; 
 	log_trace("%s::%s(%d) Increasing parameter count to %d",
 		LOG_INF, req->ClientParameters_count);
-	req->ClientParameters = realloc(req->ClientParameters, \
+	req->ClientParameters = realloc(req->ClientParameters, 
 		(req->ClientParameters_count * sizeof(struct ClientParameter*))); 
 	if ( NULL == req->ClientParameters )
 	{
@@ -154,22 +182,19 @@ bool SessionRegisterReq_addNewClientParameter(struct SessionRegisterReq* req, \
 		return false;
 	}
 
-	req->ClientParameters[index] = \
-		ClientParameter_new(key, value);
+	req->ClientParameters[index] = ClientParameter_new(key, value);
 	if ( NULL != req->ClientParameters[index] )
 	{
-		log_trace(\
-"%s::%s(%d) : Successfully added key= %s with value= %s to ClientParameters",
-			      LOG_INF, key, value);
+		log_trace("%s::%s(%d) : Successfully added key= %s with "
+			"value= %s to ClientParameters", LOG_INF, key, value);
 		bResult = true;
 	}
 	else
 	{
-		log_error(\
-"%s::%s(%d) : Error adding new client parameters to SessionRegisterRequest",
-			      LOG_INF);
+		log_error("%s::%s(%d) : Error adding new client parameters"
+			" to SessionRegisterRequest", LOG_INF);
 		bResult = false;
-		// Reset things
+		/* Reset things */
 		free(req->ClientParameters[index]);
 		req->ClientParameters_count--;
 	}
@@ -191,13 +216,12 @@ struct SessionRegisterReq* SessionRegisterReq_new(char* clientParamPath)
 
 	if(clientParamPath)
 	{
-		log_trace(\
-	"%s::%s(%d) : Found client parameters -- adding them to the session", 
-			LOG_INF);
+		log_trace("%s::%s(%d) : Found client parameters -- adding them"
+			" to the session", LOG_INF);
 		FILE* fp = fopen(clientParamPath, "r");
 		if(fp)
 		{
-			// Client parameter file should never be anywhere near this long
+			/* Client parameter file should never be anywhere near this long */
 			char buf[4096]; 
 			size_t len = fread(buf, 1, 4095, fp);
 			buf[len++] = '\0';
@@ -207,23 +231,23 @@ struct SessionRegisterReq* SessionRegisterReq_new(char* clientParamPath)
 			{
 				JsonNode* curNode;
 				int nodeCount = 0;
-				json_foreach(curNode, jsonRoot) // Loop first to get count
+				json_foreach(curNode, jsonRoot) /* Loop first to get count */
 				{
 					if(curNode->tag == JSON_STRING){ nodeCount++;}
 				}
 
-				req->ClientParameters = calloc(nodeCount, \
+				req->ClientParameters = calloc(nodeCount, 
 					sizeof(*req->ClientParameters));
 				req->ClientParameters_count = nodeCount;
 
 				nodeCount = 0;
 				json_foreach(curNode, jsonRoot)
 				{
-					if(curNode->tag == JSON_STRING && \
-					   curNode->key && \
+					if(curNode->tag == JSON_STRING && 
+					   curNode->key && 
 					   curNode->string_)
 					{
-						req->ClientParameters[nodeCount++] = \
+						req->ClientParameters[nodeCount++] = 
 						ClientParameter_new(curNode->key, curNode->string_);
 					}
 				}
@@ -242,8 +266,7 @@ struct SessionRegisterReq* SessionRegisterReq_new(char* clientParamPath)
 			int err = errno;
 			log_error(\
 				"%s::%s(%d) : Unable to open client parameter file %s: %s", 
-				LOG_INF, clientParamPath,\
-				strerror(err));
+				LOG_INF, clientParamPath, strerror(err));
 		}
 	}
 
@@ -311,49 +334,49 @@ char* SessionRegisterReq_toJson(struct SessionRegisterReq* req)
 	if(req)
 	{
 		JsonNode* jsonRoot = json_mkobject();
-		json_append_member(jsonRoot, "AgentPlatform", \
+		json_append_member(jsonRoot, "AgentPlatform", 
 			json_mknumber(req->AgentPlatform));
-		json_append_member(jsonRoot, "AgentVersion", \
+		json_append_member(jsonRoot, "AgentVersion", 
 			json_mknumber(req->AgentVersion));
 
 		if(req->TenantId)
 		{
-			json_append_member(jsonRoot, "TenantId", \
+			json_append_member(jsonRoot, "TenantId", 
 				json_mkstring(req->TenantId));
 		}
 		else
 		{
-			json_append_member(jsonRoot, "TenantId", \
+			json_append_member(jsonRoot, "TenantId", 
 				json_mknull());
 		}
 		if(req->ClientMachine)
 		{
-			json_append_member(jsonRoot, "ClientMachine", \
+			json_append_member(jsonRoot, "ClientMachine", 
 				json_mkstring(req->ClientMachine));
 		}
 		else
 		{
-			json_append_member(jsonRoot, "ClientMachine", \
+			json_append_member(jsonRoot, "ClientMachine", 
 				json_mknull());
 		}
 		if(req->CSR)
 		{
-			json_append_member(jsonRoot, "CSR", \
+			json_append_member(jsonRoot, "CSR", 
 				json_mkstring(req->CSR));
 		}
 		else
 		{
-			json_append_member(jsonRoot, "CSR", \
+			json_append_member(jsonRoot, "CSR", 
 				json_mknull());
 		}
 		if(req->AgentId)
 		{
-			json_append_member(jsonRoot, "AgentId", \
+			json_append_member(jsonRoot, "AgentId", 
 				json_mkstring(req->AgentId));
 		}
 		else
 		{
-			json_append_member(jsonRoot, "AgentId", \
+			json_append_member(jsonRoot, "AgentId", 
 				json_mknull());
 		}
 
@@ -364,7 +387,7 @@ char* SessionRegisterReq_toJson(struct SessionRegisterReq* req)
 			{
 				if(req->Capabilities[i])
 				{
-					json_append_element(jsonCaps, \
+					json_append_element(jsonCaps, 
 						json_mkstring(req->Capabilities[i]));
 				}
 			}
@@ -378,8 +401,8 @@ char* SessionRegisterReq_toJson(struct SessionRegisterReq* req)
 			{
 				if(req->ClientParameters[i])
 				{
-					json_append_member(jsonCliParams, \
-						req->ClientParameters[i]->Key, \
+					json_append_member(jsonCliParams, 
+						req->ClientParameters[i]->Key, 
 						json_mkstring(req->ClientParameters[i]->Value));
 				}
 			}
@@ -458,12 +481,12 @@ void SessionRegisterResp_free(struct SessionRegisterResp* resp)
 		}
 		if(resp->Session.Jobs)
 		{
-// Ownership of these will be handed off:
-//			for(int i = 0; i < resp->Session.Jobs_count; ++i)
-//			{
-//				SessionJob_free(resp->Session.Jobs[i]);
-//				resp->Session.Jobs[i] = NULL;
-//			}
+/* Ownership of these will be handed off & freed elsewhere                    */
+/*			for(int i = 0; i < resp->Session.Jobs_count; ++i)                 */
+/*			{                                                                 */
+/*				SessionJob_free(resp->Session.Jobs[i]);                       */
+/*				resp->Session.Jobs[i] = NULL;                                 */
+/*			}                                                                 */
 			free(resp->Session.Jobs);
 			resp->Session.Jobs = NULL;
 		}
@@ -487,9 +510,9 @@ static struct SessionJob* SessionJob_fromJsonNode(JsonNode* jsonJob)
 	if(jsonJob)
 	{
 		job = calloc(1, sizeof(struct SessionJob));
-		job->CompletionEndpoint = json_get_member_string(jsonJob, \
+		job->CompletionEndpoint = json_get_member_string(jsonJob, 
 			"CompletionEndpoint");
-		job->ConfigurationEndpoint = json_get_member_string(jsonJob, \
+		job->ConfigurationEndpoint = json_get_member_string(jsonJob, 
 			"ConfigurationEndpoint");
 		job->Cron = json_get_member_string(jsonJob, "Cron");
 		job->JobId = json_get_member_string(jsonJob, "JobId");
@@ -529,27 +552,26 @@ struct SessionRegisterResp* SessionRegisterResp_fromJson(char* jsonString)
 			jsonSession = json_find_member(jsonRoot, "Session");
 			if(jsonSession)
 			{
-				resp->Session.Token = \
+				resp->Session.Token = 
 					json_get_member_string(jsonSession, "Token");
-				resp->Session.AgentId = \
+				resp->Session.AgentId = 
 					json_get_member_string(jsonSession, "AgentId");
-				resp->Session.Certificate = \
+				resp->Session.Certificate = 
 					json_get_member_string(jsonSession, "Certificate");
-				resp->Session.ClientMachine = \
+				resp->Session.ClientMachine = 
 					json_get_member_string(jsonSession, "ClientMachine");
-				resp->Session.HeartbeatInterval = \
+				resp->Session.HeartbeatInterval = 
 					json_get_member_number(jsonSession, "HeartbeatInterval", 5);
 
 				jsonJobs = json_find_member(jsonSession, "Jobs");
 				jobCount = json_array_size(jsonJobs);
 				resp->Session.Jobs_count = jobCount;
-				resp->Session.Jobs = calloc(jobCount, \
+				resp->Session.Jobs = calloc(jobCount, 
 					sizeof(struct SessionJob*));
 				if ( NULL == resp->Session.Jobs )
 				{
-					log_error(\
-						"%s::%s(%d) : Out of memory allocating Session.Jobs", 
-						LOG_INF);
+					log_error("%s::%s(%d) : Out of memory allocating"
+						" Session.Jobs", LOG_INF);
 
 					if ( resp )
 					{
@@ -562,7 +584,7 @@ struct SessionRegisterResp* SessionRegisterResp_fromJson(char* jsonString)
 				current = 0;
 				json_foreach(jsonTmp, jsonJobs)
 				{
-					resp->Session.Jobs[current++] = \
+					resp->Session.Jobs[current++] = 
 						SessionJob_fromJsonNode(jsonTmp);
 				}
 
@@ -575,13 +597,12 @@ struct SessionRegisterResp* SessionRegisterResp_fromJson(char* jsonString)
 						current++;
 					}
 
-					resp->Session.ClientParameters = calloc(current, \
+					resp->Session.ClientParameters = calloc(current, 
 						sizeof(struct ClientParameter*));
 					if ( NULL == resp->Session.ClientParameters )
 					{
-						log_error(\
-					"%s::%s(%d) : Out of memory allocating ClientParameters", 
-							LOG_INF);
+						log_error("%s::%s(%d) : Out of memory allocating"
+							" ClientParameters", LOG_INF);
 						if ( resp )
 						{
 							/* Free any allocated memory before returning */
@@ -592,10 +613,10 @@ struct SessionRegisterResp* SessionRegisterResp_fromJson(char* jsonString)
 					current = 0;
 					json_foreach(jsonTmp, jsonParams)
 					{
-						if(jsonTmp && jsonTmp->tag == JSON_STRING && \
+						if(jsonTmp && jsonTmp->tag == JSON_STRING && 
 							jsonTmp->string_)
 						{
-							resp->Session.ClientParameters[current++] = \
+							resp->Session.ClientParameters[current++] = 
 							ClientParameter_new(jsonTmp->key, jsonTmp->string_);
 						}
 					}
@@ -618,7 +639,7 @@ struct SessionRegisterResp* SessionRegisterResp_fromJson(char* jsonString)
 
 struct SessionHeartbeatReq* SessionHeartbeatReq_new()
 {
-	struct SessionHeartbeatReq* req = calloc(1, \
+	struct SessionHeartbeatReq* req = calloc(1, 
 		sizeof(struct SessionHeartbeatReq));
 
 	req->TenantId = strdup("00000000-0000-0000-0000-000000000000");
@@ -656,36 +677,36 @@ char* SessionHeartbeatReq_toJson(struct SessionHeartbeatReq* req)
 	if(req)
 	{
 		JsonNode* jsonRoot = json_mkobject();
-		json_append_member(jsonRoot, "AgentPlatform", \
+		json_append_member(jsonRoot, "AgentPlatform", 
 			json_mknumber(req->AgentPlatform));
 		if(req->TenantId)
 		{
-			json_append_member(jsonRoot, "TenantId", \
+			json_append_member(jsonRoot, "TenantId", 
 				json_mkstring(req->TenantId));
 		}
 		else
 		{
-			json_append_member(jsonRoot, "TenantId", \
+			json_append_member(jsonRoot, "TenantId", 
 				json_mknull());
 		}
 		if(req->ClientMachine)
 		{
-			json_append_member(jsonRoot, "ClientMachine", \
+			json_append_member(jsonRoot, "ClientMachine", 
 				json_mkstring(req->ClientMachine));
 		}
 		else
 		{
-			json_append_member(jsonRoot, "ClientMachine", \
+			json_append_member(jsonRoot, "ClientMachine", 
 				json_mknull());
 		}
 		if(req->SessionToken)
 		{
-			json_append_member(jsonRoot, "SessionToken", \
+			json_append_member(jsonRoot, "SessionToken", 
 				json_mkstring(req->SessionToken));
 		}
 		else
 		{
-			json_append_member(jsonRoot, "SessionToken", \
+			json_append_member(jsonRoot, "SessionToken", 
 				json_mknull());
 		}
 
@@ -715,12 +736,12 @@ struct SessionHeartbeatResp* SessionHeartbeatResp_fromJson(char* jsonString)
 		{
 			resp = calloc(1, sizeof(struct SessionHeartbeatResp));
 
-			resp->HeartbeatInterval = json_get_member_number(jsonRoot, \
+			resp->HeartbeatInterval = json_get_member_number(jsonRoot, 
 				"HeartbeatInterval", 5);
-			resp->SessionValid = json_get_member_bool(jsonRoot, \
+			resp->SessionValid = json_get_member_bool(jsonRoot, 
 				"SessionValid", false);
 
-			JsonNode* jsonResult = json_find_member(jsonRoot, \
+			JsonNode* jsonResult = json_find_member(jsonRoot, 
 				"Result");
 			if(jsonResult)
 			{
@@ -766,7 +787,7 @@ char* CommonConfigReq_toJson(struct CommonConfigReq* req)
 		JsonNode* jsonRoot = json_mkobject();
 		if(req->SessionToken)
 		{
-			json_append_member(jsonRoot, "SessionToken", \
+			json_append_member(jsonRoot, "SessionToken", 
 				json_mkstring(req->SessionToken));
 		}
 		else
@@ -824,9 +845,9 @@ char* CommonCompleteReq_toJson(struct CommonCompleteReq* req)
 	if(req)
 	{
 		JsonNode* jsonRoot = json_mkobject();
-		json_append_member(jsonRoot, "Status", \
+		json_append_member(jsonRoot, "Status", 
 			json_mknumber((double)req->Status));
-		json_append_member(jsonRoot, "AuditId", \
+		json_append_member(jsonRoot, "AuditId", 
 			json_mknumber((double)req->AuditId));
 		if(req->JobId)
 		{
@@ -838,7 +859,7 @@ char* CommonCompleteReq_toJson(struct CommonCompleteReq* req)
 		}
 		if(req->Message)
 		{
-			json_append_member(jsonRoot, "Message", \
+			json_append_member(jsonRoot, "Message", 
 				json_mkstring(req->Message));
 		}
 		else
@@ -848,7 +869,7 @@ char* CommonCompleteReq_toJson(struct CommonCompleteReq* req)
 
 		if(req->SessionToken)
 		{
-			json_append_member(jsonRoot, "SessionToken", \
+			json_append_member(jsonRoot, "SessionToken", 
 				json_mkstring(req->SessionToken));
 		}
 		else
@@ -960,7 +981,7 @@ struct ManagementConfigResp* ManagementConfigResp_fromJson(char* jsonString)
 			resp = calloc(1, sizeof(struct ManagementConfigResp));
 
 			resp->AuditId = json_get_member_number(jsonRoot, "AuditId", 0);
-			resp->JobCancelled = \
+			resp->JobCancelled = 
 				json_get_member_bool(jsonRoot, "JobCancelled", false);
 
 			JsonNode* jsonResult = json_find_member(jsonRoot, "Result");
@@ -971,39 +992,39 @@ struct ManagementConfigResp* ManagementConfigResp_fromJson(char* jsonString)
 			JsonNode* jsonJob = json_find_member(jsonRoot, "Job");
 			if(jsonJob)
 			{
-				resp->Job.Alias = \
+				resp->Job.Alias = 
 					json_get_member_string(jsonJob, "Alias");
-				resp->Job.Category = \
+				resp->Job.Category = 
 					json_get_member_number(jsonJob, "Category", 0);
-				resp->Job.ClientMachine = \
+				resp->Job.ClientMachine = 
 					json_get_member_string(jsonJob, "ClientMachine");
-				resp->Job.EntryContents = \
+				resp->Job.EntryContents = 
 					json_get_member_string(jsonJob, "EntryContents");
-				resp->Job.EntryPassword = \
+				resp->Job.EntryPassword = 
 					json_get_member_string(jsonJob, "EntryPassword");
-				resp->Job.OperationType = \
+				resp->Job.OperationType = 
 					json_get_member_number(jsonJob, "OperationType", 0);
-				resp->Job.Overwrite = \
+				resp->Job.Overwrite = 
 					json_get_member_bool(jsonJob, "Overwrite", false);
-				resp->Job.PfxPassword = \
+				resp->Job.PfxPassword = 
 					json_get_member_string(jsonJob, "PfxPassword");
-				resp->Job.PrivateKeyEntry = \
+				resp->Job.PrivateKeyEntry = 
 					json_get_member_bool(jsonJob, "PrivateKeyEntry", false);
-				resp->Job.StorePassword = \
+				resp->Job.StorePassword = 
 					json_get_member_string(jsonJob, "StorePassword");
-				resp->Job.StorePath = \
+				resp->Job.StorePath = 
 					json_get_member_string(jsonJob, "StorePath");
-				resp->Job.StoreType = \
+				resp->Job.StoreType = 
 					json_get_member_number(jsonJob, "StoreType", 0);
-				resp->Job.Thumbprint = \
+				resp->Job.Thumbprint = 
 					json_get_member_string(jsonJob, "Thumbprint");
 
 				JsonNode* jsonProps = NULL;
-				char* propString = \
+				char* propString = 
 					json_get_member_string(jsonJob, "Properties");
 				if(propString && (jsonProps = json_decode(propString)))
 				{
-					resp->Job.PrivateKeyPath = \
+					resp->Job.PrivateKeyPath = 
 						json_get_member_string(jsonProps, "PrivateKeyPath");
 				}
 				free(propString);
@@ -1049,7 +1070,7 @@ struct ManagementCompleteResp* ManagementCompleteResp_fromJson(char* jsonString)
 				resp->Result = AgentApiResult_fromJsonNode(jsonResult);
 			}
 
-			resp->InventoryJob = \
+			resp->InventoryJob = 
 				json_get_member_string(jsonRoot, "InventoryJob");
 
 			json_delete(jsonRoot);
@@ -1082,8 +1103,8 @@ static void InventoryCurrentItem_free(struct InventoryCurrentItem* item)
 	}
 }
 
-static struct InventoryCurrentItem* InventoryCurrentItem_fromJsonNode(JsonNode*\
-	 node)
+static struct InventoryCurrentItem* 
+	InventoryCurrentItem_fromJsonNode(JsonNode* node)
 {
 	struct InventoryCurrentItem* result = NULL;
 
@@ -1092,7 +1113,7 @@ static struct InventoryCurrentItem* InventoryCurrentItem_fromJsonNode(JsonNode*\
 		result = calloc(1, sizeof(struct InventoryCurrentItem));
 
 		result->Alias = json_get_member_string(node, "Alias");
-		result->PrivateKeyEntry = \
+		result->PrivateKeyEntry = 
 			json_get_member_bool(node, "PrivateKeyEntry", false);
 
 		JsonNode* jsonThumbs = json_find_member(node, "Thumbprints");
@@ -1164,9 +1185,9 @@ struct InventoryConfigResp* InventoryConfigResp_fromJson(char* jsonString)
 			resp = calloc(1, sizeof(struct InventoryConfigResp));
 
 			resp->AuditId = json_get_member_number(jsonRoot, "AuditId", 0);
-			resp->JobCancelled = \
+			resp->JobCancelled = 
 				json_get_member_bool(jsonRoot, "JobCancelled", false);
-			resp->InventoryEndpoint = \
+			resp->InventoryEndpoint = 
 				json_get_member_string(jsonRoot, "InventoryEndpoint");
 
 			JsonNode* jsonResult = json_find_member(jsonRoot, "Result");
@@ -1177,13 +1198,13 @@ struct InventoryConfigResp* InventoryConfigResp_fromJson(char* jsonString)
 			JsonNode* jsonJob = json_find_member(jsonRoot, "Job");
 			if(jsonJob)
 			{
-				resp->Job.Category = \
+				resp->Job.Category = 
 					json_get_member_number(jsonJob, "Category", 0);
-				resp->Job.ClientMachine = \
+				resp->Job.ClientMachine = 
 					json_get_member_string(jsonJob, "ClientMachine");
-				resp->Job.StorePassword = \
+				resp->Job.StorePassword = 
 					json_get_member_string(jsonJob, "StorePassword");
-				resp->Job.StorePath = \
+				resp->Job.StorePath = 
 					json_get_member_string(jsonJob, "StorePath");
 
 				JsonNode* jsonInv = json_find_member(jsonJob, "Inventory");
@@ -1191,14 +1212,14 @@ struct InventoryConfigResp* InventoryConfigResp_fromJson(char* jsonString)
 				{
 					int invCount = json_array_size(jsonInv);
 					resp->Job.Inventory_count = invCount;
-					resp->Job.Inventory = calloc(invCount, \
+					resp->Job.Inventory = calloc(invCount, 
 							sizeof(struct InventoryCurrentItem*));
 
 					JsonNode* jsonTmp;
 					int current = 0;
 					json_foreach(jsonTmp, jsonInv)
 					{
-						resp->Job.Inventory[current++] = \
+						resp->Job.Inventory[current++] = 
 							InventoryCurrentItem_fromJsonNode(jsonTmp);
 					}
 				}
@@ -1234,23 +1255,23 @@ static void InventoryUpdateItem_free(struct InventoryUpdateItem* item)
 	}
 }
 
-static JsonNode* InventoryUpdateItem_toJsonNode(\
-		struct InventoryUpdateItem* updateItem)
+static JsonNode* 
+	InventoryUpdateItem_toJsonNode(struct InventoryUpdateItem* updateItem)
 {
 	JsonNode* result = NULL;
 
 	if(updateItem)
 	{
 		result = json_mkobject();
-		json_append_member(result, "PrivateKeyEntry", \
+		json_append_member(result, "PrivateKeyEntry", 
 			json_mkbool(updateItem->PrivateKeyEntry));
-		json_append_member(result, "UseChainLevel", \
+		json_append_member(result, "UseChainLevel", 
 			json_mkbool(updateItem->UseChainLevel));
-		json_append_member(result, "ItemStatus", \
+		json_append_member(result, "ItemStatus", 
 			json_mknumber(updateItem->ItemStatus));
 		if(updateItem->Alias)
 		{
-			json_append_member(result, "Alias", \
+			json_append_member(result, "Alias", 
 				json_mkstring(updateItem->Alias));
 		}
 		else
@@ -1263,7 +1284,7 @@ static JsonNode* InventoryUpdateItem_toJsonNode(\
 		{
 			for(int i = 0; i < updateItem->Certificates_count; ++i)
 			{
-				json_append_element(jsonCerts, \
+				json_append_element(jsonCerts, 
 					json_mkstring(updateItem->Certificates[i]));
 			}
 		}
@@ -1306,7 +1327,7 @@ char* InventoryUpdateReq_toJson(struct InventoryUpdateReq* req)
 		JsonNode* jsonRoot = json_mkobject();
 		if(req->SessionToken)
 		{
-			json_append_member(jsonRoot, "SessionToken", \
+			json_append_member(jsonRoot, "SessionToken", 
 				json_mkstring(req->SessionToken));
 		}
 		else
@@ -1326,7 +1347,7 @@ char* InventoryUpdateReq_toJson(struct InventoryUpdateReq* req)
 
 		for(int i = 0; i < req->Inventory.count; ++i)
 		{
-			json_append_element(jsonInv, \
+			json_append_element(jsonInv, 
 				InventoryUpdateItem_toJsonNode(req->Inventory.items[i]));
 		}
 		json_append_member(jsonRoot, "Inventory", jsonInv);
@@ -1442,18 +1463,18 @@ struct EnrollmentConfigResp* EnrollmentConfigResp_fromJson(char* jsonString)
 			}
 
 			resp->AuditId = json_get_member_number(jsonRoot, "AuditId", 0);
-			resp->JobCancelled = \
+			resp->JobCancelled = 
 				json_get_member_bool(jsonRoot, "JobCancelled", false);
 
-			resp->ClientMachine = \
+			resp->ClientMachine = 
 				json_get_member_string(jsonRoot, "ClientMachine");
 			resp->Entropy = json_get_member_string(jsonRoot, "Entropy");
 			resp->KeyType = json_get_member_string(jsonRoot, "KeyType");
 			resp->Subject = json_get_member_string(jsonRoot, "Subject");
 			resp->StorePath = json_get_member_string(jsonRoot, "StorePath");
-			resp->StorePassword = \
+			resp->StorePassword = 
 				json_get_member_string(jsonRoot, "StorePassword");
-			resp->EnrollEndpoint = \
+			resp->EnrollEndpoint = 
 				json_get_member_string(jsonRoot, "EnrollEndpoint");
 			
 
@@ -1483,29 +1504,29 @@ struct EnrollmentConfigResp* EnrollmentConfigResp_fromJson(char* jsonString)
 /*       Therefore, this code will not work & must be modified to the */
 /*       Code below it */
 #if defined(__SEPPRIVKEY_IS_BOOLEAN__)
-				bool theBool = \
+				bool theBool = 
 					json_get_member_bool(jsonProps, "separatePrivateKey", \
 						false);
 #else
 				bool theBool = false;
-				char* theBoolString = \
+				char* theBoolString = 
 					json_get_member_string(jsonProps, "separatePrivateKey");
-				if ( 0 == strcasecmp("TRUE", theBoolString) ) {
+				if ( 0 == strcasecmp("TRUE", theBoolString) ) 
+				{
 					theBool = true;
 				}
 				free(theBoolString);
 #endif
 
-				log_verbose("%s::%s(%d) : Separate Private Key = %s",\
-					LOG_INF, \
-					theBool ? "true" : "false");
-				if(theBool) {
-					resp->PrivateKeyPath = \
+				log_verbose("%s::%s(%d) : Separate Private Key = %s",
+					LOG_INF, theBool ? "true" : "false");
+				if(theBool) 
+				{
+					resp->PrivateKeyPath = 
 						json_get_member_string(jsonProps, "privateKeyPath");
 
-					log_verbose("%s::%s(%d) : privateKeyPath: %s", \
-						LOG_INF, \
-						resp->PrivateKeyPath);
+					log_verbose("%s::%s(%d) : privateKeyPath: %s", 
+						LOG_INF, resp->PrivateKeyPath);
 				}
 				else resp->PrivateKeyPath = NULL;
 			}
@@ -1552,7 +1573,7 @@ char* EnrollmentEnrollReq_toJson(struct EnrollmentEnrollReq* req)
 		JsonNode* jsonRoot = json_mkobject();
 		if(req->SessionToken)
 		{
-			json_append_member(jsonRoot, "SessionToken", \
+			json_append_member(jsonRoot, "SessionToken", 
 				json_mkstring(req->SessionToken));
 		}
 		else
@@ -1570,7 +1591,7 @@ char* EnrollmentEnrollReq_toJson(struct EnrollmentEnrollReq* req)
 
 		if(req->CSRText)
 		{
-			json_append_member(jsonRoot, "CSRText", \
+			json_append_member(jsonRoot, "CSRText", 
 				json_mkstring(req->CSRText));
 		}
 		else
@@ -1658,7 +1679,7 @@ struct EnrollmentCompleteResp* EnrollmentCompleteResp_fromJson(char* jsonString)
 				resp->Result = AgentApiResult_fromJsonNode(jsonResult);
 			}
 
-			resp->InventoryJob = \
+			resp->InventoryJob = 
 				json_get_member_string(jsonRoot, "InventoryJob");
 
 			json_delete(jsonRoot);
@@ -1696,7 +1717,7 @@ struct FetchLogsConfigResp* FetchLogsConfigResp_fromJson(char* jsonString)
                 resp->Result = AgentApiResult_fromJsonNode(jsonResult);
             }
 			resp->AuditId = json_get_member_number(jsonRoot, "AuditId", 0);
-			resp->MaxCharactersToReturn = \
+			resp->MaxCharactersToReturn = 
 				json_get_member_number(jsonRoot, "MaxCharactersToReturn", 0);
 
             json_delete(jsonResult);
@@ -1743,9 +1764,9 @@ char* FetchLogsCompleteReq_toJson(struct FetchLogsCompleteReq* req)
     if(req)
     {
         JsonNode* jsonRoot = json_mkobject();
-        json_append_member(jsonRoot, "Status", \
+        json_append_member(jsonRoot, "Status", 
         	json_mknumber((double)req->Status));
-		json_append_member(jsonRoot, "AuditId", \
+		json_append_member(jsonRoot, "AuditId", 
 			json_mknumber((double)req->AuditId));
 		if(req->JobId)
 		{
@@ -1757,7 +1778,7 @@ char* FetchLogsCompleteReq_toJson(struct FetchLogsCompleteReq* req)
 		}
 		if(req->Message)
 		{
-			json_append_member(jsonRoot, "Message", \
+			json_append_member(jsonRoot, "Message", 
 				json_mkstring(req->Message));
 		}
 		else
@@ -1767,7 +1788,7 @@ char* FetchLogsCompleteReq_toJson(struct FetchLogsCompleteReq* req)
 
 		if(req->SessionToken)
 		{
-			json_append_member(jsonRoot, "SessionToken", \
+			json_append_member(jsonRoot, "SessionToken", 
 				json_mkstring(req->SessionToken));
 		}
 		else
@@ -1795,3 +1816,6 @@ struct FetchLogsCompleteReq* FetchLogsCompleteReq_new()
 {
 	return calloc(1, sizeof(struct FetchLogsCompleteReq));
 }
+/******************************************************************************/
+/******************************* END OF FILE **********************************/
+/******************************************************************************/

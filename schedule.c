@@ -1,12 +1,15 @@
-/******************************************************************************
- * Usage of this file and the SDK is subject to the SOFTWARE DEVELOPMENT KIT 
- * LICENSE included here as README-LICENSE.txt.  Additionally, this C Agent 
- * Reference Implementation uses the OpenSSL encryption libraries, which are 
- * not included as a part of this distribution.  
- * For hardware key storage or TPM support, libraries such as WolfSSL may also
- * be used in place of OpenSSL.
- ******************************************************************************/
-/** @file schedule.c */
+/******************************************************************************/
+/* Copyright 2021 Keyfactor                                                   */
+/* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
+/* not use this file except in compliance with the License.  You may obtain a */
+/* copy of the License at http://www.apache.org/licenses/LICENSE-2.0.  Unless */
+/* required by applicable law or agreed to in writing, software distributed   */
+/* under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES   */
+/* OR CONDITIONS OF ANY KIND, either express or implied. See the License for  */
+/* thespecific language governing permissions and limitations under the       */
+/* License.                                                                   */
+/******************************************************************************/
+
 #include "schedule.h"
 #include "logging.h"
 #include "agent.h"
@@ -14,15 +17,29 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct ScheduledJob* currentJob; // Defined in schedule.c
+/******************************************************************************/
+/***************************** LOCAL DEFINES  *********************************/
+/******************************************************************************/
 
-/**
- * Retrieve the Local offset from UTC. Negative if local time is "behind" UTC
- *
- * @param  - none
- * @return - success : The difference between time(NULL) & UTC time(NULL)
- *           failure : n/a 
- */
+/******************************************************************************/
+/************************ LOCAL GLOBAL STRUCTURES *****************************/
+/******************************************************************************/
+struct ScheduledJob* currentJob; /* Defined in schedule.c */
+
+/******************************************************************************/
+/************************* LOCAL GLOBAL VARIABLES *****************************/
+/******************************************************************************/
+
+/******************************************************************************/
+/************************ LOCAL FUNCTION DEFINITIONS **************************/
+/******************************************************************************/
+/**                                                                           */
+/* Retrieve the Local offset from UTC. Negative if local time is "behind" UTC */
+/*                                                                            */
+/* @param  - none                                                             */
+/* @return - success : The difference between time(NULL) & UTC time(NULL)     */
+/*           failure : n/a                                                    */
+/*                                                                            */
 static time_t get_utc_offset(void)
 {
 	time_t start = time(NULL);
@@ -34,14 +51,14 @@ static time_t get_utc_offset(void)
 	return (start - rt);
 } /* get_utc_offset */
 
-/**
- * Add the number of minutes to a time.
- * 
- * @param  - [Input] prev = The time to be added to
- * @param  - [Input] intSch = a string representing the # of minutes to add
- * @return - success : the time intSch from prev
- *           failure : prev
- */
+/**                                                                           */
+/* Add the number of minutes to a time.                                       */
+/*                                                                            */
+/* @param  - [Input] prev = The time to be added to                           */
+/* @param  - [Input] intSch = a string representing the # of minutes to add   */
+/* @return - success : the time intSch from prev                              */
+/*           failure : prev                                                   */
+/*                                                                            */
 static time_t next_interval(char* intSch, time_t prev)
 {
 	int mins = atoi(intSch);
@@ -56,14 +73,14 @@ static time_t next_interval(char* intSch, time_t prev)
 	}
 } /* next_interval */
 
-/**
- * Add the number of days to a time
- *
- * @param  - [Input] prev = The time to be added to
- * @param  - [Input] dailySch = a string representing the # of days to add
- * @return - success : the time dailySch from prev
- *           failure : prev
- */
+/**                                                                           */
+/* Add the number of days to a time                                           */
+/*                                                                            */
+/* @param  - [Input] prev = The time to be added to                           */
+/* @param  - [Input] dailySch = a string representing the # of days to add    */
+/* @return - success : the time dailySch from prev                            */
+/*           failure : prev                                                   */
+/*                                                                            */
 static time_t next_daily(char* dailySch, time_t prev)
 {
 	int hrs, mins;
@@ -86,7 +103,7 @@ static time_t next_daily(char* dailySch, time_t prev)
 
 		while(rtTime <= prev)
 		{
-			rtTime += 60 * 60 * 24; // Step forward 1 day
+			rtTime += 60 * 60 * 24; /* Step forward 1 day */
 		}
 
 		return rtTime;
@@ -98,14 +115,14 @@ static time_t next_daily(char* dailySch, time_t prev)
 	}
 } /* next_daily */
 
-/**
- * Add the number of weeks to a time
- *
- * @param  - [Input] prev = The time to be added to
- * @param  - [Input] weeklySch = a string representing the # of weeks to add
- * @return - success : the time weeklySch from prev
- *           failure : prev
- */
+/**                                                                           */
+/* Add the number of weeks to a time                                          */
+/*                                                                            */
+/* @param  - [Input] prev = The time to be added to                           */
+/* @param  - [Input] weeklySch = a string representing the # of weeks to add  */
+/* @return - success : the time weeklySch from prev                           */
+/*           failure : prev                                                   */
+/*                                                                            */
 static time_t next_weekly(char* weeklySch, time_t prev)
 {
 	int dows;
@@ -157,14 +174,14 @@ static time_t next_weekly(char* weeklySch, time_t prev)
 	}
 } /* next_weekly */
 
-/**
- * Add the number of months to a time
- *
- * @param  - [Input] prev = The time to be added to
- * @param  - [Input] monthSch = a string representing the # of months to add
- * @return - success : the time monthSch from prev
- *           failure : prev
- */
+/**                                                                           */
+/* Add the number of months to a time                                         */
+/*                                                                            */
+/* @param  - [Input] prev = The time to be added to                           */
+/* @param  - [Input] monthSch = a string representing the # of months to add  */
+/* @return - success : the time monthSch from prev                            */
+/*           failure : prev                                                   */
+/*                                                                            */
 static time_t next_monthly(char* monthSch, time_t prev)
 {
 	int dom, hrs, mins;
@@ -181,7 +198,7 @@ static time_t next_monthly(char* monthSch, time_t prev)
 		prevStruct.tm_min = mins;
 		prevStruct.tm_sec = 0;
 		prevStruct.tm_mday = dom;
-		prevStruct.tm_mon--; // Make sure we are before prev
+		prevStruct.tm_mon--; /* Make sure we are before prev */
 		prevStruct.tm_isdst = 0;
 
 		time_t rtTime;
@@ -189,7 +206,7 @@ static time_t next_monthly(char* monthSch, time_t prev)
 		{
 			rtTime = mktime(&prevStruct);
 			rtTime += get_utc_offset();
-			prevStruct.tm_mon++; // For the next time around the loop, if needed
+			prevStruct.tm_mon++; /* For the next time around the loop */
 		}
 		while(rtTime <= prev);
 
@@ -205,7 +222,7 @@ static time_t next_monthly(char* monthSch, time_t prev)
 		prevStruct.tm_min = mins;
 		prevStruct.tm_sec = 0;
 		prevStruct.tm_mday = 0;
-		prevStruct.tm_mon--; // Make sure we are before prev
+		prevStruct.tm_mon--; /* Make sure we are before prev */
 		prevStruct.tm_isdst = 0;
 
 		int curMon = prevStruct.tm_mon;
@@ -229,25 +246,25 @@ static time_t next_monthly(char* monthSch, time_t prev)
 	}
 } /* next_monthly */
 
-/**
- * Decode a scheduled datetime into a time_t structure.
- * NOTE: This does not verify that the date is a future date.
- *
- * @param  - [Input] oneTimeSch is a string designating a date time in the
- *                   format of :  YYYY-MM-DDTHH:mm where
- *                   YYYY = Year
- *                   MM = Month [01..12]
- *                   DD = Day of Month [01..31]
- *                   HH = Hours [00..23]
- *                   mm = Minutes [00..59]
- * @return  - success : the formatted string as a time_t structure
- *            failure : time(NULL)
- */
+/**                                                                           */
+/* Decode a scheduled datetime into a time_t structure.                       */
+/* NOTE: This does not verify that the date is a future date.                 */
+/*                                                                            */
+/* @param  - [Input] oneTimeSch is a string designating a date time in the    */
+/*                   format of :  YYYY-MM-DDTHH:mm where                      */
+/*                   YYYY = Year                                              */
+/*                   MM = Month [01..12]                                      */
+/*                   DD = Day of Month [01..31]                               */
+/*                   HH = Hours [00..23]                                      */
+/*                   mm = Minutes [00..59]                                    */
+/* @return  - success : the formatted string as a time_t structure            */
+/*            failure : time(NULL)                                            */
+/*                                                                            */
 static time_t next_one_time(char* oneTimeSch)
 {
 	int year, mon, day, hrs, mins;
 	if(
-		(5 == sscanf(oneTimeSch, "%d-%d-%dT%d:%d", &year, \
+		(5 == sscanf(oneTimeSch, "%d-%d-%dT%d:%d", &year, 
 					&mon, &day, &hrs, &mins)) &&
 		hrs >= 0 && hrs <=23 && 
 		mins >= 0 && mins <= 59 && 
@@ -276,33 +293,38 @@ static time_t next_one_time(char* oneTimeSch)
 	}
 } /* next_one_time */
 
-/**
- * Get the time of the next execution of a job based on the previous job
- * execution and the schedule string.
- *
- * @param  - [Input] sch = The schedule string in the form of 
- *                   T_X where:
- *                   T = job type.  Which is one of:
- *                       D = Daily
- *                       M = Monthly
- *                       O = One-time execution
- *                       I = Interval (aka Minutes)
- *                       W = Weekly
- *                   X = Integer or substring indicating the time delay
- *            (e.g., I_5 = 5 minutes, D_2 = every other day, 
- *                   M_1_3:0 = 1st day hour 3 minute 0 of each month
- *                   O_2020-10-31T13:30 = One time job @ 31-Oct-2020 & 1:30pm)
- * @param  - [Input] prev the last time the job ran (set to time(NULL) if never)
- * @return - success : time_t = the next time the job runs
- *           failure : -1
- */
+/******************************************************************************/
+/*********************** GLOBAL FUNCTION DEFINITIONS **************************/
+/******************************************************************************/
+/**                                                                           */
+/* Get the time of the next execution of a job based on the previous job      */
+/* execution and the schedule string.                                         */
+/*                                                                            */
+/* @param  - [Input] sch = The schedule string in the form of                 */
+/*                   T_X where:                                               */
+/*                   T = job type.  Which is one of:                          */
+/*                       D = Daily                                            */
+/*                       M = Monthly                                          */
+/*                       O = One-time execution                               */
+/*                       I = Interval (aka Minutes)                           */
+/*                       W = Weekly                                           */
+/*                   X = Integer or substring indicating the time delay       */
+/*            (e.g., I_5 = 5 minutes, D_2 = every other day,                  */
+/*                   M_1_3:0 = 1st day hour 3 minute 0 of each month          */
+/*                   O_2020-10-31T13:30 = One time job @ 31-Oct-2020 & 1:30pm)*/
+/* @param  - [Input] prev the last time the job ran                           */
+/*           (set to time(NULL) if never)                                     */
+/* @return - success : time_t = the next time the job runs                    */
+/*           failure : -1                                                     */
+/*                                                                            */
 time_t next_execution(char* sch, time_t prev)
 {
 	time_t next = -1;
 
 	if(!sch || strlen(sch) < 3)
 	{
-		log_verbose("%s::%s(%d) : Schedule is not provided, indicating job should be run immediately", LOG_INF);
+		log_verbose("%s::%s(%d) : Schedule is not provided, indicating "
+			"job should be run immediately", LOG_INF);
 		return next = prev;
 	}
 
@@ -336,22 +358,23 @@ time_t next_execution(char* sch, time_t prev)
 	return next;
 } /* next_execution */
 
-/**
- * Go through the job list and see if it is time to run a job. If so, return it.
- * If not, return null.
- *
- * @param  - [Input] pList: Linked list of ScheduledJobs
- * @param  - [Input] now: current time
- * @return - NULL if no jobs are runnable
- *         - The SessionJob* to the job to execute
- */
+/**                                                                           */
+/* Go through the job list and see if it is time to run a job.                */
+/* If so, return it.  If not, return null.                                    */
+/*                                                                            */
+/* @param  - [Input] pList: Linked list of ScheduledJobs                      */
+/* @param  - [Input] now: current time                                        */
+/* @return - NULL if no jobs are runnable                                     */
+/*         - The SessionJob* to the job to execute                            */
+/*                                                                            */
 struct SessionJob* get_runnable_job(struct ScheduledJob** pList, time_t now)
 {
 	struct ScheduledJob* current = *pList;
 
 	while(current)
 	{
-		log_trace("%s::%s(%d) : Checking job %s NextExecution = %ld Now = %ld", LOG_INF, current->Job->JobId,current->NextExecution,now);
+		log_trace("%s::%s(%d) : Checking job %s NextExecution = %ld Now = %ld", 
+			LOG_INF, current->Job->JobId,current->NextExecution,now);
 		if(current->NextExecution <= now)
 		{
 			return current->Job;
@@ -364,14 +387,14 @@ struct SessionJob* get_runnable_job(struct ScheduledJob** pList, time_t now)
 	return NULL;
 }
 
-/**
- * Loop through the job list & retrieve the job structure based on jobId
- *
- * @param  - [Input] jobId = the jobId who's details to retrieve
- * @param  - [Input] pList = the list of scheduled jobs
- * @return - success : a pointer to the found job
- *           failure : NULL
- */
+/**                                                                           */
+/* Loop through the job list & retrieve the job structure based on jobId      */
+/*                                                                            */
+/* @param  - [Input] jobId = the jobId who's details to retrieve              */
+/* @param  - [Input] pList = the list of scheduled jobs                       */
+/* @return - success : a pointer to the found job                             */
+/*           failure : NULL                                                   */
+/*                                                                            */
 struct SessionJob* get_job_by_id(struct ScheduledJob** pList, const char* jobId)
 {
 	struct ScheduledJob* current = *pList;
@@ -390,12 +413,12 @@ struct SessionJob* get_job_by_id(struct ScheduledJob** pList, const char* jobId)
 	return NULL;
 } /* get_job_by_id */
 
-/**
- * Clear all scheduled jobs (also free data structures)
- *
- * @param  - [Input/Ouput] pList = A list of scheduled jobs
- * @return - none
- */
+/**                                                                           */
+/* Clear all scheduled jobs (also free data structures)                       */
+/*                                                                            */
+/* @param  - [Input/Ouput] pList = A list of scheduled jobs                   */
+/* @return - none                                                             */
+/*                                                                            */
 void clear_job_schedules(struct ScheduledJob** pList)
 {
 	struct ScheduledJob* current = *pList;
@@ -413,15 +436,16 @@ void clear_job_schedules(struct ScheduledJob** pList)
 	*pList = NULL;
 } /* clear_job_schedules */
 
-/**
- * Add a job to a scheduled job list
- *
- * @param  - [Output] pList = a list of scheduled jobs to add a new job into
- * @param  - [Input] job = a filled job session to add to the scheduled list
- * @param  - [Input] prev = 
- * @return - none
- */
-void schedule_job(struct ScheduledJob** pList, struct SessionJob* job, time_t prev)
+/**                                                                           */
+/* Add a job to a scheduled job list                                          */
+/*                                                                            */
+/* @param  - [Output] pList = a list of scheduled jobs to add a new job into  */
+/* @param  - [Input] job = a filled job session to add to the scheduled list  */
+/* @param  - [Input] prev = the timestamp of the previous job run             */
+/* @return - none                                                             */
+/*                                                                            */
+void schedule_job(struct ScheduledJob** pList, struct SessionJob* job, 
+	time_t prev)
 {
 	struct ScheduledJob* newSchJob = calloc(1, sizeof(struct ScheduledJob));
 	if ( !newSchJob )
@@ -448,19 +472,21 @@ void schedule_job(struct ScheduledJob** pList, struct SessionJob* job, time_t pr
 		{
 			if(strcasecmp(current->Job->JobId, job->JobId) == 0)
 			{
-				log_verbose("%s::%s(%d) : Rescheduling job %s", LOG_INF, job->JobId);
+				log_verbose("%s::%s(%d) : Rescheduling job %s", 
+					LOG_INF, job->JobId);
 
 				if(
 					current->NextExecution > 0 && \
 					(!job->Schedule || job->Schedule[0] == 'O') )
 				{
-					log_verbose("%s::%s(%d) : Job %s is a one-time job, and will not be rescheduled", LOG_INF, job->JobId);
+					log_verbose("%s::%s(%d) : Job %s is a one-time job, "
+						"and will not be rescheduled", LOG_INF, job->JobId);
 
 					if(prev)
 					{
 						prev->NextJob = current->NextJob;
 					}
-					else // Removing first element
+					else /* Removing first element */
 					{
 						*pList = current->NextJob;
 					}
@@ -472,7 +498,7 @@ void schedule_job(struct ScheduledJob** pList, struct SessionJob* job, time_t pr
 				{
 					current->NextExecution = newSchJob->NextExecution;
 				}
-				// Don't need the new struct, there is already one for this job
+				/*Don't need the new struct, there is already one for this job*/
 				free(newSchJob); 
 				newSchJob = NULL;
 
@@ -486,4 +512,6 @@ void schedule_job(struct ScheduledJob** pList, struct SessionJob* job, time_t pr
 		prev->NextJob = newSchJob;
 	}
 } /* schedule_job */
-
+/******************************************************************************/
+/******************************* END OF FILE **********************************/
+/******************************************************************************/

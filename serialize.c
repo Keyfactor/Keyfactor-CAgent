@@ -1,12 +1,15 @@
-/******************************************************************************
- * Usage of this file and the SDK is subject to the SOFTWARE DEVELOPMENT KIT 
- * LICENSE included here as README-LICENSE.txt.  Additionally, this C Agent 
- * Reference Implementation uses the OpenSSL encryption libraries, which are 
- * not included as a part of this distribution.  
- * For hardware key storage or TPM support, libraries such as WolfSSL may also
- * be used in place of OpenSSL.
- ******************************************************************************/
-/** @file serialize.c */
+/******************************************************************************/
+/* Copyright 2021 Keyfactor                                                   */
+/* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
+/* not use this file except in compliance with the License.  You may obtain a */
+/* copy of the License at http://www.apache.org/licenses/LICENSE-2.0.  Unless */
+/* required by applicable law or agreed to in writing, software distributed   */
+/* under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES   */
+/* OR CONDITIONS OF ANY KIND, either express or implied. See the License for  */
+/* thespecific language governing permissions and limitations under the       */
+/* License.                                                                   */
+/******************************************************************************/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -15,26 +18,27 @@
 #include "logging.h"
 #include "lib/json.h"
 
-#define SER_FILE_LEN 1024	//** Max file length 
+#define SER_FILE_LEN 1024	/* Max file length */
 
-/***************************************************************************//**
-	print the serialization parameters pulled from the serialized json file
-	@param a pointer to the serialization data structure
-	@returns none
- ******************************************************************************/
+/**                                                                           */
+/*	print the serialization parameters pulled from the serialized json file   */
+/*	@param a pointer to the serialization data structure                      */
+/*	@return none                                                              */
+/*                                                                            */
 static void SerializeData_print ( struct SerializeData* serial )
 {
 	printf("\n\n          ModelName = %s\n", serial->ModelName);
 	printf("          NextNumber = %d\n", serial->NextNumber);
 	printf("\n\n");
 	return;
-} // SerializeData_print
+} /* SerializeData_print */
 
-/***************************************************************************//**
-	Load data from the serialization file into the serialization data structure
-	@param none
-	@returns a pointer to the serialization data structure
- ******************************************************************************/
+/**                                                                           */
+/*	Load data from the serialization file into the serialization data         */
+/*	structure                                                                 */
+/*	@param none                                                               */
+/*	@return a pointer to the serialization data structure                     */
+/*                                                                            */
 struct SerializeData* serialize_load( char* fileName )
 {
 	struct SerializeData* serial = NULL;
@@ -44,7 +48,7 @@ struct SerializeData* serialize_load( char* fileName )
 	{
 		char buffer[SER_FILE_LEN];
 		size_t len = fread(buffer, 1, SER_FILE_LEN-1, fp);
-		buffer[len++] = '\0'; // don't forget the end of string character
+		buffer[len++] = '\0'; /* don't forget the end of string character */
 
 		JsonNode* json = json_decode(buffer);
 		if (json)
@@ -66,25 +70,29 @@ struct SerializeData* serialize_load( char* fileName )
 		}
 		else
 		{
-			log_error("%s::%s(%d) : Contents of %s are not valid JSON",	LOG_INF, fileName);
+			log_error("%s::%s(%d) : Contents of %s are not valid JSON",	
+				LOG_INF, fileName);
 		}
 		fclose(fp);
 	}
 	else
 	{
 		int err = errno;
-		log_error("%s::%s(%d) : Unable to open serialization file %s: %s", LOG_INF, fileName, strerror(err));
+		log_error("%s::%s(%d) : Unable to open serialization file %s: %s", 
+			LOG_INF, fileName, strerror(err));
 	}
 	return serial;
-} // serialize_load
+} /* serialize_load */
 
-/***************************************************************************//**
-	Save data from the serialization data structure into the serialization file
-	@param a reference to a serialization data structure
-	@param a string with the filename and path to the common serialization file
-	@returns 1 on success
-	@returns 0 on failure
- ******************************************************************************/
+/**                                                                           */
+/*	Save data from the serialization data structure into the                  */
+/*	serialization file                                                        */
+/*	@param a reference to a serialization data structure                      */
+/*	@param a string with the filename and path to the common                  */
+/*	       serialization file                                                 */
+/*	@return 1 on success                                                      */
+/*          0 on failure                                                      */
+/*                                                                            */
 int serialize_save( struct SerializeData* serial, char* fileName )
 {
 	JsonNode* json = json_mkobject();
@@ -108,7 +116,8 @@ int serialize_save( struct SerializeData* serial, char* fileName )
 
 	if(serial->NextNumber)
 	{
-		json_append_member(json, "NextNumber", json_mknumber(serial->NextNumber));
+		json_append_member(json, "NextNumber", 
+			json_mknumber(serial->NextNumber));
 
 	}
 	else
@@ -125,7 +134,8 @@ int serialize_save( struct SerializeData* serial, char* fileName )
 		size_t w = fwrite(serialString, 1, strlen(serialString), fp);
 		if ( w != strlen(serialString) )
 		{
-			log_error("%s::%s(%d) : Error writing to file %s", LOG_INF,fileName);
+			log_error("%s::%s(%d) : Error writing to file %s", 
+				LOG_INF, fileName);
 			free(serialString);
 			fclose(fp);
 			return 0;
@@ -136,11 +146,14 @@ int serialize_save( struct SerializeData* serial, char* fileName )
 	else
 	{
 		int err = errno;
-		log_error("%s::%s(%d) : Unable to write serial file %s: %s", LOG_INF,fileName,strerror(err));
+		log_error("%s::%s(%d) : Unable to write serial file %s: %s", 
+			LOG_INF, fileName, strerror(err));
 		return 0;
 	}
 	
 	json_delete(json);
 	return 1;
-} // serialize_save
-
+} /* serialize_save */
+/******************************************************************************/
+/******************************* END OF FILE **********************************/
+/******************************************************************************/

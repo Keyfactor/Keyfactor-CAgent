@@ -1,42 +1,201 @@
-/* 
-Note: usage of this file and the SDK is subject to the 
-following SOFTWARE DEVELOPMENT KIT LICENSE: 
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
 
-SOFTWARE DEVELOPMENT KIT LICENSE AGREEMENT
-THIS IS A LICENSE AGREEMENT between you and Keyfactor Inc., 6150 Oak Tree Boulevard, Suite 200, Independence, Ohio 44131 (“Keyfactor”). This License Agreement accompanies the Software Development Kit(s) (“SDK,” as defined below) for Keyfactor Products (defined below) licensed to you by Keyfactor.  This copy of the SDK is licensed to You as the end user or the representative of your employer.  You represent that Keyfactor, a licensee of one or more Keyfactor Products, or a third-party working on behalf of such a licensee has authorized you to download this SDK.  YOU AGREE THAT THIS LICENSE AGREEMENT IS ENFORCEABLE AND THAT YOUR USE OF THE SDK CONSTITUTES ACCEPTANCE OF THE AGREEMENT TERMS.  If you do not agree to the terms of this Agreement, do not use this SDK.  
-1. DEFINITIONS. In this License Agreement: 
-(a) “SDK” means the Keyfactor software development kit, including any sample code, tools, utilities, documentation, and related explanatory materials and includes any upgrades, modified versions, updates, additions, and copies of the SDK;  
-(b) “Keyfactor Product(s)” means Keyfactor’s Collaborative Lifecyle Management (CLM) application programs, technologies and software, including but not limited to Keyfactor Command, Keyfactor Control, and Keyfactor Code Assure that are or may be made available for licensing, including any modified versions or upgrades thereof.  This License Agreement does not govern use of Keyfactor Products, which are governed by separate written license agreements; and
-(c) “You” and “your” refer to any person or entity acquiring or using the SDK under the terms of this License Agreement.
-2. ROYALTY-FREE DEVELOPMENT LICENSE. Subject to the restrictions contained in this Section 2, Keyfactor grants you a limited a nonexclusive, nontransferable, royalty-free license to use the items in the SDK only for the purpose of development of software designed to interoperate with licensed Keyfactor Products either on your own behalf or on behalf of a licensee of one or more Keyfactor Products.
-(a) Under this License Agreement, you may use, modify, or merge all or portions of any sample code included in the SDK with your software.  Any modified or merged portion of sample code is subject to this License Agreement.  You are required to include Keyfactor’s copyright notices in your software. You may make a reasonable, limited number of copies of the SDK to be used by your employees or contractors solely for the purposes described herein, and such employees or contractors shall be subject to all obligations and restrictions in this License Agreement.  Except in accordance with the preceding sentence, you may not assign, sublicense, or otherwise transfer your rights or obligations granted under this License Agreement without the prior written consent of Keyfactor. Any attempted assignment, sublicense, or transfer in the absence of Keyfactor’s prior written consent shall be invalid.  Keyfactor may assign or transfer this License Agreement in whole or in part, and it will inure to the benefit of any successor or assign of Keyfactor.
-(b) Under this License Agreement, if you use, modify, or merge all or portions of any sample code included in the SDK with your software, you may distribute it as part of your products solely on a royalty-free, non-commercial basis.  Any right to distribute any part of the SDK or any modified, merged, or derivative version on a royalty-bearing or other commercial basis is subject to separate approval, and possibly the imposition of a royalty, by Keyfactor.
-(c) Except as expressly permitted in paragraphs 2(a) and 2(b), you may not sell, sublicense, rent, loan, or lease any portion of the SDK to any third party. You may not decompile, reverse engineer, or otherwise access or attempt to access the source code for any part of the SDK not made available to you in source code form, nor make or attempt to make any modification to the SDK or remove, obscure, interfere with, or circumvent any feature of the SDK, including without limitation any copyright or other intellectual property notices, security, or access control mechanism.
-3. CONFIDENTIAL INFORMATION. From time to time during the term of this License Agreement, either you or Keyfactor (i.e., the Parties) may disclose or make available to the other Party information about its business affairs, products, confidential intellectual property, trade secrets, third-party confidential information, and other sensitive or proprietary information, whether orally or in written, electronic, or other form, or media in written or electronic form or media, whether or not marked, designated or otherwise identified as “confidential” (collectively, “Confidential Information”). Confidential Information does not include information that, at the time of disclosure is:
-a)	In the public domain;
-b)	Known to the receiving Party at the time of disclosure;
-c)	Rightfully obtained by the receiving Party on a non-confidential basis from a third party; or
-d)	Independently developed by the receiving Party without reference to the disclosing Party’s Confidential Information.
-The receiving Party shall not disclose the disclosing Party’s Confidential Information to any person or entity, except to the receiving Party’s employees who have a need to know the Confidential Information for the receiving Party to exercise its rights or perform its obligations hereunder. Notwithstanding the foregoing, each Party may disclose Confidential Information to the limited extent required:
-a)	To comply with the order of a court or other governmental body, or as otherwise necessary to comply with applicable law, provided that the Party making the disclosure pursuant to the order shall first have given written notice to the other Party and made a reasonable effort to obtain a protective order; or
-b)	To enforce a Party’s rights under this License Agreement, including to make required court filings.
-On the expiration or termination of this License Agreement, the receiving Party shall promptly return to the disclosing Party all copies, whether in written, electronic, or other form or media, of the disclosing Party’s Confidential Information, or destroy all such copies and upon request of the disclosing Party certify in writing to the disclosing Party that such Confidential Information has been destroyed. Each Party’s obligations of non-disclosure with regard to Confidential Information are effective as of the Effective Date and will expire five (5) years from the date first disclosed to the receiving Party; provided, however, with respect to any Confidential Information that constitutes a trade secret (as determined under applicable law), such obligations of non-disclosure will survive the termination or expiration of this License Agreement for as long as such Confidential Information remains subject to trade secret protection under applicable law.
-Where the receiving Party may be considered a processor or sub-processor under the General Data Protection Regulation (EU) 2016/679 (“GDPR”), it shall implement appropriate technical and organizational measures to provide an adequate level of security and protect a controller’s personal data against unauthorized or unlawful processing or a personal data breach as those terms are defined in the GDPR.
-4. PROPRIETARY RIGHTS. The items contained in the SDK are the intellectual property of Keyfactor and are protected by United States and international copyright and other intellectual property law. You agree to protect all copyright and other ownership interests of Keyfactor in all items in the SDK supplied to you under this License Agreement. You agree that all copies of the items in the SDK, reproduced for any reason by you, will contain the same copyright notices, and other proprietary notices, as appear on or in the master items delivered by Keyfactor in the SDK. Keyfactor retains title and ownership of the items in the SDK, the media on which it is recorded, and all subsequent copies, regardless of the form or media in or on which the original and other copies may exist.  You may use Keyfactor’s trade names, trademarks and service marks only as may be required to accurately describe your products and to provide copyright notice as required herein.
-Except as expressly granted above, this License Agreement does not grant you any rights under any patents, copyrights, trade secrets, trademarks or any other rights in respect to the items in the SDK. You hereby grant Keyfactor the right to utilize your company’s name, logo and/or trademarks—as well as statements and/or testimonials about your experience(s) with Keyfactor and Keyfactor Products—for reference purposes and in connection with certain promotional materials that Keyfactor may disseminate to the public (e.g., advertising, print marketing and online marketing materials). Keyfactor may utilize your company’s name, logo and trademarks without providing notice to you of its intent to do so or requesting your consent.
-5. FEEDBACK. You are encouraged to provide Keyfactor with comments, bug reports, feedback, enhancements, or modifications proposed or suggested by you for the SDK or any Keyfactor Product (“Feedback”). If provided, Keyfactor will treat such Feedback as non-confidential notwithstanding any notice to the contrary you may include in any accompanying communication, and Keyfactor shall have the right to use such Feedback at its discretion, including, but not limited to, the incorporation of such suggested changes into the SDK or any Keyfactor Product.  You hereby grant Keyfactor a perpetual, irrevocable, transferable, sublicensable, royalty-free, worldwide, nonexclusive license under all rights necessary to so incorporate and use your Feedback for any purpose, including to make and sell products and services.  
-6. TERM. This License Agreement is effective until terminated.  Keyfactor has the right to terminate this License Agreement immediately, without judicial intervention, if you fail to comply with any term herein. Upon any such termination you must remove all full and partial copies of the items in the SDK from your computer and discontinue the use of the items in the SDK.
-7. DISCLAIMER OF WARRANTY. Keyfactor licenses the SDK to you on an “AS-IS” basis. Keyfactor makes no representation with respect to the adequacy of any items in the SDK, whether or not used by you in the development of any products, for any particular purpose or with respect to their adequacy to produce any particular result. Keyfactor shall not be liable for loss or damage arising out of this License Agreement or from the distribution or use of your products containing portions of the SDK. TO THE FULLEST EXTENT PERMITTED BY LAW, KEYFACTOR DISCLAIMS ALL WARRANTIES, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO IMPLIED CONDITIONS OR WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT OF ANY THIRD-PARTY RIGHT IN RESPECT OF THE ITEMS IN THE SDK.
-Keyfactor is under no obligation to provide any support under this License Agreement, including upgrades or future versions of the SDK or any portions thereof, to you, any end user or to any other party. 
-8. LIMITATION OF LIABILITY. Notwithstanding any other provisions of this License Agreement, Keyfactor’s liability to you under this License Agreement shall be limited to the amount you paid for the SDK or $10, whichever is less.
-IN NO EVENT WILL KEYFACTOR BE LIABLE TO YOU FOR ANY CONSEQUENTIAL, INDIRECT, INCIDENTAL, PUNITIVE, OR SPECIAL DAMAGES, INCLUDING DAMAGES FOR ANY LOST PROFITS, LOST SAVINGS, LOSS OF DATA, COSTS, FEES OR EXPENSES OF ANY KIND OR NATURE, ARISING OUT OF ANY PROVISION OF THIS LICENSE AGREEMENT OR THE USE OR INABILITY TO USE THE ITEMS IN THE SDK, EVEN IF A KEYFACTOR REPRESENTATIVE HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES, OR FOR ANY CLAIM BY ANY PARTY. 
-9. INDEMNIFICATION. You agree to indemnify, hold harmless, and defend Keyfactor from and against any claims or lawsuits, including attorneys’ fees, that arise or result from the use and distribution of your products that contain or are based upon any portion of the SDK, provided that Keyfactor gives you prompt written notice of any such claim, tenders the defense or settlement of such a claim to you at your expense, and cooperates with you, at your expense, in defending or settling any such claim.
-10. CHOICE OF LAW. This Agreement will be governed by and construed in accordance with the substantive laws of the United States and the State of Ohio.  Federal and state courts located in Cuyahoga County, Ohio shall have exclusive jurisdiction over all disputes relating to this Agreement. This Agreement will not be governed by the conflict of law rules of any jurisdiction or the United Nations Convention on Contracts for the International Sale of Goods, the application of which is expressly excluded.
-11. COMPLIANCE WITH EXPORT CONTROL LAWS. You agree that any of your products that include any part of the SDK will not be shipped, transferred or exported into any country or used in any manner prohibited by the United States Export Administration Act and that you will comply with all applicable export control laws. All rights to use the SDK are granted on condition that such rights are forfeited if you fail to comply with the terms of this Agreement.
-11. NON-BLOCKING OF KEYFACTOR DEVELOPMENT. You acknowledge that Keyfactor is currently developing or may develop technologies and products in the future that have or may have design and/or functionality similar to products that you may develop based on your license herein. Nothing in this Agreement shall impair, limit or curtail Keyfactor’s right to continue with its development, maintenance and/or distribution of Keyfactor’s technology or products. You agree that you shall not assert any patent that you own against Keyfactor, its subsidiaries or affiliates, or their customers, direct or indirect, agents and contractors for the manufacture, use, import, licensing, offer for sale or sale of any Keyfactor Products.
-12. OPEN SOURCE SOFTWARE. Notwithstanding anything to the contrary, you are not licensed to (and you agree that you will not) integrate or use this SDK with any Viral Open Source Software or otherwise take any action that could require disclosure, distribution, or licensing of all or any part of the SDK in source code form, for the purpose of making derivative works, or at no charge. For the purposes of this Section 12, “Viral Open Source Software” shall mean software licensed under the GNU General Public License, the GNU Lesser General Public License, or any other license terms that could require, or condition your use, modification, or distribution of such software on, the disclosure, distribution, or licensing of any other software in source code form, for the purpose of making derivative works, or at no charge. Any violation of the foregoing provision shall culminate in the immediate termination of all of your licenses and other rights to the SDK granted under this Agreement.
-13. WAIVER. None of the provisions of this License Agreement shall be deemed to have been waived by any act or acquiescence on the part of Keyfactor, its agents or employees, but only by an instrument in writing signed by an officer of Keyfactor who possesses apparent authority to enter into binding agreements on behalf of the company.
-14.  INTEGRATION. In the event that conflicting language exists between this License Agreement and any other agreement included in the SDK, the terms and conditions of this License Agreement shall supersede and control. If either you or Keyfactor employ attorneys to enforce any rights arising out of or relating to this License Agreement, the prevailing party shall be entitled to recover reasonable attorneys’ fees and costs. You acknowledge that you have read this License Agreement, understand it and that it is the complete and exclusive statement of your agreement with Keyfactor. You further acknowledge that this License Agreement supersedes any prior agreement, oral or written, between Keyfactor and you with respect to the licensing of the SDK. No variation of the terms of this License Agreement will be enforceable against Keyfactor unless Keyfactor gives its express consent to such variation in a written amendment to this License Agreement signed by an officer of Keyfactor with apparent authority to enter into binding agreements on behalf of the company. 
-15.  GOVERNMENT LICENSE.  If the SDK is licensed to the U.S. Government or any agency thereof, it will be considered to be “commercial computer software” or “commercial computer software documentation,” as those terms are used in 48 CFR § 12.212 or 48 CFR § 227.7202, and is being licensed with only those rights as are granted to all other licensees as set forth in this Agreement.
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 
- */
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.

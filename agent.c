@@ -1,11 +1,14 @@
-/******************************************************************************
- * Usage of this file and the SDK is subject to the SOFTWARE DEVELOPMENT KIT 
- * LICENSE included here as README-LICENSE.txt.  Additionally, this C Agent 
- * Reference Implementation uses the OpenSSL encryption libraries, which are 
- * not included as a part of this distribution.  
- * For hardware key storage or TPM support, libraries such as WolfSSL may also
- * be used in place of OpenSSL.
- ******************************************************************************/
+/******************************************************************************/
+/* Copyright 2021 Keyfactor                                                   */
+/* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
+/* not use this file except in compliance with the License.  You may obtain a */
+/* copy of the License at http://www.apache.org/licenses/LICENSE-2.0.  Unless */
+/* required by applicable law or agreed to in writing, software distributed   */
+/* under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES   */
+/* OR CONDITIONS OF ANY KIND, either express or implied. See the License for  */
+/* thespecific language governing permissions and limitations under the       */
+/* License.                                                                   */
+/******************************************************************************/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,6 +49,9 @@
 #include "fetchlogs.h"
 #include "utils.h"
 
+/******************************************************************************/
+/***************************** LOCAL DEFINES  *********************************/
+/******************************************************************************/
 #define JOB_CHECK_SECONDS 10
 
 /******************************************************************************/
@@ -53,11 +59,13 @@
 /******************************************************************************/
 struct SessionInfo SessionData;
 struct ScheduledJob* JobList;
+
 #if defined(__OPEN_SSL__)
-char engine_id[21]; // 20 Characters should be enough
+	char engine_id[21]; /* 20 Characters should be enough */
 #endif
+
 #if defined(__TPM__)
-ENGINE* e = NULL;
+	ENGINE* e = NULL;
 #endif
 
 /******************************************************************************/
@@ -70,21 +78,22 @@ static bool inventory_ran = false;
 /******************************************************************************/
 /************************ LOCAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
-/**
- *	Parse command line switches and set the global variables associated
- *	with the switches.
- *
- *	@param  - [Input] argc = # of arguments passed
- *	@param  - [Input] const char *argv[] = the array of passed arguments
- *	@return - success : 1
- *			  failure : 0
- */
+
+/**                                                                           */
+/*	Parse command line switches and set the global variables associated       */
+/*	with the switches.                                                        */
+/*                                                                            */
+/*	@param  - [Input] argc = # of arguments passed                            */
+/*	@param  - [Input] const char *argv[] = the array of passed arguments      */
+/*	@return - success : 1                                                     */
+/*			  failure : 0                                                     */
+/*                                                                            */
 static int parse_parameters( int argc, char *argv[] )
 {
 	bool foundConfig = false;
 	#ifdef __TPM__
 		int foundEngine = 0;
-		const char* default_engine = "dynamic"; // the default engine to choose
+		const char* default_engine = "dynamic"; /* default engine to choose */
 	#endif
 	for(int i = 1; i < argc; ++i) 
 	{
@@ -99,7 +108,7 @@ static int parse_parameters( int argc, char *argv[] )
 				fprintf(stderr,
 					 "You must supply a switch variable with the -l command\n");
 				return 0;
-			} // if argc
+			} /* if argc */
 			else 
 			{
 				if (0 == strcmp(argv[i+1], "v")) 
@@ -141,8 +150,8 @@ static int parse_parameters( int argc, char *argv[] )
 				   fprintf(stderr,"Unknown -l switch variable %s\n", argv[i+1]);
 					return 0;
 				}
-			} // else argc
-		} // else -l
+			} /* else argc */
+		} /* else -l */
 #ifdef __TPM__
 		else if (0 == strcmp(argv[i], "-e"))
 		{
@@ -160,8 +169,16 @@ static int parse_parameters( int argc, char *argv[] )
 			{
 				if ( 0 < strlen(argv[++i]) )
 				{
-					config_location = calloc(strlen(argv[i])+1, sizeof(*config_location));
-					config_location = strncpy( config_location, argv[i], strlen(argv[i]) );
+					config_location = calloc(strlen(argv[i])+1, 
+						sizeof(*config_location));
+					if ( NULL == config_location )
+					{
+						printf("%s::%s(%d) : Out of memory", LOG_INF);
+						printf("%s::%s(%d) : Aborting...", LOG_INF);
+						exit(EXIT_FAILURE);
+					}
+					config_location = strncpy( config_location, argv[i], 
+						strlen(argv[i]) );
 					foundConfig = true;
 				}
 			}
@@ -180,7 +197,7 @@ static int parse_parameters( int argc, char *argv[] )
 #ifdef __TPM__
 	if ( !foundEngine )
 	{
-		// no -e switch means use the default engine
+		/* no -e switch means use the default engine */
 		char* eng = &engine_id[0];
 		eng = strncpy( eng, default_engine, 20 );
 	}
@@ -190,24 +207,22 @@ static int parse_parameters( int argc, char *argv[] )
 		config_location = strdup( "config.json" );
 	}
 	return 1;
-} // parse_parameters
+} /* parse_parameters */
 
 #ifdef __TPM__
-/***************************************************************************//**
-    @fn ENGINE* intitialize_engine( const char* engine_id )
-    Tries to initialize and open the engine passed to it.
-    It also sets the engine as the default engine for all functions
-    @param engine_id The name of the engine to use e.g., default, tpm2tss
-    @retval Pointer to the initialized engine ENGINE*
-    @retval NULL on failure
-*/
-/******************************************************************************/
+/**                                                                           */
+/*  Try to initialize and open the engine passed to the function.             */
+/*  Also set the engine as the default engine for all crypto functions        */
+/*  @param  [Input] : engine_id The name of the engine to use e.g., tpm2tss   */
+/*  @return success : Pointer to the initialized engine ENGINE*               */
+/*          failure : NULL                                                    */
+/*                                                                            */
 static ENGINE* initialize_engine( const char *engine_id )
 {
     ENGINE *e = NULL;
     ENGINE_load_builtin_engines();
 
-    // Set the engine pointer to an instance of the engine
+    /* Set the engine pointer to an instance of the engine */
     if ( !( e = ENGINE_by_id( engine_id ) ) )
     {
         log_error("%s::%s(%d) : Unable to find Engine: %s", LOG_INF, engine_id);
@@ -215,39 +230,44 @@ static ENGINE* initialize_engine( const char *engine_id )
     }
     log_verbose("%s::%s(%d) : Found Engine: %s", LOG_INF, engine_id);
 
-    // Initialize the engine for use
+    /* Initialize the engine for use */
     if ( !ENGINE_init(e) )
     {
-        log_error("%s::%s(%d) : Unable to initialize Engine: %s", LOG_INF, engine_id);
+        log_error("%s::%s(%d) : Unable to initialize Engine: %s", 
+        	LOG_INF, engine_id);
         return NULL;
     }
     log_verbose("%s::%s(%d) : Initialized Engine: %s", LOG_INF, engine_id);
 
-    // Register the engine for use with all algorithms
+    /* Register the engine for use with all algorithms */
     if ( !ENGINE_set_default( e, ENGINE_METHOD_ALL ) )
     {
-        log_error("%s::%s(%d) : Unable to set %s as the default engine", LOG_INF, engine_id);
+        log_error("%s::%s(%d) : Unable to set %s as the default engine", 
+        	LOG_INF, engine_id);
         return NULL;
     }
-    log_verbose("%s::%s(%d) : Sucessfully set %s as the default engine", LOG_INF, engine_id);
+    log_verbose("%s::%s(%d) : Sucessfully set %s as the default engine", 
+    	LOG_INF, engine_id);
 
     ENGINE_register_complete( e );
     return e;
-} // initialize_engine
-#endif // __TPM__
+} /* initialize_engine */
+#endif /* __TPM__ */
 
-/**
- * Serialize the AgentName and CSR Subject using a json file.  In practice this
- * is a file that is held on a common data store (i.e. network drive)
- *	@return - success = 1
- *		      failure = 0
- */
+/**                                                                           */
+/* Serialize the AgentName and CSR Subject using a json file.  In practice    */
+/* this is a file that is held on a common data store (i.e. network drive)    */
+/*  @param  : none                                                            */
+/*	@return : success = 1                                                     */
+/*		    : failure = 0                                                     */
+/*                                                                            */
 static int do_serialization( void )
 {
 	struct SerializeData* serial = serialize_load(ConfigData->SerialFile);
 	if(!serial)
 	{
-		log_error("%s::%s(%d) : Unable to load Serialization file: %s",	LOG_INF,ConfigData->SerialFile);
+		log_error("%s::%s(%d) : Unable to load Serialization file: %s",	
+			LOG_INF,ConfigData->SerialFile);
 		return 0;
 	}
 	log_trace("%s::%s(%d) : Freeing AgentName & CSRSubject", LOG_INF);
@@ -259,10 +279,13 @@ static int do_serialization( void )
 		log_error("%s::%s(%d) : Out of memory",	LOG_INF);
 		return 0;
 	}
-	sprintf(ConfigData->AgentName, "%s-%d", serial->ModelName, serial->NextNumber);
-	log_trace("%s::%s(%d) : ConfigData->AgentName set to: %s", LOG_INF,ConfigData->AgentName);
+	sprintf(ConfigData->AgentName, "%s-%d", serial->ModelName, 
+		serial->NextNumber);
+	log_trace("%s::%s(%d) : ConfigData->AgentName set to: %s", 
+		LOG_INF,ConfigData->AgentName);
 	sprintf(ConfigData->CSRSubject, "CN=%d", serial->NextNumber);
-	log_trace("%s::%s(%d) : ConfigData->CSRSubject set to: %s",	LOG_INF,ConfigData->CSRSubject);
+	log_trace("%s::%s(%d) : ConfigData->CSRSubject set to: %s",	
+		LOG_INF,ConfigData->CSRSubject);
 	serial->NextNumber++;
 	ConfigData->Serialize = false;
 	config_save();
@@ -276,13 +299,14 @@ static int do_serialization( void )
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
-/**
- * Transfer the job to the appropriate function based on the job type.
- *
- * @param  [Input] : job = pointer to a job structure containing the Job type,
- *                         job guid, where to ask for configuration, etc.
- * @return job results as an integer
- */ 
+
+/**                                                                           */
+/* Transfer the job to the appropriate function based on the job type.        */
+/*                                                                            */
+/* @param  [Input] : job = pointer to a job structure containing the Job type,*/
+/*                         job guid, where to ask for configuration, etc.     */
+/* @return job results as an integer                                          */
+/*                                                                            */ 
 int run_job(struct SessionJob* job)
 {
 	char* chainJobId = NULL;
@@ -308,13 +332,15 @@ int run_job(struct SessionJob* job)
 	}
 	else 
 	{
-		log_error("%s::%s(%d) : Unimplemented support for job type %s.  Ignoring job request", LOG_INF, job->JobTypeId);
+		log_error("%s::%s(%d) : Unimplemented support for job type %s.  "
+			"Ignoring job request", LOG_INF, job->JobTypeId);
 	}
 
 #if defined (__RUN_CHAIN_JOBS__)
 	if(chainJobId) 
 	{
-		log_info("%s::%s(%d) : Completed job indicates that job %s should be run immediately", LOG_INF, chainJobId);
+		log_info("%s::%s(%d) : Completed job indicates that job %s should be"
+			" run immediately", LOG_INF, chainJobId);
 		chainJob = get_job_by_id(&JobList, chainJobId);
 		if(chainJob) 
 		{
@@ -322,7 +348,8 @@ int run_job(struct SessionJob* job)
 		}
 		else 
 		{
-			log_info("%s::%s(%d) : Job %s could not be found in the scheduled jobs list, and will not be run", LOG_INF, chainJobId);
+			log_info("%s::%s(%d) : Job %s could not be found in the scheduled"
+				" jobs list, and will not be run", LOG_INF, chainJobId);
 		}
 	}
 #endif
@@ -334,29 +361,30 @@ int run_job(struct SessionJob* job)
 	return status;
 } /* run_job */
 
-/**
- *	Initialize the data structures, ssl, the configuration, etc.
- *
- *	@param  - [Input] argc the # of command line arguments
- *	@param  - [Input] argv the array of command line argument strings
- *	@return - success 1
- *			  failure 0
- */
+/**                                                                           */
+/*	Initialize the data structures, ssl, the configuration, etc.              */
+/*                                                                            */
+/*	@param  - [Input] argc the # of command line arguments                    */
+/*	@param  - [Input] argv the array of command line argument strings         */
+/*	@return - success 1                                                       */
+/*			  failure 0                                                       */
+/*                                                                            */
 int init_platform( int argc, char* argv[] )
 {
-	/***************************************************************************
-	 * 1. Parse the command line parameters.
-	 **************************************************************************/
+	/**************************************************************************/
+	/* 1. Parse the command line parameters.                                  */
+	/**************************************************************************/
 	log_trace("%s::%s(%d) : Parsing Parameters", LOG_INF);
 	if ( 0 == parse_parameters( argc, &argv[0] ) ) 
 	{
-		log_error("%s::%s(%d) : Failed to parse command line parameters", LOG_INF);
+		log_error("%s::%s(%d) : Failed to parse command line parameters", 
+			LOG_INF);
 		return 0;
 	}
 
-	/***************************************************************************
-	* 2. Load the configuration data
-	***************************************************************************/
+	/**************************************************************************/
+	/* 2. Load the configuration data                                         */
+	/**************************************************************************/
 	printf("%s::%s(%d) : Loading configuration data", LOG_INF);
 	ConfigData = config_load();
 	if(!ConfigData)	
@@ -365,24 +393,24 @@ int init_platform( int argc, char* argv[] )
 		return 0;
 	}
 
-	/***************************************************************************
-	 * 3. Initialize logging
-	 **************************************************************************/
+	/**************************************************************************/
+	/* 3. Initialize logging                                                  */
+	/**************************************************************************/
 	load_log_buffer();
 
-	/***************************************************************************
-	 * 4. Validate configuration data is acceptable
-	 **************************************************************************/
+	/**************************************************************************/
+	/* 4. Validate configuration data is acceptable                           */
+	/**************************************************************************/
 	if (!validate_configuration())
 	{
 		log_error("%s::%s(%d) : Configuration file has errors!", LOG_INF);
 		return 0;
 	}
 
-	/***************************************************************************
-	  5. If we are using a TPM, then initialize it & set it to be the source for
-	     all cryptographic calls to openSSL
-	 **************************************************************************/
+	/**************************************************************************/
+	/* 5. If we are using a TPM, then initialize it & set it to be the source */
+	/*    for all cryptographic calls to openSSL                              */
+	/**************************************************************************/
 #ifdef __TPM__
   log_trace("%s::%s(%d) : Initializing TPM engine", LOG_INF);
 	e = initialize_engine( engine_id );
@@ -393,9 +421,9 @@ int init_platform( int argc, char* argv[] )
 	}
 #endif
 
-	/***************************************************************************
-	 * 6. Initalize the SSL wrapper and curl
-	 **************************************************************************/
+	/**************************************************************************/
+	/* 6. Initalize the SSL wrapper and curl                                  */
+	/**************************************************************************/
 	ssl_init();
 
 	log_trace("%s::%s(%d) : Initializing cURL", LOG_INF);
@@ -406,9 +434,9 @@ int init_platform( int argc, char* argv[] )
 	}
 	curlLoaded = true;
 
-	/***************************************************************************
-	 * 7. If required, serialize the agent
-	 **************************************************************************/
+	/**************************************************************************/
+	/* 7. If required, serialize the agent                                    */
+	/**************************************************************************/
 	if (ConfigData->Serialize) 
 	{
 		log_trace("%s::%s(%d) : Serialize -> true", LOG_INF);
@@ -423,14 +451,14 @@ int init_platform( int argc, char* argv[] )
 	return 1;
 } /* init_platform */
 
-/**
- * Free any dynamic memory that was allocated and not released yet.
- * Clean up the curl, ssl, and crypto layers.
- *
- * @param  - none
- * @return - success : true
- *           failure : false
- */
+/**                                                                           */
+/* Free any dynamic memory that was allocated and not released yet.           */
+/* Clean up the curl, ssl, and crypto layers.                                 */
+/*                                                                            */
+/* @param  - none                                                             */
+/* @return - success : true                                                   */
+/*           failure : false                                                  */
+/*                                                                            */
 bool release_platform(void)
 {
 	bool bResult = false;
@@ -465,27 +493,27 @@ bool release_platform(void)
 } /* release_platform */
 
 #if defined(__INFINITE_AGENT__)
-/**
- * @fn _loop
- * Runs the infinite loop agent (OFF by default)
- * @param  - none
- * @return - none
- */
+/**                                                                           */
+/* @fn _loop                                                                  */
+/* Runs the infinite loop agent (OFF by default)                              */
+/* @param  - none                                                             */
+/* @return - none                                                             */
+/*                                                                            */
 static void main_loop( void )
 {
 	time_t now = 0;
-	/***************************************************************************
-	 * 1. Prepare for the first time through the while loop; force immediate
-	 *    session generation.
-	 **************************************************************************/
+	/**************************************************************************/
+	/* 1. Prepare for the first time through the while loop; force immediate  */
+	/*    session generation.                                                 */
+	/**************************************************************************/
 	SessionData.UnreachableCount = 0;
 	SessionData.Interval = 30;
 	SessionData.NextExecution = time(NULL);
 	int firstPass = 1;
 
-    /***************************************************************************
-	 * The main loop
-	 **************************************************************************/
+    /**************************************************************************/
+	/* The main loop                                                          */
+	/**************************************************************************/
 	while(true)	{
 		log_verbose("%s::%s(%d) : Waking up to look for work",  LOG_INF);
 		now = time(NULL);
@@ -506,7 +534,7 @@ static void main_loop( void )
 			firstPass = 0;
 		}
 
-		// Get current time again to deal with immediate jobs
+		/* Get current time again to deal with immediate jobs */
 		now = time(NULL); 
 
 		struct SessionJob* job;
@@ -528,82 +556,84 @@ static void main_loop( void )
 	}
 
 	return;
-}
+} /* main_loop */
 #else
-/**
- * @fn _loop
- * Runs a single loop agent (ON by default)
- * @param  - none
- * @return - none
- */
+/**                                                                           */
+/* Runs a single loop agent (ON by default)                                   */
+/* @param  - none                                                             */
+/* @return - none                                                             */
+/*                                                                            */
 static void main_loop( void )
 {
 	time_t now = 0;
-	// First establish a session with the platform; the session registration
-	// gets all of the jobs from the platform.  (Unless EnrollOnStartup is 
-	// true in the config file.  If EnrollOnStartup is true, the agent 
-	// makes a keypair & a CSR to send up to the platform for the agent)	
-	log_verbose("%s::%s(%d) : Connecting to platform for session & job list", LOG_INF);
+	/* First establish a session with the platform; the session registration */
+	/* gets all of the jobs from the platform.  (Unless EnrollOnStartup is */
+	//*true in the config file.  If EnrollOnStartup is true, the agent */
+	/* makes a keypair & a CSR to send up to the platform for the agent)	*/
+	log_verbose("%s::%s(%d) : Connecting to platform for session & job list", 
+		LOG_INF);
 	register_session(&SessionData, &JobList, AGENT_VERSION);
 	currentJob = JobList;
 
-    /***************************************************************************
-	 *    The main loop, run all the jobs in the list, one at a time
-	 *    based on the priority defined in session.c
-	 **************************************************************************/
+    /**************************************************************************/
+	/*    The main loop, run all the jobs in the list, one at a time          */
+	/*    based on the priority defined in session.c                          */
+	/**************************************************************************/
 	while(NULL != currentJob)
 	{
 		// Run the jobs based on the time queue
 		now = time(NULL); 
 		int status = run_job(currentJob->Job);
-		log_info("%s::%s(%d) : Advancing to job number %s", LOG_INF, NULL == currentJob->NextJob ? "NULL" : currentJob->NextJob->Job->JobId);
+	log_info("%s::%s(%d) : Advancing to job number %s", LOG_INF, 
+		NULL == currentJob->NextJob ? "NULL" : currentJob->NextJob->Job->JobId);
 		currentJob = currentJob->NextJob;
 	}
 
-	log_info("%s::%s(%d) : No jobs to run -- Begin Agent Shutdown & Memory Release", LOG_INF);
+	log_info("%s::%s(%d) : No jobs to run -- Begin Agent Shutdown &"
+		" Memory Release", LOG_INF);
 
 	return;
-}
+} /* main_loop */
 #endif
 
-/**
- *	@fn int main(int argc, char* argv[])
- *	Main program entry point.  This controls all flow.
- *	@retval EXIT_SUCCESS if successful
- *	@retval EXIT_FAILURE if failure.
- */
+/**                                                                           */
+/*	Main program entry point.  This controls all flow.                        */
+/*  @param   [Input] argc = the number of command line arguments passed       */
+/*  @param   [Input] argv = string array containing argc # of passed commands */
+/*	@return  success : EXIT_SUCCESS                                           */
+/*           failure : EXIT_FAILURE                                           */
+/*                                                                            */
 int main( int argc, char* argv[] )
 {
 	time_t now = 0;
-	/***************************************************************************
-	 * 1. Initialize items based on command line, config.json, and #defines
-	 **************************************************************************/
+	/**************************************************************************/
+	/* 1. Initialize items based on command line, config.json, and #defines   */
+	/**************************************************************************/
  	if ( !init_platform( argc, &argv[0] ) )	
  	{
 		log_error("%s::%s(%d) : Failed to initialize platform", LOG_INF);
 		goto error_exit;
 	}
 
-	/***************************************************************************
-	 * 2. Run the main loop (selected based on the defines in the makefile)
-	 **************************************************************************/
+	/**************************************************************************/
+	/* 2. Run the main loop (selected based on the defines in the makefile)   */
+	/**************************************************************************/
 	main_loop();
 
-    /***************************************************************************
-	 * Finalize & exit -- successful
-	 **************************************************************************/
+    /**************************************************************************/
+	/* Finalize & exit -- successful                                          */
+	/**************************************************************************/
 good_exit:
 	release_platform();
 	exit(EXIT_SUCCESS);
 
-	/***************************************************************************
-	 * Finalize & exit -- error
-	 **************************************************************************/
+	/**************************************************************************/
+	/* Finalize & exit -- error                                               */
+	/**************************************************************************/
 error_exit:
 	release_platform();
   	exit(EXIT_FAILURE);
-} // main
-
+} /* main */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/
 /******************************************************************************/

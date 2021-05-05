@@ -18,6 +18,25 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+/******************************************************************************/
+/***************************** LOCAL DEFINES  *********************************/
+/******************************************************************************/
+
+/******************************************************************************/
+/************************ LOCAL GLOBAL STRUCTURES *****************************/
+/******************************************************************************/
+
+/******************************************************************************/
+/************************* LOCAL GLOBAL VARIABLES *****************************/
+/******************************************************************************/
+
+/******************************************************************************/
+/************************ LOCAL FUNCTION DEFINITIONS **************************/
+/******************************************************************************/
+
+/******************************************************************************/
+/*********************** GLOBAL FUNCTION DEFINITIONS **************************/
+/******************************************************************************/
 /**
  * Return a substring that is everything up to the last character to find
  * 
@@ -33,7 +52,8 @@ char* get_prefix_substring(const char* string, const char find)
 {
 	char* subString = NULL;
 
-	log_trace("%s::%s(%d) : Find character %c in string %s", LOG_INF, find, string);
+	log_trace("%s::%s(%d) : Find character %c in string %s", 
+		LOG_INF, find, string);
 	char* ptr = strrchr(string,find);
 
 	if ( ptr )
@@ -52,21 +72,20 @@ char* get_prefix_substring(const char* string, const char find)
 	return subString;
 } /* get_prefix_substring */
 
-/******************************************************************************/
-/** @fn int file_exists( const char *file )
-	@brief checks if a file exists already
-	@param const char *file = path and filename of file to check
-	@returns 0 if file does not exist, is a directory, or is a sym link,
-	         1 if it does exist
-*/
-/******************************************************************************/
+
+/**                                                                           */
+/*	checks if a file exists already                                           */
+/*	@param const char *file = path and filename of file to check              */
+/*	@returns 0 if file does not exist, is a directory, or is a sym link,      */
+/*	         1 if it does exist                                               */
+/*                                                                            */
 int file_exists( const char *file )
 {
 	int retval = 0;
 	struct stat file_stat;
 
-	stat(file, &file_stat); // what file do we have?
-	if ( 0 != S_ISREG(file_stat.st_mode) ) // if we have a regular file
+	stat(file, &file_stat); /* what file do we have? */
+	if ( 0 != S_ISREG(file_stat.st_mode) ) /* if we have a regular file */
 	{
 		if ( -1 != access( file, F_OK ) ) 
 		{
@@ -77,74 +96,75 @@ int file_exists( const char *file )
 	return retval;
 } /* file_exists */
 
-/******************************************************************************/
-/** @fn is_directory( const char *file )
-	@brief checks if a string is really a directory
-	@param const char *file = path and filename of file to check
-	@returns true if file is actually a directory
-	         false if the file is actually a file
-*/
-/******************************************************************************/
+/**                                                                           */
+/*	@brief checks if a string is really a directory                           */
+/*	@param const char *file = path and filename of file to check              */
+/*	@return true if file is actually a directory                              */
+/*	         false if the file is actually a file                             */
+/*                                                                            */
 bool is_directory( const char *file )
 {
 	bool bResult = false;
 	struct stat file_stat;
 	stat(file, &file_stat);
-	log_trace("%s::%s(%d) : %s = %d", LOG_INF, file, S_ISDIR(file_stat.st_mode));
+	log_trace("%s::%s(%d) : %s = %d", LOG_INF, file, 
+		S_ISDIR(file_stat.st_mode));
 	if ( 0 != S_ISDIR(file_stat.st_mode) )
 	{
 		bResult = true;
 	}
 	return bResult;
-}
+} /* is_directory */
 
-/******************************************************************************/
-/** @fn char NibbleToChar
-	@brief Convert a single hex nibble 0..9..F
-	@param char hexStr[] = Where to store the converted hex String
-	@param int stringSize = The size of the string passed to the function
-	@param unsigned char byteData[] = the byte data to convert as a byte array
-	@param int byteSize = the size of the byte array
-	@returns The ascii character for the hex nibble on success
-	@returns A Z character if the nibble wasn't a valid hex character
-*/
-/******************************************************************************/
+
+/**                                                                           */
+/*	Convert a single hex nibble 0..9..F                                       */
+/*	@param char hexStr[] = Where to store the converted hex String            */
+/*	@param int stringSize = The size of the string passed to the function     */
+/*	@param unsigned char byteData[] = the byte data to convert as a byte array*/
+/*	@param int byteSize = the size of the byte array                          */
+/*	@returns The ascii character for the hex nibble on success                */
+/*	@returns A Z character if the nibble wasn't a valid hex character         */
+/*                                                                            */
 char NibbleToChar( unsigned char nibbleData )
 {
 	char retVal;
-	if ( nibbleData <= 9 ) // note: it is unsigned so always >= 0
+	if ( nibbleData <= 9 ) /* note: it is unsigned so always >= 0 */
 	{
 		retVal = 0x30 + nibbleData;
 	}
 	else if (( nibbleData >= 10 ) && ( nibbleData <= 15 ))
 	{
-		// use 0x41 if you want upper case A..F
+		/* use 0x41 if you want upper case A..F */
 		retVal = 0x61 + ( nibbleData - 10 );
 	}
 	else
 	{
-		retVal = 'Z'; // Error!!
+		retVal = 'Z'; /* Error!! */
 	}
 	return retVal;
-} // NibbleToChar
+} /* NibbleToChar */
 
-/******************************************************************************/
-/** @fn void byte_to_hex_string
-	@brief Convert a byte array into a hex string of characters.
-	@param char hexStr[] = Where to store the converted hex String
-	@param int stringSize = The size of the string passed to the function
-	@param unsigned char byteData[] = the byte data to convert as a byte array
-	@param int byteSize = the size of the byte array
-	@returns 0 on success, -1 on failure
-*/
-/******************************************************************************/
-int byte_to_hex_string( char hexStr[], int stringSize, unsigned char byteData[], int byteSize )
+/**                                                                           */
+/*	@brief Convert a byte array into a hex string of characters.              */
+/*	@param char hexStr[] = Where to store the converted hex String            */
+/*	@param int stringSize = The size of the string passed to the function     */
+/*	@param unsigned char byteData[] = the byte data to convert as a byte array*/
+/*	@param int byteSize = the size of the byte array                          */
+/*	@returns 0 on success, -1 on failure                                      */
+/*                                                                            */
+int byte_to_hex_string( char hexStr[], int stringSize, 
+	unsigned char byteData[], int byteSize )
 {
 	int i = 0, c = 0;
 	unsigned char lowNibble, highNibble;
 	char lowNibbleChar, highNibbleChar;
 
-	if ( stringSize < (( 2 * byteSize ) + 1) ) goto err; // string array isn't big enuf
+	if ( stringSize < (( 2 * byteSize ) + 1) ) 
+	{
+		/* String array isn't big enough */
+		goto err; 
+	}
 
 	for ( ; byteSize > i; i++ )
 	{
@@ -155,21 +175,19 @@ int byte_to_hex_string( char hexStr[], int stringSize, unsigned char byteData[],
 		hexStr[c++] = highNibbleChar;
 		hexStr[c++] = lowNibbleChar;
 	}
-	hexStr[c] = '\0'; // remember to terminate the string!
-	return 0; // success
+	hexStr[c] = '\0'; /* remember to terminate the string! */
+	return 0; /* success */
 
 err:
 	return -1;
-} // ByteToHexString
+} /* ByteToHexString */
 
-/******************************************************************************/
-/** @fn void toLowerCase( char[] s)
-	@brief convert a string to lower case, but ignore special characters
-	@param char[] s = the string to convert
-	@param len = the number of characters in the string
-	@returns nothing
-*/
-/******************************************************************************/
+/**                                                                           */
+/*	@brief convert a string to lower case, but ignore special characters      */
+/*	@param char[] s = the string to convert                                   */
+/*	@param len = the number of characters in the string                       */
+/*	@return nothing                                                           */
+/*                                                                            */
 void to_Lower_Case( char s[], const int len)
 {
 	int i = 0;
@@ -178,19 +196,18 @@ void to_Lower_Case( char s[], const int len)
 	{
 		if ( s[i] >= 'A' && s[i] <= 'Z' )
 		{
-			s[i] = s[i] + 0x20;  // shift up 32
+			s[i] = s[i] + 0x20;  /* shift up 32 */
 		}
 	}
 	return;
-} // toLowerCase
+} /* toLowerCase */
 
-/******************************************************************************/
-/** @fn int create_file( const char *file )
-	@brief creates a blank file
-	@param const char *file = path and filename of file to create
-	@returns 0 if file file creation fails, 1 if file creation succeeds
-*/
-/******************************************************************************/
+
+/**                                                                           */
+/*	@brief creates a blank file                                               */
+/*	@param const char *file = path and filename of file to create             */
+/*	@returns 0 if file file creation fails, 1 if file creation succeeds       */
+/*                                                                            */
 int create_file( const char *file )
 {
 	int retval = 0;
@@ -202,7 +219,7 @@ int create_file( const char *file )
 		retval = 1;
 	}
 	return retval;
-} // create_file
+} /* create_file */
 
 char* hex_encode(unsigned char* inBuf, int len)
 {
@@ -336,27 +353,6 @@ static int copy_file(const char* srcPath, const char* destPath)
 		{
 			fclose(fpWrite);
 		}
-#ifdef __COMMENT_OUT__
-		// Trying to match owner, etc. causes problems for non-privelged users. Callers of this method should get access themselves based on their circumstances
-		struct stat destSt;
-		if(stat(destPath, &destSt) == 0)
-		{
-			if(chmod(destPath, (st.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) < 0)
-			{
-				err = errno;
-			}
-
-			uid_t uid = st.st_uid == destSt.st_uid ? -1 : st.st_uid;
-			gid_t gid = st.st_gid == destSt.st_gid ? -1 : st.st_gid;
-			if(uid != -1 || gid != -1)
-			{
-				if(chown(destPath, uid, gid) < 0)
-				{
-					err = errno;
-				}
-			}
-		}
-#endif
 	}
 	else
 	{
@@ -366,7 +362,8 @@ static int copy_file(const char* srcPath, const char* destPath)
 	return err;
 }
 
-int read_file_bytes(const char* srcPath, unsigned char** pFileBytes, size_t* fileLen)
+int read_file_bytes(const char* srcPath, unsigned char** pFileBytes, 
+	size_t* fileLen)
 {
 	int err = 0;
 
@@ -440,8 +437,7 @@ int backup_file(const char* file)
 		{
 			dummy = strdup(file);
 		}
-		log_info("%s::%s(%d) : No file found at %s", \
-			LOG_INF, dummy);
+		log_info("%s::%s(%d) : No file found at %s", LOG_INF, dummy);
 		free(dummy);
 		err = ENOENT;
 	}
@@ -480,7 +476,7 @@ int replace_file(const char* file, const char* contents, long len, bool backup)
 
 	if(!err || err == ENOENT)
 	{
-		err = 0; // Inability to backup a file because it doesn't exist is fine
+		err = 0; /*Inability to backup a file because it doesn't exist is fine*/
 
 		FILE* fpWrite = fopen(file, "w");
 		if(!fpWrite)
@@ -492,8 +488,8 @@ int replace_file(const char* file, const char* contents, long len, bool backup)
 		}
 		else
 		{
-			log_verbose("%s::%s(%d) : Preparing to write %ld bytes to the modified store",
-						LOG_INF, len);
+			log_verbose("%s::%s(%d) : Preparing to write %ld bytes to the"
+				" modified store", LOG_INF, len);
 
 			if(fwrite(contents, 1, len, fpWrite) == (size_t)len)
 			{
@@ -518,15 +514,12 @@ int replace_file(const char* file, const char* contents, long len, bool backup)
 	return err;
 }
 
-
-/******************************************************************************/
-/** @fn char* util_strip_string
-	@brief strip a string from another string & return the result.
-	       NOTE: This is a CASE SENSITIVE removal.
-	@param fromString, the full string from which we want to remove
-	@param stripString, the string we want to strip from fromString
-*/
-/******************************************************************************/
+/**                                                                           */
+/*	@brief strip a string from another string & return the result.            */
+/*	       NOTE: This is a CASE SENSITIVE removal.                            */
+/*	@param fromString, the full string from which we want to remove           */
+/*	@param stripString, the string we want to strip from fromString           */
+/*                                                                            */
 char* util_strip_string(const char* fromString, const char* stripString)
 {
 	char* beforeString = NULL;
@@ -540,7 +533,7 @@ char* util_strip_string(const char* fromString, const char* stripString)
 	size_t stripPtrLen = 0;
 
 
-	log_trace("%s::%s(%d) : Attempting to strip %s from %s", \
+	log_trace("%s::%s(%d) : Attempting to strip %s from %s", 
 		LOG_INF, stripString,fromString);
 	/* get a pointer into fromString at the staring location */
 	/* of the strip string */
@@ -550,7 +543,8 @@ char* util_strip_string(const char* fromString, const char* stripString)
 		stripPtrLen = strlen(stripPointer);
 		if ( fromLen > stripPtrLen )
 		{
-			beforeString = calloc( (fromLen-stripPtrLen+1), sizeof(*beforeString) );
+			beforeString = calloc( (fromLen-stripPtrLen+1), 
+				sizeof(*beforeString) );
 			strncpy( beforeString, fromString, (fromLen-stripPtrLen) );
 		}
 		else
@@ -579,14 +573,14 @@ char* util_strip_string(const char* fromString, const char* stripString)
 	return returnString;
 } /* util_strip_string */
 
-/**																*/
-/* Better string concatenation vs the mess that is ANSI C 		*/
-/* 																*/
-/* @param  - [Input] s1 = null terminated string to pre-pend 	*/
-/* @param  - [Input] s2 = null terminated string to append 		*/
-/* @return - failure: NULL 										*/
-/*           success: ptr to the new string 					*/
-/** 															*/
+/**                                                                           */
+/* Better string concatenation vs the mess that is ANSI C                     */
+/*                                                                            */
+/* @param  - [Input] s1 = null terminated string to pre-pend                  */
+/* @param  - [Input] s2 = null terminated string to append                    */
+/* @return - failure: NULL                                                    */
+/*           success: ptr to the new string                                   */
+/*                                                                            */
 char* bstrcat(const char* s1, const char* s2)
 {
 	size_t s1Len, s2Len, i, j;
@@ -630,3 +624,6 @@ char* bstrcat(const char* s1, const char* s2)
 
 	return result;
 } /* bstrcat */
+/******************************************************************************/
+/******************************* END OF FILE **********************************/
+/******************************************************************************/

@@ -1,18 +1,21 @@
-/******************************************************************************
- * Usage of this file and the SDK is subject to the SOFTWARE DEVELOPMENT KIT 
- * LICENSE included here as README-LICENSE.txt.  Additionally, this C Agent 
- * Reference Implementation uses the OpenSSL encryption libraries, which are 
- * not included as a part of this distribution.  
- * For hardware key storage or TPM support, libraries such as WolfSSL may also
- * be used in place of OpenSSL.
- ******************************************************************************/
-/** @file httpclient.c */
+/******************************************************************************/
+/* Copyright 2021 Keyfactor                                                   */
+/* Licensed under the Apache License, Version 2.0 (the "License"); you may    */
+/* not use this file except in compliance with the License.  You may obtain a */
+/* copy of the License at http://www.apache.org/licenses/LICENSE-2.0.  Unless */
+/* required by applicable law or agreed to in writing, software distributed   */
+/* under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES   */
+/* OR CONDITIONS OF ANY KIND, either express or implied. See the License for  */
+/* thespecific language governing permissions and limitations under the       */
+/* License.                                                                   */
+/******************************************************************************/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <curl/curl.h>
-#include <time.h> // BL-20654
+#include <time.h> 
 
 #include "logging.h"
 #include "httpclient.h"
@@ -27,39 +30,55 @@
   #include <tpm2-tss-engine.h>
 #endif
 
-/**
- * The memory structure used by curl in its callback function
- * memory holds the curl response data (our callback NULL terminates this data)
- * size holds the size of the data
- */
+
+/******************************************************************************/
+/***************************** LOCAL DEFINES  *********************************/
+/******************************************************************************/
+
+/******************************************************************************/
+/************************ LOCAL GLOBAL STRUCTURES *****************************/
+/******************************************************************************/
+/**                                                                           */
+/* The memory structure used by curl in its callback function                 */
+/* memory holds the curl response data (callback NULL terminates this data)   */
+/* size holds the size of the data                                            */
+/*                                                                            */
 struct MemoryStruct {
   char *memory;
   size_t size;
 };
 
-/**
- * The memory callback function curl uses -- the default is fwrite, so we
- * want to change that behaviour.
- *
- * to send data to this function, execute:
- *  curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback)
- *
- * to pass our 'chunk' structure we need this code:
- *  struct MemoryStruct chunk;
- *  curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);
- *
- * This function gets called by libcurl as soon as there is data received
- * that needs to be saved.  For most transfers, this callback gets called many
- * times and each invoke delivers another chunk of data. 
- *
- * @param  - [Output] contents = The delivered data (NOT NULL TERMINATED)
- * @param  - [N/A] size = 1.  This is always one (refers to a byte)
- * @param  - [Input] nmemb = The size of the delivered contents
- * @param  - [Output] userp = 
- * @return - success = the number of bytes taken care of
- *           failure = the number of bytes taken care of
- */
-static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
+/******************************************************************************/
+/************************** LOCAL GLOBAL VARIABLES ****************************/
+/******************************************************************************/
+
+/******************************************************************************/
+/************************ LOCAL FUNCTION DEFINITIONS **************************/
+/******************************************************************************/
+/**                                                                           */
+/* The memory callback function curl uses -- the default is fwrite, so we     */
+/* want to change that behaviour.                                             */
+/*                                                                            */
+/* to send data to this function, execute:                                    */
+/*  curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback) */
+/*                                                                            */
+/* to pass our 'chunk' structure we need this code:                           */
+/*  struct MemoryStruct chunk;                                                */
+/*  curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);         */
+/*                                                                            */
+/* This function gets called by libcurl as soon as there is data received     */
+/* that needs to be saved.  For most transfers, this callback gets called many*/
+/* times and each invoke delivers another chunk of data.                      */
+/*                                                                            */
+/* @param  - [Output] contents = The delivered data (NOT NULL TERMINATED)     */
+/* @param  - [N/A] size = 1.  This is always one (refers to a byte)           */
+/* @param  - [Input] nmemb = The size of the delivered contents               */
+/* @param  - [Output] userp =                                                 */
+/* @return - success = the number of bytes taken care of                      */
+/*           failure = the number of bytes taken care of                      */
+/*                                                                            */
+static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, 
+  void *userp)
 {
   size_t realsize = size * nmemb;
   struct MemoryStruct *mem = (struct MemoryStruct *)userp;
@@ -78,12 +97,12 @@ static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, voi
   return realsize;
 } /* WriteMemoryCallback */
 
-/**
- *   Check if a file exists
- *   @param fileName = the filename to look on the filesystem for
- *   @retval true = file exists
- *   @retval false = file isn't there or other error
- */
+/**                                                                           */
+/*   Check if a file exists                                                   */
+/*   @param fileName = the filename to look on the filesystem for             */
+/*   @retval true = file exists                                               */
+/*   @retval false = file isn't there or other error                          */
+/*                                                                            */
 static bool check_file_exists( const char *fileName )
 {
   FILE *fp;
@@ -98,33 +117,36 @@ static bool check_file_exists( const char *fileName )
   }
 } /* file_exists */
 
-/**
- *  Issue an HTTP POST command stating that the content is JSON and that a
- *   JSON response is accepted.
- *
- *   @param url = a string with the URL address to contact
- *   @param username = a string with the username to log into the URL address
- *   @param password = a string with password to log into the URL address
- *   @param trustStore = a string with a filename containing additional
- *                       trusted certificates
- *   @param clientCert = a string with a filename containing a CA signed
- *                       cert for this platform (for TLS communication)
- *   @param clientKey = a string with a filename containing the private key
- *                      associated with the clientCert
- *   @param clientKeyPass = a string with the password associated with the
- *                          clientKey
- *   @param postData = a JSON string
- *   @param pRespData = a pointer to a string where the HTTP response
- *                      data gets set.  NOTE: This memory gets DYNAMICALLY
- *                      allocated here!  You need to properly dispose of it in
- *                      the calling function.
- *   @param retryCount = The number of times to try the http session
- *   @param retryInterval = The time (in seconds) between retries
- *   @return 0 on successfull completion
- *           1-99 corresponding to the failed cURL response code
- *           255 if the dynamic memory allocation for pRespData fails
- *           300-511 The HTTP response error (e.g. 404 Not Found)
- */
+/******************************************************************************/
+/*********************** GLOBAL FUNCTION DEFINITIONS **************************/
+/******************************************************************************/
+/**                                                                           */
+/*  Issue an HTTP POST command stating that the content is JSON and that a    */
+/*   JSON response is accepted.                                               */
+/*                                                                            */
+/*   @param url = a string with the URL address to contact                    */
+/*   @param username = a string with the username to log into the URL address */
+/*   @param password = a string with password to log into the URL address     */
+/*   @param trustStore = a string with a filename containing additional       */
+/*                       trusted certificates                                 */
+/*   @param clientCert = a string with a filename containing a CA signed      */
+/*                       cert for this platform (for TLS communication)       */
+/*   @param clientKey = a string with a filename containing the private key   */
+/*                      associated with the clientCert                        */
+/*   @param clientKeyPass = a string with the password associated with the    */
+/*                          clientKey                                         */
+/*   @param postData = a JSON string                                          */
+/*   @param pRespData = a pointer to a string where the HTTP response         */
+/*                      data gets set.  NOTE: This memory gets DYNAMICALLY    */
+/*                      allocated here!  You need to properly dispose of it in*/
+/*                      the calling function.                                 */
+/*   @param retryCount = The number of times to try the http session          */
+/*   @param retryInterval = The time (in seconds) between retries             */
+/*   @return 0 on successfull completion                                      */
+/*           1-99 corresponding to the failed cURL response code              */
+/*           255 if the dynamic memory allocation for pRespData fails         */
+/*           300-511 The HTTP response error (e.g. 404 Not Found)             */
+/*                                                                            */
 int http_post_json(const char* url, const char* username,
                    const char* password, const char* trustStore,
                    const char* clientCert, const char* clientKey,
@@ -152,15 +174,17 @@ int http_post_json(const char* url, const char* username,
 #if  defined(__TPM__)
     if (ConfigData->EnrollOnStartup) 
     {
-      log_info("%s::%s(%d) : Skipping TPM - enroll on startup is turned on.", LOG_INF);
+      log_info("%s::%s(%d) : Skipping TPM - enroll on startup is turned on.", 
+        LOG_INF);
       goto skipTPM;
     }
-    /***************************************************************************
-        When a TPM is used, the clientKey is an encrypted BLOB.  The BLOB can
-        only be decoded inside the TPM.  Tell cURL that this is the case &
-        use the engine_id global variable.  This is usually the tpm2tss engine.
-    ***************************************************************************/
-    log_verbose("%s::%s(%d) : Setting cURL to use TPM as SSL Engine %s", LOG_INF, engine_id);
+    /**************************************************************************/
+    /*  When a TPM is used, the clientKey is an encrypted BLOB.  The BLOB can */
+    /*  only be decoded inside the TPM.  Tell cURL that this is the case &    */
+    /*  use the engine_id global variable.  This is usually the tpm2tss engine*/
+    /**************************************************************************/
+    log_verbose("%s::%s(%d) : Setting cURL to use TPM as SSL Engine %s", 
+      LOG_INF, engine_id);
     int errNum = curl_easy_setopt(curl, CURLOPT_SSLENGINE, engine_id);
     if ( CURLE_OK != errNum ) 
     {
@@ -171,7 +195,8 @@ int http_post_json(const char* url, const char* username,
         log_error( "%s::%s-libcurl: (%d) ", LOG_INF, errNum );
         if ( len ) 
         {
-          log_error( "%s::%s(%d) : %s%s", LOG_INF, errBuff, ((errBuff[len-1] != '\n') ? "\n" : ""));
+          log_error( "%s::%s(%d) : %s%s", LOG_INF, errBuff, 
+            ((errBuff[len-1] != '\n') ? "\n" : ""));
         } 
         else 
         {
@@ -184,7 +209,8 @@ int http_post_json(const char* url, const char* username,
       return errNum;
     }
 
-    log_verbose("%s::%s(%d) : Setting cURL to use TPM as the default SSL Engine %s", LOG_INF, engine_id);
+    log_verbose("%s::%s(%d) : Setting cURL to use TPM as the default "
+      "SSL Engine %s", LOG_INF, engine_id);
     errNum = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
     if ( CURLE_OK != errNum ) 
     {
@@ -195,7 +221,8 @@ int http_post_json(const char* url, const char* username,
         log_error( "%s::%s-libcurl: (%d) ", LOG_INF, errNum );
         if ( len ) 
         {
-          log_error( "%s::%s(%d) : %s%s", LOG_INF, errBuff, ((errBuff[len-1] != '\n') ? "\n" : ""));
+          log_error( "%s::%s(%d) : %s%s", LOG_INF, errBuff, 
+            ((errBuff[len-1] != '\n') ? "\n" : ""));
         } 
         else 
         {
@@ -218,7 +245,8 @@ int http_post_json(const char* url, const char* username,
         log_error( "%s::%s-libcurl: (%d) ", LOG_INF, errNum );
         if ( len ) 
         {
-          log_error( "%s::%s(%d) : %s%s", LOG_INF, errBuff, ((errBuff[len-1] != '\n') ? "\n" : ""));
+          log_error( "%s::%s(%d) : %s%s", LOG_INF, errBuff, 
+            ((errBuff[len-1] != '\n') ? "\n" : ""));
         } 
         else 
         {
@@ -233,10 +261,10 @@ int http_post_json(const char* url, const char* username,
 skipTPM:
 #endif
 
-    /***************************************************************************
-        Set up curl to POST to a url using the username and Password
-        passed to the function
-    ***************************************************************************/
+    /**************************************************************************/
+    /*  Set up curl to POST to a url using the username and Password          */
+    /*  passed to the function                                                */
+    /**************************************************************************/
     log_trace("%s::%s(%d) : Configuring cURL options", LOG_INF);
     (void)curl_easy_setopt(curl, CURLOPT_URL, url);
     (void)curl_easy_setopt(curl, CURLOPT_POST, 1L);
@@ -248,7 +276,8 @@ skipTPM:
     }
     else
     {
-      log_trace("%s::%s(%d) : Username and password not supplied - skipping", LOG_INF);
+      log_trace("%s::%s(%d) : Username and password not supplied - skipping", 
+        LOG_INF);
     }
     (void)curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT);
 #ifdef __HTTP_1_1__
@@ -257,10 +286,10 @@ skipTPM:
     (void)curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 #endif
 
-    /***************************************************************************
-        If the passed files exist in the system, then use them for additional
-        trusted certificates, and certs to create the TLS connection.
-    ***************************************************************************/
+    /**************************************************************************/
+    /*  If the passed files exist in the system, then use them for additional */
+    /*  trusted certificates, and certs to create the TLS connection.         */
+    /**************************************************************************/
 		if( 1 == file_exists(trustStore) )	
     {
       log_trace("%s::%s(%d) : Setting trustStore to %s", LOG_INF,trustStore);
@@ -274,7 +303,8 @@ skipTPM:
     /* Set the cert based on enroll on startup */
     if( ConfigData->EnrollOnStartup ) 
     {
-      log_info("%s::%s(%d) : Bypassing client certificates on initial startup", LOG_INF);
+      log_info("%s::%s(%d) : Bypassing client certificates on initial startup", 
+        LOG_INF);
     } 
     else 
     {
@@ -291,7 +321,8 @@ skipTPM:
       }
       if( (1 == file_exists(clientKey)) && clientKeyPass ) 
       {
-        log_trace("%s::%s(%d) : Setting clientPassword to %s", LOG_INF,clientKeyPass);
+        log_trace("%s::%s(%d) : Setting clientPassword to %s", 
+          LOG_INF,clientKeyPass);
         (void)curl_easy_setopt(curl, CURLOPT_KEYPASSWD, clientKeyPass);
       }
     }   
@@ -303,7 +334,7 @@ skipTPM:
       log_trace("%s::%s(%d) : Turning on cURL verbose output", LOG_INF);
 			(void)curl_easy_setopt( curl, CURLOPT_VERBOSE, 1 );
 			(void)curl_easy_setopt( curl, CURLOPT_ERRORBUFFER, errBuff );
-			errBuff[0] = 0; // empty the error buffer
+			errBuff[0] = 0; /* empty the error buffer */
 		}
 
 		/* send all data to this function  */
@@ -314,34 +345,35 @@ skipTPM:
     log_trace("%s::%s(%d) : cURL options set correctly", LOG_INF);
 
 		struct curl_slist* list = NULL;
-    /**************************************************************************
-        Set up the HTTP header to tell the API this is standard JSON.
-        NOTE: Some versions of Internet Explorer have a problem using
-              these headers.
-        Also, set the content length header option to the data size.
-        //TODO: Error checking, as this is a dynamic memory allocation and any
-                on-demand memory allocation needs a verification step.
-    ***************************************************************************/
+    /**************************************************************************/
+    /*    Set up the HTTP header to tell the API this is standard JSON.       */
+    /*    NOTE: Some versions of Internet Explorer have a problem using       */
+    /*          these headers.                                                */
+    /*    Also, set the content length header option to the data size.        */
+    /*    TODO: Error checking, as this is a dynamic memory allocation and any*/
+    /*            on-demand memory allocation needs a verification step.      */
+    /**************************************************************************/
 		list = curl_slist_append(NULL, "Content-Type: application/json");
 		list = curl_slist_append(list, "Accept: application/json");
 		char clBuf[30];
 		(void)snprintf(clBuf, 30, "Content-Length: %d", (int)strlen(postData));
 		list = curl_slist_append(list, clBuf);
 
-    /**************************************************************************
-        Now add the header & data to the HTTP POST request.
-    ***************************************************************************/
+    /**************************************************************************/
+    /*  Now add the header & data to the HTTP POST request.                   */
+    /**************************************************************************/
     (void)curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
 		(void)curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData);
+    (void)curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (int)strlen(postData));
     log_trace("%s::%s(%d): postData = %s", LOG_INF, postData);
     
 
-    /***************************************************************************
-        Make sure the cURL operation succeeded and the HTTP response code
-        indicates success. If we are successfull, place the response messagee
-        If the cURL operation fails, return the cURL error code.
-        If the HTTP response is an error, return the HTTP failure code.
-    ***************************************************************************/
+    /**************************************************************************/
+    /*  Make sure the cURL operation succeeded and the HTTP response code     */
+    /*  indicates success. If we are successfull, place the response message  */
+    /*  If the cURL operation fails, return the cURL error code.              */
+    /*  If the HTTP response is an error, return the HTTP failure code.       */
+    /**************************************************************************/
 		long httpCode = 0;
     int res = CURLE_FAILED_INIT;
     int tries = retryCount;
@@ -350,12 +382,14 @@ skipTPM:
     {
       res = curl_easy_perform(curl);
       (void)curl_easy_getinfo(curl, CURLINFO_HTTP_CODE, &httpCode);
-      // if there was an error & we still have tries left to do
+      /* if there was an error & we still have tries left to do */
       tries--;
-      log_verbose("%s::%s(%d): curl resp = %d, httpCode = %ld, tries left = %d", LOG_INF,res, httpCode, tries);
+      log_verbose("%s::%s(%d): curl resp = %d, httpCode = %ld, tries left = %d",
+        LOG_INF,res, httpCode, tries);
       if(((CURLE_OK != res) || (httpCode >= 300)) && (0 < tries))
       {
-        log_verbose("%s::%s(%d): Failed curl post. Sleeping %d seconds before retry", LOG_INF,retryInterval);
+        log_verbose("%s::%s(%d): Failed curl post. Sleeping %d seconds "
+          "before retry", LOG_INF,retryInterval);
         if ( 0 < retryInterval )
         {
           (void)sleep((unsigned int)retryInterval);
@@ -363,7 +397,7 @@ skipTPM:
       }
       else
       {
-        tries = 0; // exit the loop
+        tries = 0; /* exit the loop */
       }
     }
     
@@ -376,7 +410,8 @@ skipTPM:
 				log_error( "%s::%s(%d): libcurl: (%d) ", LOG_INF, res );
 				if ( 0 != len ) 
         {
-					log_error( "%s::%s(%d): %s%s", LOG_INF,	errBuff, ((errBuff[len-1] != '\n') ? "\n" : ""));
+					log_error( "%s::%s(%d): %s%s", LOG_INF,	errBuff, 
+            ((errBuff[len-1] != '\n') ? "\n" : ""));
 
 				}	
         else 
@@ -394,7 +429,8 @@ skipTPM:
 		}	
     else 
     {
-			log_verbose("%s::%s(%d): %lu bytes retrieved -- allocating memory for response", LOG_INF, (unsigned long)chunk.size);
+			log_verbose("%s::%s(%d): %lu bytes retrieved -- allocating memory"
+        " for response", LOG_INF, (unsigned long)chunk.size);
 			*pRespData = strdup(chunk.memory);
       log_trace("%s::%s(%d): Response is:\n%s", LOG_INF, *pRespData);
       if ( NULL == *pRespData ) 
@@ -408,7 +444,7 @@ skipTPM:
       }
 		}
 
-		// Cleanup, de-allocate, etc.
+		/* Cleanup, de-allocate, etc. */
 		if (list) 
     { 
       curl_slist_free_all(list); 
@@ -425,3 +461,6 @@ skipTPM:
 
 	return toReturn;
 } /* http_post_json */
+/******************************************************************************/
+/******************************* END OF FILE **********************************/
+/******************************************************************************/
