@@ -209,12 +209,12 @@ void log_error(const char* fmt, ...)
 
 		if (config_loaded) 
 		{
-			/* Write to the log buffer, too */
-			char *log_ptr = &LOG_BUFFER[log_index];
+			/* Write to the log buffer, too */			
 			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) 
 			{ 
 				resize_log_file();		
 			}
+			char *log_ptr = &LOG_BUFFER[log_index];
 			get_log_format(logFormat, fmt, ERRORLVL);
 			va_list args;
 			va_start(args, fmt);
@@ -245,12 +245,12 @@ void log_warn(const char* fmt, ...)
 
 		if (config_loaded) 
 		{
-			/* Write to the log buffer, too */
-			char *log_ptr = &LOG_BUFFER[log_index];
+			/* Write to the log buffer, too */			
 			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) 
 			{ 
 				resize_log_file();		
 			}
+			char *log_ptr = &LOG_BUFFER[log_index];
 			get_log_format(logFormat, fmt, WARNLVL);
 			va_list args;
 			va_start(args, fmt);
@@ -281,12 +281,12 @@ void log_info(const char* fmt, ...)
 
 		if (config_loaded) 
 		{
-			/* Write to the log buffer, too */
-			char *log_ptr = &LOG_BUFFER[log_index];
+			/* Write to the log buffer, too */			
 			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) 
 			{ 
 				resize_log_file();		
 			}
+			char *log_ptr = &LOG_BUFFER[log_index];
 			get_log_format(logFormat, fmt, INFOLVL);
 			va_list args;
 			va_start(args, fmt);
@@ -316,11 +316,12 @@ void log_verbose(const char* fmt, ...)
 		va_end(args);
 #ifdef __DONT_COMPILE_ME__
 		if (config_loaded) {
-			/* Write to the log buffer, too */
-			char *log_ptr = &LOG_BUFFER[log_index];
-			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) { 
+			/* Write to the log buffer, too */			
+			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) 
+			{ 
 				resize_log_file();		
 			}
+			char *log_ptr = &LOG_BUFFER[log_index];
 			get_log_format(logFormat, fmt, VERBOSELVL);
 			va_list args;
 			va_start(args, fmt);
@@ -351,11 +352,12 @@ void log_debug(const char* fmt, ...)
 		va_end(args);
 #ifdef __DONT_COMPILE_ME__
 		if (config_loaded) {
-			/* Write to the log buffer, too */
-			char *log_ptr = &LOG_BUFFER[log_index];
-			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) { 
+			/* Write to the log buffer, too */			
+			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) 
+			{ 
 				resize_log_file();		
 			}
+			char *log_ptr = &LOG_BUFFER[log_index];
 			get_log_format(logFormat, fmt, DEBUGLVL);
 			va_list args;
 			va_start(args, fmt);
@@ -388,12 +390,12 @@ void log_trace(const char* fmt, ...)
 #ifdef __DONT_COMPILE_ME__
 		if (config_loaded) 
 		{
-			/* Write to the log buffer, too */
-			char *log_ptr = &LOG_BUFFER[log_index];
+			/* Write to the log buffer, too */			
 			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) 
 			{ 
 				resize_log_file();		
 			}
+			char *log_ptr = &LOG_BUFFER[log_index];
 			get_log_format(logFormat, fmt, TRACELVL);
 			va_list args;
 			va_start(args, fmt);
