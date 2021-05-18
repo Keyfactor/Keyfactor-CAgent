@@ -82,6 +82,10 @@ Only build one version of the agent, either openSSL or wolfSSL:
 		 				must compile the TPM version of the agent
 
 # Agent History
+	version 2.8.2
+		Fixed some memory leaks
+	version 2.8.1
+		Fixed logging to file bug
 	version 2.8.0
 		Added support for bootstrap certificates (defined in config.json)
 		Updated Licensing information

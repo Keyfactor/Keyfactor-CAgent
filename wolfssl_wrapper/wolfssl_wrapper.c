@@ -690,6 +690,9 @@ static void free_local_keys(void)
 	log_trace("%s::%s(%d) : Freeing ECC key", LOG_INF);
 	wc_ecc_free(&eccKey);
 
+	log_trace("%s::%s(%d) : Freeing RNG", LOG_INF);
+	wc_FreeRng(&rng);
+
 
 	keyType = NO_KEY_TYPE;	
 

@@ -71,6 +71,7 @@ extern struct ScheduledJob* currentJob; /* Defined in schedule.c */
 /*              * Updated licensing information                               */
 /*              * Added Bootstrap certificate support via config file         */
 /* 2.8.1.0 = Fixed logging to file bug                                        */
-#define AGENT_VERSION 0x0002000800010000
+/* 2.8.2.0 = Fixed some memory leaks                                          */
+#define AGENT_VERSION 0x0002000800020000
 
 #endif /* AGENT_H_ */

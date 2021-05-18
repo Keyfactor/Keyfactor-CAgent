@@ -427,13 +427,18 @@ void clear_job_schedules(struct ScheduledJob** pList)
 	{
 		struct ScheduledJob* temp = current->NextJob;
 
-		if ( current->Job ) SessionJob_free(current->Job);
+		if ( current->Job ) 
+		{
+			log_info("%s::%s(%d) : Freeing job # %s", LOG_INF, 
+				current->Job->JobId);
+			SessionJob_free(current->Job);
+			current->Job = NULL;
+			current->NextJob = NULL;
+		}
 		free(current);
-
 		current = temp;
 	}
 
-	*pList = NULL;
 } /* clear_job_schedules */
 
 /**                                                                           */

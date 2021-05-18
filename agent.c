@@ -463,6 +463,16 @@ bool release_platform(void)
 {
 	bool bResult = false;
 
+	if (NULL == JobList)
+	{
+		log_debug("%s::%s(%d) : Job list is NULL", LOG_INF);
+	}
+	else
+	{
+		log_trace("%s::%s(%d) : Freeing the jobs", LOG_INF);
+		clear_job_schedules(&JobList); /* Clean up any jobs in the queue */
+	}
+
 	if ( true == curlLoaded ) 
 	{
 		log_trace("%s::%s(%d) : Cleaning up curl before exiting", LOG_INF);
@@ -544,6 +554,7 @@ static void main_loop( void )
 			if(1 == status)
 			{
 				strcpy(SessionData.Token, "");
+				clear_job_schedules(&JobList);
 				register_session(&SessionData, &JobList, AGENT_VERSION);
 			}
 			else 

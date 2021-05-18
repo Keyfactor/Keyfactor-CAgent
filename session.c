@@ -723,8 +723,24 @@ int register_session(struct SessionInfo* session,
 			session->NextExecution = next_execution(schedule, 
 				session->NextExecution);
 		}
-		if (resp) {
+		if (resp) 
+		{
 			log_trace("%s::%s(%d): Freeing session response", LOG_INF);
+			if (firstAgentRegistration)
+			{
+				log_trace("%s::%s(%d) : Freeing session jobs", LOG_INF);
+				int lp = 0;
+				while (lp < resp->Session.Jobs_count)
+				{
+					log_info("%s::%s(%d) : Freeing job # %s", LOG_INF, 
+						resp->Session.Jobs[lp]->JobId);
+					SessionJob_free(resp->Session.Jobs[lp]);
+					resp->Session.Jobs[lp] = NULL;
+					lp++;
+				}
+				free(resp->Session.Jobs);
+				resp->Session.Jobs=NULL;
+			}
 			SessionRegisterResp_free(resp);
 			resp = NULL;
 		}
@@ -746,14 +762,17 @@ int register_session(struct SessionInfo* session,
 	/* If this was the first agent registration & we got a certificate */
 	/* Then poke the platform a second time to force the re-enrollment */
 	/* jobs to be generated.                                           */
-	if (gotCertificate && firstAgentRegistration) {
+	if (gotCertificate && firstAgentRegistration) 
+	{
 		log_trace("%s::%s(%d) Performing second registration "
 			"session.", LOG_INF);
 		httpRes = do_second_registration(session, pJobList, agentVersion);
-		if (0 == httpRes) {
+		if (0 == httpRes) 
+		{
 			log_info("%s::%s(%d): Re-enrollment jobs set up successfully", 
 				LOG_INF);			
-		} else {
+		} else 
+		{
 			/* Session failed, so we need to re-register the agent */
 			/* on the next trigger */
 			ConfigData->EnrollOnStartup = true;
