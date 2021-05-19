@@ -145,8 +145,9 @@ static void update_config_from_session(struct SessionRegisterResp* sessionResp)
 /* @return - success : 1                                                      */
 /*         - failure : anything else but 1                                    */
 /*                                                                            */
-static int register_agent(struct SessionRegisterReq* sessionReq)
+static bool register_agent(struct SessionRegisterReq* sessionReq)
 {
+	bool bResult = false;
 	size_t csrLen = 0;
 	char* message = strdup("");
 	enum AgentApiResultStatus status = STAT_SUCCESS;
@@ -163,7 +164,7 @@ static int register_agent(struct SessionRegisterReq* sessionReq)
 #endif
 	{
 		log_error("%s::%s(%d) : Error generating keypair", LOG_INF);
-		return 999;
+		goto exit;
 	}
 
 	/* Get the CSR as a non-crypto specific string, the ssl wrapper does this:*/
@@ -180,8 +181,10 @@ static int register_agent(struct SessionRegisterReq* sessionReq)
 	}
 
 	log_verbose("%s::%s(%d) : Keypair & CSR generated for the Agent", LOG_INF);
+	bResult = true;
 
-	return 1;
+exit:
+	return bResult;
 } /* register_agent */
 
 /**                                                                           */
@@ -300,6 +303,43 @@ static bool register_add_capabilities(struct SessionRegisterReq* sessionReq)
 } /* register_add_capabilities */
 
 /**                                                                           */
+/* Set up the registration parameters associated with a /Session/Request POST */
+/*                                                                            */
+/* @param  [Input] : sessionReq = a session request structure to fill         */
+/* @return : void                                                             */
+/*                                                                            */
+static void set_registration_parameters(struct SessionRegisterReq* sessionReq)
+{
+	if(ConfigData->AgentName) 
+	{
+		sessionReq->ClientMachine = strdup(ConfigData->AgentName);
+	}
+	else
+	{
+		sessionReq->ClientMachine = strdup("");
+	}
+
+	if ( (ConfigData->EnrollOnStartup) || !(ConfigData->AgentId) )
+	{
+		/* Never send an Agent GUID to the platform when registering the */
+		/* Agent or if the Id was not defined in the config */
+		sessionReq->AgentId = strdup("");
+	}
+	else
+	{
+		sessionReq->AgentId = strdup(ConfigData->AgentId);
+	}
+
+	sessionReq->AgentPlatform = PLAT_NATIVE;
+	sessionReq->AgentVersion = (uint64_t)AGENT_VERSION;
+
+	/* Add the agent's capabilities, so the Platform knows what to expect */
+	register_add_capabilities(sessionReq);
+
+	return;
+} /* set_registration_parameters */
+
+/**                                                                           */
 /* We need to hit the /Session/Register a second time to get the platform to  */
 /* assign store re-enrollment jobs the first time the agent calls in.         */
 /* This can't be done via a blueprint, but can be done via a call to          */
@@ -378,7 +418,7 @@ static int do_second_registration(struct SessionInfo* session,
 		}
 	}
 
-	if (resp) SessionRegisterResp_free(resp);
+	if (resp) SessionRegisterResp_free(resp); /* Note: This doesn't free Jobs */
 	free(reqString);
 	free(respString);
 	free(url);
@@ -416,22 +456,11 @@ static int re_register_agent(struct SessionInfo* session,
 
 	log_info("%s::%s(%d): Re-registering the agent", LOG_INF);
 
-	/* Set up the common session information */
-	if (ConfigData->AgentName) 
-	{
-		sessionReq->ClientMachine = strdup(ConfigData->AgentName);
-	}
-	if(ConfigData->AgentId) 
-	{
-		sessionReq->AgentId = strdup(ConfigData->AgentId);
-	}   
-	sessionReq->AgentPlatform = PLAT_NATIVE;
-	sessionReq->AgentVersion = agentVersion;
-	register_add_capabilities(sessionReq);
+	set_registration_parameters(sessionReq);
 
 	/* Set up the registration specific session information */
-	httpRes = register_agent(sessionReq);
-	if ( 1 != httpRes )	{
+	if ( !register_agent(sessionReq) )	
+	{
 		log_error("%s::%s(%d) : Error re-registering agent", LOG_INF);
 		if ( sessionReq ) SessionRegisterReq_free( sessionReq );
 		return 998;
@@ -505,7 +534,7 @@ static int re_register_agent(struct SessionInfo* session,
 			 LOG_INF, httpRes);
 	}
 
-	if (resp) SessionRegisterResp_free(resp);
+	if (resp) SessionRegisterResp_free(resp); /* Note this doesn't free Jobs */
 	free(reqString);
 	free(respString);
 	free(url);
@@ -513,8 +542,68 @@ static int re_register_agent(struct SessionInfo* session,
 	return httpRes;
 } /* re_register_agent */
 
+/**                                                                           */
+/* Process the first registration response, which should include the Agent's  */
+/* signed certificate (from the CA).                                          */
+/*                                                                            */
+/* @param  [Input] : resp = the session response to parse                     */
+/* @param  [Output] : status = any status message we need to pass to Keyfactor*/
+/* @param  [Output] : statusCode = the status code to pass to Keyfactor       */
+/* @return if a certificate is found = true                                   */
+/*         otherwise = false                                                  */
+static bool do_first_registration_response(struct SessionRegisterResp* resp, 
+	char** status, enum AgentApiResultStatus* statusCode)
+{
+	bool bResult = false;
+	log_trace("%s::%s(%d): Updating config from session", 
+		LOG_INF);
+	update_agentid_from_session(resp);
+
+	if(resp->Session.Certificate) {
+		bResult = true;
+		log_info("%s::%s(%d): Agent certificate recieved from"
+			" platform.  Saving Agent Specific Keypair and "
+			"Agent Specific Cert.", LOG_INF);
+		save_cert_key(ConfigData->AgentCert, 
+			ConfigData->AgentKey, ConfigData->AgentKeyPassword, 
+			resp->Session.Certificate, status, statusCode);
+		update_config_from_session(resp);
+	}
+	else
+	{
+		log_verbose("%s::%s(%d): Certificate not found", 
+			LOG_INF);
+	}
+	return bResult;
+} /* do_first_registration_response */
+
+/**                                                                           */
+/* Schedule the jobs associated with the /Session/Register response           */
+/*                                                                            */
+/* @param  [Input] : resp = the platform response to parse                    */
+/* @param  [Output] : session = the session data to populate                  */
+/* @param  [Output] : schedule = string to print into
+/* @param  [Output] : pJobList = the head pointer to a linked list of jobs    */
+static void do_normal_registration_response(struct SessionRegisterResp* resp, 
+	struct SessionInfo* session, struct ScheduledJob** pJobList, char* schedule)
+{
+	log_info("%s::%s(%d): New session %s contains %d jobs", 
+		LOG_INF, resp->Session.Token, resp->Session.Jobs_count);
+
+	strcpy(session->AgentId, resp->Session.AgentId);
+	strcpy(session->Token, resp->Session.Token);
+	session->UnreachableCount = 0;
+
+	sprintf(schedule, "I_%d", resp->Session.HeartbeatInterval);
+	session->NextExecution = next_execution(schedule, time(NULL));  
+	clear_job_schedules(pJobList);
+
+	/* Schedule the jobs based on priority */
+	prioritize_jobs(pJobList, resp);
+} /* do_normal_registration_response */
+
 /******************************************************************************/
-/*********************** GLOBAL FUNCTION DEFINITIONS/**************************/
+/*********************** GLOBAL FUNCTION DEFINITIONS***************************/
 /******************************************************************************/
 
 /** 																		  */
@@ -549,40 +638,12 @@ int register_session(struct SessionInfo* session,
 
 	log_info("%s::%s(%d): Registering new session", LOG_INF);
 
-	if(ConfigData->AgentName) 
-	{
-		sessionReq->ClientMachine = strdup(ConfigData->AgentName);
-	}
-	else
-	{
-		sessionReq->ClientMachine = strdup("");
-	}
-
-	if (ConfigData->EnrollOnStartup)
-	{
-		/* Never send an Agent GUID to the platform when registering the */
-		/* Agent */
-		sessionReq->AgentId = strdup("");
-	}
-	else
-	{
-		if(ConfigData->AgentId) 
-		{
-			sessionReq->AgentId = strdup(ConfigData->AgentId);
-		}
-		else
-		{
-			sessionReq->AgentId = strdup("");
-		}
-	}
-
-	sessionReq->AgentPlatform = PLAT_NATIVE;
-	sessionReq->AgentVersion = agentVersion;
+	set_registration_parameters(sessionReq);
+	
 	if(ConfigData->EnrollOnStartup)	
 	{
 		/* Generate a keypair and a CSR to send up with this request */
-		httpRes = register_agent( sessionReq );
-		if ( 1 != httpRes )	
+		if ( !register_agent( sessionReq ) )	
 		{
 			log_error("%s::%s(%d) : Error setting up agent registration", 
 				LOG_INF);
@@ -592,12 +653,9 @@ int register_session(struct SessionInfo* session,
 		firstAgentRegistration = true;
 	}
 
-	/* Add the agent's capabilities, so the Platform knows what to expect */
-	register_add_capabilities(sessionReq);
-
 	/* Send the request up to the platform */
 	reqString = SessionRegisterReq_toJson(sessionReq);
-	SessionRegisterReq_free(sessionReq);
+	SessionRegisterReq_free(sessionReq); 
 
 	log_verbose("%s::%s(%d): Session Request:", LOG_INF);
 	log_verbose("%s",reqString);
@@ -618,66 +676,35 @@ int register_session(struct SessionInfo* session,
 	{
 		log_trace("%s::%s(%d): decoding json response", LOG_INF);
 		resp = SessionRegisterResp_fromJson(respString);
-		log_trace("%s::%s(%d): response decoded.  Now parsing response.", 
-			LOG_INF);
+		if ( NULL == resp )
+		{
+			log_error("%s::%s(%d) : Could not decode response", LOG_INF);
+			httpRes = 997;
+			goto exit;
+		}
+		log_trace("%s::%s(%d): Checking for token in response.", LOG_INF);
 		if(resp->Session.Token)
 		{			
-			if(resp && AgentApiResult_log(resp->Result, NULL, NULL))
+			log_trace("%s::%s(%d) : Token found, parsing response.", LOG_INF);
+			if( AgentApiResult_log(resp->Result, NULL, NULL) )
 			{
 				if (firstAgentRegistration)
 				{
-					if(ConfigData->EnrollOnStartup) {
-						/* Check to see if we should update the AgentId */
-						log_trace("%s::%s(%d): Updating config from session", 
-							LOG_INF);
-						update_agentid_from_session(resp);
-					}
-
-					if(resp->Session.Certificate) {
-						gotCertificate = true;
-						log_info("%s::%s(%d): Agent certificate recieved from"
-							" platform.  Saving Agent Specific Keypair and "
-							"Agent Specific Cert.", LOG_INF);
-						save_cert_key(ConfigData->AgentCert, 
-							ConfigData->AgentKey, ConfigData->AgentKeyPassword, 
-							resp->Session.Certificate, &status, &statusCode);
-						update_config_from_session(resp);
-					}
-					else
-					{
-						log_verbose("%s::%s(%d): Certificate not found", 
-							LOG_INF);
-	 				}
+					gotCertificate = do_first_registration_response(resp, 
+						&status, &statusCode);					
  				}
  				else
  				{
- 					/* If we hit the first agent registration, */
- 					/* don't do any jobs */
- 					/* Instead, wait until we finish the second */
- 					/* agent registration */
-					log_info("%s::%s(%d): New session %s contains %d jobs", 
-						LOG_INF, resp->Session.Token, resp->Session.Jobs_count);
-
-					strcpy(session->AgentId, resp->Session.AgentId);
-					strcpy(session->Token, resp->Session.Token);
-					session->UnreachableCount = 0;
-
-					sprintf(schedule, "I_%d", resp->Session.HeartbeatInterval);
-					session->NextExecution = 
-						next_execution(schedule, time(NULL));  
-					clear_job_schedules(pJobList);
-
-					/* Schedule the jobs based on priority */
-					prioritize_jobs(pJobList, resp);
-				}
+ 					do_normal_registration_response(resp, session, pJobList, 
+ 						schedule);
+ 				}
 			}
-			else if(resp &&
-				    resp->Result.Status == STAT_ERR	&& 
+			else if(resp->Result.Status == STAT_ERR	&& 
 					resp->Result.Error.CodeString && 
 					(strcasecmp("A0100007", resp->Result.Error.CodeString) || 
 					 strcasecmp("A0100008", resp->Result.Error.CodeString)) )
 			{
-				log_info("%s::%s(%d): Re-enrolling Agent authentication "
+				log_info("%s::%s(%d): Re-enrolling Agent "
 					"certificate, WITH session token", LOG_INF);
 				httpRes = re_register_agent(session, pJobList, 
 					agentVersion, false);
@@ -689,7 +716,7 @@ int register_session(struct SessionInfo* session,
 					session->NextExecution);
 			}
 		}
-		else if(resp)
+		else /* We have a response, but no token */
 		{
 			AgentApiResult_log(resp->Result, NULL, NULL);
 			if (resp->Result.Status == STAT_ERR	&& 
@@ -697,7 +724,7 @@ int register_session(struct SessionInfo* session,
 				(strcasecmp("A0100007", resp->Result.Error.CodeString) || 
 				 strcasecmp("A0100008", resp->Result.Error.CodeString)) )
 			{
-				log_info("%s::%s(%d): Re-enrolling Agent authentication "
+				log_info("%s::%s(%d): Re-enrolling Agent "
 					"certificate, no session token", LOG_INF);
 				httpRes = re_register_agent(session, pJobList, 
 					agentVersion, false);
@@ -713,37 +740,22 @@ int register_session(struct SessionInfo* session,
 					session->NextExecution);
 			}
 		}
-		else
+
+		/* Cleanup the response */
+		log_trace("%s::%s(%d): Freeing session response", LOG_INF);
+		if (firstAgentRegistration)
 		{
-			log_error("%s::%s(%d): Session registration did not succeed "
-				"with error %s", LOG_INF, resp->Result.Error.Message);
-			log_error("%s::%s(%d): Session registration provided CodeString"
-					" of %s", LOG_INF, resp->Result.Error.CodeString);
-			sprintf(schedule, "I_%d", session->Interval);
-			session->NextExecution = next_execution(schedule, 
-				session->NextExecution);
+			/* During the first agent registration call, jobs are */
+			/* not scheduled.  Freeing the Register Response does */
+			/* not free the jobs - as they are normally associated */
+			/* with the linked list of prioritized jobs.           */
+			/* Therefore, free any unassigned jobs before freeing */
+			/* the response from the platform. */
+			log_trace("%s::%s(%d) : Freeing session jobs", LOG_INF);
+			SessionRegisterResp_freeJobs(resp);
 		}
-		if (resp) 
-		{
-			log_trace("%s::%s(%d): Freeing session response", LOG_INF);
-			if (firstAgentRegistration)
-			{
-				log_trace("%s::%s(%d) : Freeing session jobs", LOG_INF);
-				int lp = 0;
-				while (lp < resp->Session.Jobs_count)
-				{
-					log_info("%s::%s(%d) : Freeing job # %s", LOG_INF, 
-						resp->Session.Jobs[lp]->JobId);
-					SessionJob_free(resp->Session.Jobs[lp]);
-					resp->Session.Jobs[lp] = NULL;
-					lp++;
-				}
-				free(resp->Session.Jobs);
-				resp->Session.Jobs=NULL;
-			}
-			SessionRegisterResp_free(resp);
-			resp = NULL;
-		}
+		SessionRegisterResp_free(resp); /* Note: Does not free Jobs */
+		resp = NULL;
 	}
 	else
 	{
@@ -755,23 +767,24 @@ int register_session(struct SessionInfo* session,
 			session->NextExecution);
 	}
 
-	free(reqString);
-	free(respString);
-	free(url);
+exit:
+	if (reqString) free(reqString);
+	if (respString) free(respString);
+	if (url) free(url);
 
 	/* If this was the first agent registration & we got a certificate */
 	/* Then poke the platform a second time to force the re-enrollment */
 	/* jobs to be generated.                                           */
 	if (gotCertificate && firstAgentRegistration) 
 	{
-		log_trace("%s::%s(%d) Performing second registration "
-			"session.", LOG_INF);
+		log_trace("%s::%s(%d) Performing second registration.", LOG_INF);
 		httpRes = do_second_registration(session, pJobList, agentVersion);
 		if (0 == httpRes) 
 		{
 			log_info("%s::%s(%d): Re-enrollment jobs set up successfully", 
 				LOG_INF);			
-		} else 
+		} 
+		else 
 		{
 			/* Session failed, so we need to re-register the agent */
 			/* on the next trigger */

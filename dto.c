@@ -416,6 +416,7 @@ char* SessionRegisterReq_toJson(struct SessionRegisterReq* req)
 	return jsonString;
 }
 
+
 void SessionJob_free(struct SessionJob* job)
 {
 	if(job)
@@ -454,6 +455,26 @@ void SessionJob_free(struct SessionJob* job)
 	}
 }
 
+void SessionRegisterResp_freeJobs(struct SessionRegisterResp* resp)
+{
+	int lp = 0;
+	while (lp < resp->Session.Jobs_count)
+	{
+		log_info("%s::%s(%d) : Freeing job # %s", LOG_INF, 
+			resp->Session.Jobs[lp]->JobId);
+		SessionJob_free(resp->Session.Jobs[lp]);
+		resp->Session.Jobs[lp++] = NULL;
+	}
+
+	if ( resp->Session.Jobs )
+	{
+		free(resp->Session.Jobs);
+		resp->Session.Jobs = NULL;
+	}
+
+	return;
+}
+
 void SessionRegisterResp_free(struct SessionRegisterResp* resp)
 {
 	if(resp)
@@ -481,12 +502,14 @@ void SessionRegisterResp_free(struct SessionRegisterResp* resp)
 		}
 		if(resp->Session.Jobs)
 		{
+#if defined(__NEVER_COMPILE_THIS__)
 /* Ownership of these will be handed off & freed elsewhere                    */
 /*			for(int i = 0; i < resp->Session.Jobs_count; ++i)                 */
 /*			{                                                                 */
 /*				SessionJob_free(resp->Session.Jobs[i]);                       */
 /*				resp->Session.Jobs[i] = NULL;                                 */
 /*			}                                                                 */
+#endif /* Never Compile this Code */
 			free(resp->Session.Jobs);
 			resp->Session.Jobs = NULL;
 		}
@@ -606,6 +629,10 @@ struct SessionRegisterResp* SessionRegisterResp_fromJson(char* jsonString)
 						if ( resp )
 						{
 							/* Free any allocated memory before returning */
+							/* Note, we may have jobs at this point.      */
+							/* So manually free them first, as the        */
+							/* SessionRegisterResp_free will not do that  */
+							SessionRegisterResp_freeJobs(resp);
 							SessionRegisterResp_free(resp);
 						}
 						return NULL;
@@ -637,6 +664,7 @@ struct SessionRegisterResp* SessionRegisterResp_fromJson(char* jsonString)
 	return resp;
 }
 
+#if defined(__INFINITE_AGENT__)
 struct SessionHeartbeatReq* SessionHeartbeatReq_new()
 {
 	struct SessionHeartbeatReq* req = calloc(1, 
@@ -754,6 +782,7 @@ struct SessionHeartbeatResp* SessionHeartbeatResp_fromJson(char* jsonString)
 
 	return resp;
 }
+#endif /* Infinite Agent is Defined */
 
 struct CommonConfigReq* CommonConfigReq_new()
 {

@@ -77,6 +77,7 @@ struct SessionRegisterResp
 	} Session;
 };
 
+#if defined(__INFINITE_AGENT__)
 struct SessionHeartbeatReq
 {
 	char* SessionToken;
@@ -91,6 +92,7 @@ struct SessionHeartbeatResp
 	int HeartbeatInterval;
 	bool SessionValid;
 };
+#endif /* Infinite Agent */
 
 struct CommonConfigReq
 {
@@ -263,8 +265,11 @@ void SessionRegisterResp_free(struct SessionRegisterResp* resp);
 
 struct SessionRegisterResp* SessionRegisterResp_fromJson(char* jsonString);
 
+void SessionRegisterResp_freeJobs(struct SessionRegisterResp*);
+
 void SessionJob_free(struct SessionJob* job);
 
+#if defined(__INFINITE_AGENT__)
 struct SessionHeartbeatReq* SessionHeartbeatReq_new();
 
 void SessionHeartbeatReq_free(struct SessionHeartbeatReq* req);
@@ -274,6 +279,7 @@ char* SessionHeartbeatReq_toJson(struct SessionHeartbeatReq* req);
 void SessionHeartbeatResp_free(struct SessionHeartbeatResp* resp);
 
 struct SessionHeartbeatResp* SessionHeartbeatResp_fromJson(char* jsonString);
+#endif /* Infinite Agent */
 
 struct CommonConfigReq* CommonConfigReq_new();
 
