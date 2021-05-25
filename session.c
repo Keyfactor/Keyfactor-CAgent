@@ -498,6 +498,8 @@ static int re_register_agent(struct SessionInfo* session,
 					&status, &statusCode);
 				if (needNewAgentName) 
 				{
+					if (ConfigData->AgentId) free(ConfigData->AgentId);
+					ConfigData->AgentId = strdup(resp->Session.AgentId);
 					update_config_from_session(resp);
 				}
 			} 

@@ -82,6 +82,8 @@ Only build one version of the agent, either openSSL or wolfSSL:
 		 				must compile the TPM version of the agent
 
 # Agent History
+	version 2.8.4
+		Fixed issue where a re-registered agent did not have AgentId updated
 	version 2.8.3
 		Additional memory leaks found and squashed
 	version 2.8.2
