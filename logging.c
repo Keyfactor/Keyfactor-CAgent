@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <stdlib.h>
 #include "logging.h"
 #include "config.h"
 #include "utils.h"
@@ -29,8 +30,8 @@
 #define DEBUGLVL   "[DEBUG]  "
 #define TRACELVL   "[TRACE]  "
 
-#define MAX_LOG_FILE	(5 * 1024) /* 5k of log messages on disk, 4k retrieve */
-#define MAX_LOG_BUFFER  (2 * MAX_LOG_FILE)
+#define MAX_FILE_SIZE   (5ul * 1024ul * 1024ul) /* 5MByte log file on disk */
+#define MAX_HEAP_SIZE   (256 * 1024) /* 256k of memory */
 
 
 /******************************************************************************/
@@ -40,9 +41,9 @@
 /******************************************************************************/
 /************************** LOCAL GLOBAL VARIABLES ****************************/
 /******************************************************************************/
-static char LOG_BUFFER[MAX_LOG_BUFFER+1];
+static char* log_head = NULL;
+static char* log_tail = NULL;
 static bool log_is_dirty = false;
-static int log_index = 0;
 
 static bool _trace = false;
 static bool _debug = false;
@@ -88,27 +89,82 @@ static void log_me( const char* fmt, ... )
 } /* log_me */
 
 /**                                                                           */
-/* Resize the log file once it has grown beyond 6k.                           */
-/* shrink it to 3k by saving the newest 3k & resetting                        */
-/* the index to 3k.                                                           */
+/* Write the heap data to disk & set the heap tail = heap start               */
 /*                                                                            */
-static void resize_log_file( void )
+/* @param  : none                                                             */
+/* @return : none                                                             */
+/*                                                                            */
+static void write_heap_to_disk( void )
 {
-	log_me("%s::%s(%d) : Resizing log file", LOG_INF);
-	size_t z = 0; /* Start at the beginning of the buffer for writes */
-	size_t y = MAX_LOG_FILE; /* Need this to suppress gcc warning */
-	char tempChar; /* Need this to suppress gcc warning */
-	for (z = 0;z < MAX_LOG_FILE; z++) 
+	do 
 	{
-		y = MAX_LOG_FILE + z;
-		tempChar = LOG_BUFFER[y];
-		LOG_BUFFER[z] = tempChar;
-	}
-	LOG_BUFFER[MAX_LOG_FILE] = '\0';
-	log_index = MAX_LOG_FILE + 1;
-	log_me("%s::%s(%d) : Leaving log file resize", LOG_INF);
+		if (!ConfigData->LogFile) 
+		{
+			printf("%s::%s(%d) : No Log file defined in config\n", LOG_INF);
+			break;
+		}
+
+		FILE* fp = NULL;
+		if (file_exists(ConfigData->LogFile))
+		{
+			printf("%s::%s(%d) : Opening existing log file\n", LOG_INF);
+			fp = fopen(ConfigData->LogFile, "r+");
+		}
+		else
+		{
+			printf("%s::%s(%d) : Creating new log file\n", LOG_INF);
+			fp = fopen(ConfigData->LogFile, "w");
+		}
+		fseek(fp, 0ul, SEEK_END);
+		size_t actualLogSize = ftell(fp);
+		if (NULL != fp)
+		{
+			printf("%s::%s(%d) : Opened log file with size %lu\n", LOG_INF, 
+				actualLogSize);
+			fseek(fp, ConfigData->LogFileIndex, SEEK_SET);
+			size_t writeLen = log_tail - log_head;
+			size_t logFileTest = (ConfigData->LogFileIndex + writeLen);
+			printf("%s::%s(%d) : writing %lu bytes to log at index of %lu\n", 
+				LOG_INF, writeLen, ConfigData->LogFileIndex);
+			printf("%s::%s(%d) : MAX_FILE_SIZE = %lu\n", 
+				LOG_INF, MAX_FILE_SIZE);
+			if ( MAX_FILE_SIZE > logFileTest )
+			{
+				printf("%s::%s(%d) : Writing %lu bytes to disk\n", 
+					LOG_INF, writeLen);
+				size_t chars_written = 
+					fwrite((void*)log_head, sizeof(*log_head), writeLen, fp);
+				ConfigData->LogFileIndex += chars_written;
+				log_tail = log_head;
+			}
+			else
+			{
+				printf("%s::%s(%d) : Log file write of %lu creates wrap of "
+					"log file\n", LOG_INF, writeLen);
+				size_t toEOF = MAX_FILE_SIZE - ConfigData->LogFileIndex;
+				size_t chars_written = 
+					fwrite((void*)log_head, sizeof(*log_head), toEOF, fp);
+				fseek(fp, 0, SEEK_SET); /* reset to beginning of file */
+				size_t new_chars_written = 
+					fwrite((void*)(log_head+chars_written+1), sizeof(*log_head),
+						(writeLen-chars_written), fp);
+				ConfigData->LogFileIndex = new_chars_written;
+				log_tail = log_head;
+			}
+
+			config_save();
+			fclose(fp);
+		} 
+		else 
+		{
+			printf("******* Error opening log file %s\n **************", 
+				ConfigData->LogFile);
+			break;
+		}
+
+	} while(false);
 	return;
-} /* resize_log_file */
+} /* write_heap_to_disk */
 
 /******************************************************************************/
 /************************ GLOBAL FUNCTION DEFINITIONS *************************/
@@ -209,18 +265,18 @@ void log_error(const char* fmt, ...)
 
 		if (config_loaded) 
 		{
-			/* Write to the log buffer, too */			
-			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) 
+			/* Write to the log buffer, too */	
+			size_t log_index = (log_tail - log_head);		
+			if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) 
 			{ 
-				resize_log_file();		
+				write_heap_to_disk();		
 			}
-			char *log_ptr = &LOG_BUFFER[log_index];
 			get_log_format(logFormat, fmt, ERRORLVL);
 			va_list args;
 			va_start(args, fmt);
-			size_t char_write = vsprintf(log_ptr, logFormat, args);
+			size_t chars_written = vsprintf(log_tail, logFormat, args);
 			va_end(args);
-			log_index += char_write;
+			log_tail += chars_written;
 			log_is_dirty = true;
 			/* End write to the log buffer, too */
 		}
@@ -245,18 +301,18 @@ void log_warn(const char* fmt, ...)
 
 		if (config_loaded) 
 		{
-			/* Write to the log buffer, too */			
-			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) 
+			/* Write to the log buffer, too */	
+			size_t log_index = (log_tail - log_head);			
+			if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) 
 			{ 
-				resize_log_file();		
+				write_heap_to_disk();		
 			}
-			char *log_ptr = &LOG_BUFFER[log_index];
 			get_log_format(logFormat, fmt, WARNLVL);
 			va_list args;
 			va_start(args, fmt);
-			size_t char_write = vsprintf(log_ptr, logFormat, args);
+			size_t chars_written = vsprintf(log_tail, logFormat, args);
 			va_end(args);
-			log_index += char_write;
+			log_tail += chars_written;
 			log_is_dirty = true;
 			/* End write to the log buffer, too */
 		}
@@ -281,21 +337,21 @@ void log_info(const char* fmt, ...)
 
 		if (config_loaded) 
 		{
-			/* Write to the log buffer, too */			
-			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) 
+			/* Write to the log buffer, too */	
+			size_t log_index = (log_tail - log_head);			
+			if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) 
 			{ 
-				resize_log_file();		
+				write_heap_to_disk();		
 			}
-			char *log_ptr = &LOG_BUFFER[log_index];
 			get_log_format(logFormat, fmt, INFOLVL);
 			va_list args;
 			va_start(args, fmt);
-			size_t char_write = vsprintf(log_ptr, logFormat, args);
+			size_t chars_written = vsprintf(log_tail, logFormat, args);
 			va_end(args);
-			log_index += char_write;
+			log_tail += chars_written;
 			log_is_dirty = true;
 			/* End write to the log buffer, too */
-		}	
+		}
 	}
 } /* log_info */
 
@@ -314,24 +370,24 @@ void log_verbose(const char* fmt, ...)
 		va_start(args, fmt);
 		size_t chars_to_write = vfprintf(stderr, logFormat, args);
 		va_end(args);
-#ifdef __DONT_COMPILE_ME__
-		if (config_loaded) {
-			/* Write to the log buffer, too */			
-			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) 
+
+		if (config_loaded) 
+		{
+			/* Write to the log buffer, too */	
+			size_t log_index = (log_tail - log_head);			
+			if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) 
 			{ 
-				resize_log_file();		
+				write_heap_to_disk();		
 			}
-			char *log_ptr = &LOG_BUFFER[log_index];
 			get_log_format(logFormat, fmt, VERBOSELVL);
 			va_list args;
 			va_start(args, fmt);
-			size_t char_write = vsprintf(log_ptr, logFormat, args);
+			size_t chars_written = vsprintf(log_tail, logFormat, args);
 			va_end(args);
-			log_index += char_write;
+			log_tail += chars_written;
 			log_is_dirty = true;
 			/* End write to the log buffer, too */
 		}
-#endif
 	}
 } /* log_verbose */
 
@@ -350,24 +406,24 @@ void log_debug(const char* fmt, ...)
 		va_start(args, fmt);
 		size_t chars_to_write = vfprintf(stderr, logFormat, args);
 		va_end(args);
-#ifdef __DONT_COMPILE_ME__
-		if (config_loaded) {
-			/* Write to the log buffer, too */			
-			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) 
+
+		if (config_loaded) 
+		{
+			/* Write to the log buffer, too */	
+			size_t log_index = (log_tail - log_head);			
+			if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) 
 			{ 
-				resize_log_file();		
+				write_heap_to_disk();		
 			}
-			char *log_ptr = &LOG_BUFFER[log_index];
 			get_log_format(logFormat, fmt, DEBUGLVL);
 			va_list args;
 			va_start(args, fmt);
-			size_t char_write = vsprintf(log_ptr, logFormat, args);
+			size_t chars_written = vsprintf(log_tail, logFormat, args);
 			va_end(args);
-			log_index += char_write;
+			log_tail += chars_written;
 			log_is_dirty = true;
 			/* End write to the log buffer, too */
 		}
-#endif
 	}
 } /* log_debug */
 
@@ -387,25 +443,23 @@ void log_trace(const char* fmt, ...)
 		size_t chars_to_write = vfprintf(stderr, logFormat, args);
 		va_end(args);
 
-#ifdef __DONT_COMPILE_ME__
 		if (config_loaded) 
 		{
-			/* Write to the log buffer, too */			
-			if (MAX_LOG_BUFFER <= (log_index + chars_to_write)) 
+			/* Write to the log buffer, too */	
+			size_t log_index = (log_tail - log_head);			
+			if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) 
 			{ 
-				resize_log_file();		
+				write_heap_to_disk();		
 			}
-			char *log_ptr = &LOG_BUFFER[log_index];
 			get_log_format(logFormat, fmt, TRACELVL);
 			va_list args;
 			va_start(args, fmt);
-			size_t char_write = vsprintf(log_ptr, logFormat, args);
+			size_t chars_written = vsprintf(log_tail, logFormat, args);
 			va_end(args);
-			log_index += char_write;
+			log_tail += chars_written;
 			log_is_dirty = true;
 			/* End write to the log buffer, too */
 		}
-#endif
 	}
 } /* log_trace */
 
@@ -526,73 +580,26 @@ void log_set_off(bool param)
 /*  @breif Load the log buffer from the log file                              */
 /*  @return none                                                              */
 /*                                                                            */
-void load_log_buffer( void )
+bool load_log_buffer( void )
 {
-	log_me("%s::%s(%d) : Attempting to load log buffer", LOG_INF);
-	FILE *fp = NULL;
-	if (ConfigData->LogFile) 
+	bool bResult = false;
+
+	log_me("%s::%s(%d) : Creating log buffer", LOG_INF);
+	log_head = (char*)calloc(MAX_HEAP_SIZE, sizeof(*log_head));
+
+	if (log_head)
 	{
-		log_me("%s::%s(%d) : ConfigData->LogFile Exists", LOG_INF);
-		if (file_exists(ConfigData->LogFile)) 
-		{
-			log_me("%s::%s(%d) : The file %s exists", LOG_INF, 
-				ConfigData->LogFile);
-			fp = fopen(ConfigData->LogFile, "r");
-			if (NULL != fp) 
-			{
-				log_me("%s::%s(%d) : Opened %s for reading", 
-					LOG_INF, ConfigData->LogFile);
-				log_index = fread(LOG_BUFFER, sizeof(char), MAX_LOG_BUFFER, fp);
-				if (0 != ferror(fp)) 
-				{
-					log_me("%s::%s(%d) : Error reading logfile %s", 
-						LOG_INF, ConfigData->LogFile);
-					LOG_BUFFER[0] = '\0';
-					log_index = 0;
-				} 
-				else 
-				{
-					log_me("%s::%s(%d) : Read %d bytes from file %s", 
-						LOG_INF, log_index, ConfigData->LogFile);
-					if (MAX_LOG_FILE <= log_index )
-					{
-						LOG_BUFFER[log_index] = '\0';
-					}
-					else
-					{
-						LOG_BUFFER[log_index++] = '\0'; 
-					}
-				}
-			} 
-			else 
-			{
-				log_me("%s::%s(%d) : Failed to open log file %s", 
-					LOG_INF, ConfigData->LogFile);
-				LOG_BUFFER[0] = '\0';
-				log_index = 0;
-			}
-		} 
-		else 
-		{
-			log_me("%s::%s(%d) : File %s doesn't exist, creating empty buffer",	
-				LOG_INF, ConfigData->LogFile);
-			LOG_BUFFER[0] = '\0';
-			log_index = 0;
-		}
+		log_me("%s::%s(%d) : Successfully created buffer of size %lu",
+			LOG_INF, MAX_HEAP_SIZE);
+		log_tail = log_head;
+		bResult = true;
 	}
-	else 
+	else
 	{
-		log_me("%s::%s(%d) : Config file isn't defined, creating empty buffer",	
-			LOG_INF);
-		LOG_BUFFER[0] = '\0';
-		log_index = 0;
+		log_me("%s::%s(%d) : Out of memory", LOG_INF);
 	}
-	log_is_dirty = false;
-	if (fp)
-	{
-		fclose(fp);
-	}
-	return;
+
+	return bResult;
 } /* load_log_buffer */
 
 /**                                                                           */
@@ -600,54 +607,32 @@ void load_log_buffer( void )
 /*  @breif Write the log to disk if the buffer is dirty                       */
 /*  @return none                                                              */
 /*                                                                            */
-void write_log_file( char* file )
+void write_log_file( void )
 {
-	if ((ConfigData->LogFile) && log_is_dirty) 
+	if ( log_is_dirty ) 
 	{
-		if ( (MAX_LOG_FILE-1) >= log_index ) 
-		{
-			printf("******* log_index <= MAX_LOG_FILE ******** %d\n", 
-				log_index);
-			FILE* fp = fopen(file, "w");
-			if (NULL != fp)
-			{
-				LOG_BUFFER[log_index] = '\0';
-				size_t write_bytes = fwrite(LOG_BUFFER, 1, log_index, fp);
-				printf("******* WROTE %lu bytes to log file ***********\n", 
-					write_bytes);
-				fclose(fp);
-			} 
-			else 
-			{
-				printf("******* Error opening file %s\n", file);
-			}
-		} 
-		else 
-		{
-			printf("******* log_index > MAX_LOG_FILE ********\n");
-			FILE* fp = fopen(file, "w");
-			if (NULL != fp)
-			{
-				LOG_BUFFER[log_index] = '\0';
-				size_t write_bytes = 
-					fwrite(&LOG_BUFFER[log_index-MAX_LOG_FILE], 1, 
-						MAX_LOG_FILE, fp);
-				printf("******* WROTE %lu bytes to log file ***********\n", 
-					write_bytes);
-				fclose(fp);
-			} 
-			else 
-			{
-				printf("******* Error opening file %s\n", file);
-			}
-		}
+		write_heap_to_disk();
 	} 
 	else 
 	{
-		printf("******* LOG NOT DEFINED or is not DIRTY *******\n");
+		printf("%s::%s(%d) : LOG is not DIRTY\n", LOG_INF);
 	}
 	return;
 } /* write_log_file */
+
+/**                                                                           */
+/* Free the heap data structure                                               */
+/* @param  : none                                                             */
+/* @return : none                                                             */
+/*                                                                            */
+void free_log_heap( void )
+{
+	printf("%s::%s(%d) : Freeing Logging Heap Memory\n", LOG_INF);
+	if (log_head) free(log_head);
+	log_head = NULL;
+	log_tail = NULL;
+	return;
+} /* free_log_heap */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/
 /******************************************************************************/

@@ -87,6 +87,7 @@ static void print_config( struct ConfigData* ConfigData )
 		ConfigData->Serialize ? "true" : "false");
 	printf("          SerialFile = %s\n", ConfigData->SerialFile);
 	printf("          LogFile = %s\n", ConfigData->LogFile);
+	printf("          LogFileIndex = %lu", ConfigData->LogFileIndex);
 	printf("          httpRetries = %d\n", ConfigData->httpRetries); 
 	printf("          retryInterval = %d\n", ConfigData->retryInterval);
 	printf("\n\n");
@@ -457,6 +458,8 @@ struct ConfigData* config_decode(const char* buf)
 		config->Serialize = json_get_member_bool(jsonRoot, "Serialize", false);
 		config->SerialFile = json_get_member_string(jsonRoot, "SerialFile");
 		config->LogFile = json_get_member_string(jsonRoot, "LogFile");
+		config->LogFileIndex = 
+			json_get_member_number(jsonRoot, "LogFileIndex", 0);
 		config->httpRetries = json_get_member_number(jsonRoot, "httpRetries",1); 
 		if(1 > config->httpRetries) /* verify minimum value */
 		{
@@ -649,6 +652,8 @@ char* config_to_json( void )
 		json_append_member(jsonRoot, "LogFile", 
 			json_mkstring(ConfigData->LogFile));
 	}
+	json_append_member(jsonRoot, "LogFileIndex", 
+		json_mknumber(ConfigData->LogFileIndex));
 	if(ConfigData->httpRetries)	
 	{
 		json_append_member(jsonRoot, "httpRetries", 

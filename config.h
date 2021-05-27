@@ -13,6 +13,7 @@
 #define __CONFIG_H__
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #define MAX_CONFIG_FILE_LEN 4096 /* Config file should never be this long */
 #define DATE_TIME_LEN 14 /* YYYYMMDDHHMMSS */
@@ -44,6 +45,7 @@ struct ConfigData
 	int    httpRetries; /**< # of times to retry a failed HTTP connection */
 	int    retryInterval; /**< Interval (in seconds) between HTTP retries */
 	char*  LogFile; /**< File where agent logs are stored. */
+    size_t LogFileIndex; /**< Last byte written to the log file */
 };
 
 /******************************************************************************/

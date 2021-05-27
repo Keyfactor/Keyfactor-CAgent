@@ -38,8 +38,9 @@ bool is_log_verbose( void );
 bool is_log_debug( void );
 bool is_log_trace( void );
 
-void load_log_buffer( void );
-void write_log_file( char* file );
+bool load_log_buffer( void );
+void write_log_file( void );
+void free_log_heap( void );
 
 #define LOG_INF __FILE__, __FUNCTION__, __LINE__
 

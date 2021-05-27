@@ -377,7 +377,7 @@ int init_platform( int argc, char* argv[] )
 	log_trace("%s::%s(%d) : Parsing Parameters", LOG_INF);
 	if ( 0 == parse_parameters( argc, &argv[0] ) ) 
 	{
-		log_error("%s::%s(%d) : Failed to parse command line parameters", 
+		printf("%s::%s(%d) : Failed to parse command line parameters\n", 
 			LOG_INF);
 		return 0;
 	}
@@ -389,14 +389,18 @@ int init_platform( int argc, char* argv[] )
 	ConfigData = config_load();
 	if(!ConfigData)	
 	{
-		printf("%s::%s(%d) : Unable to load configuration. Exiting", LOG_INF);
+		printf("%s::%s(%d) : Unable to load configuration. Exiting\n", LOG_INF);
 		return 0;
 	}
 
 	/**************************************************************************/
 	/* 3. Initialize logging                                                  */
 	/**************************************************************************/
-	load_log_buffer();
+	if ( !load_log_buffer() )
+	{
+		printf("%s::%s(%d) : Failed to create a log buffer. Exiting\n", LOG_INF);
+		return 0;
+	}
 
 	/**************************************************************************/
 	/* 4. Validate configuration data is acceptable                           */
@@ -486,17 +490,19 @@ bool release_platform(void)
 
 	ssl_cleanup(); 
 
-	write_log_file(ConfigData->LogFile);
+	write_log_file();
 
 	if (NULL != ConfigData)	
 	{
-		log_trace("%s::%s(%d) : Free config data", LOG_INF);
+		log_trace("%s::%s(%d) : Free config data\n", LOG_INF);
 		ConfigData_free();
 		if ( config_location )
 		{
 			free( config_location );
 		}
 	}
+
+	free_log_heap();
 
 	bResult = true;
 	return bResult;
