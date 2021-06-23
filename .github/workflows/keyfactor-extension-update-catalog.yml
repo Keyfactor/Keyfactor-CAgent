@@ -1,0 +1,34 @@
+name: Generate Catalog Entry
+on: [push, workflow_dispatch]
+
+jobs:
+  generate_entry:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@master
+      
+      - uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.SDK_SYNC_PAT }}
+          path: './catalog-temp/'
+          repository: 'Keyfactor/integrations-catalog'
+      
+      - uses: cuchi/jinja2-action@v1.2.0
+        with:
+          template: ./catalog-temp/_integration.md.tpl
+          output_file: ${{ format('./catalog-temp/_integrations/{0}.md', github.event.repository.name) }}
+          data_file: integration-manifest.json
+          variables: |
+            repository= ${{ format('https://github.com/{0}', github.repository) }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.SDK_SYNC_PAT }}
+        
+      - uses: EndBug/add-and-commit@v7
+        with:
+          author_name: 'Keyfactor'
+          author_email: 'keyfactor@keyfactor.github.io'
+          branch: 'main'
+          message: ${{ format('Added the manifest for {0}', github.event.repository.name) }}
+          add: ${{ format('_integrations/{0}.md --force', github.event.repository.name) }}
+          cwd: './catalog-temp/'
