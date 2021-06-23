@@ -1,4 +1,7 @@
-# Keyfactor-CAgent
+# C-Agent
+## Orchestrator
+
+# Keyfactor C-Agent
 C-Agent for use with Keyfactor Platform
 
 # C-Agent Build Dependencies:
