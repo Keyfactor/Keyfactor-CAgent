@@ -1,8 +1,7 @@
 # C-Agent
 ## Orchestrator
 
-# Keyfactor C-Agent
-C-Agent for use with Keyfactor Platform
+The C-Agent is a reference implementation of a Keyfactor Orchestrator geared toward use in IoT based solutions.
 
 # C-Agent Build Dependencies:
 Before building the agent, install the following dependencies:
