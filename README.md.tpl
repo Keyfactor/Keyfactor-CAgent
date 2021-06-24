@@ -1,8 +1,7 @@
 # {{ name }}
 ## {{ integration_type | capitalize }}
 
-# Keyfactor C-Agent
-C-Agent for use with Keyfactor Platform
+{{ description }}
 
 # C-Agent Build Dependencies:
 Before building the agent, install the following dependencies:
