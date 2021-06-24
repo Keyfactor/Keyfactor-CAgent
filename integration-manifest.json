@@ -4,5 +4,5 @@
     "name": "C-Agent",
     "status": "production",
     "link_github": true,
-    "description": "C-Agent for use with Keyfactor Platform."
+    "description": "The C-Agent is a reference implementation of a Keyfactor Orchestrator geared toward use in IoT based solutions."
 }
