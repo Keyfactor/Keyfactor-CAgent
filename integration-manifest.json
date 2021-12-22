@@ -1,0 +1,8 @@
+{
+    "$schema": "https://keyfactor.github.io/integration-manifest-schema.json",
+    "integration_type": "iot-orchestrator",
+    "name": "C-Agent",
+    "status": "production",
+    "link_github": true,
+    "description": "The C-Agent is a reference implementation of a Keyfactor Orchestrator geared toward use in IoT based solutions."
+}
