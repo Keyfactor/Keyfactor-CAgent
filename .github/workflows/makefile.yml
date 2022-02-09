@@ -31,8 +31,8 @@ jobs:
         mkdir signature
         mv agent signature/.
         mv agent.sig signature/.
-        git add signature/agent
-        git add signature/agent.sig
+        git add -f signature/agent
+        git add -f signature/agent.sig
         git commit -m "automated signature"
         git push
         
