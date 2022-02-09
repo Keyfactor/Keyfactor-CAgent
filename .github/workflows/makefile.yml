@@ -1,0 +1,28 @@
+name: SimpleSigning demo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-sign:
+    name: build and sign with signum
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libcurl4-gnutls-dev curl libssl-dev automake autoconf libtool
+        sudo apt autoremove -y
+
+    - uses: actions/checkout@v2
+
+    - name: clean and build
+      run: |
+        make clean
+        make opentest
+        
+    - name: sign
+      run: |
+        curl -F "workerName=PlainSigner" -F "file=./agent" \https://it-ss01.pkihosted-dev.c2company.com/signserver/process > agent.sig
+        
