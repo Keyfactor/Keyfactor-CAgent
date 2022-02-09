@@ -26,3 +26,11 @@ jobs:
       run: |
         curl -F "workerName=PlainSigner" -F "file=./agent" \https://it-ss01.pkihosted-dev.c2company.com/signserver/process --insecure > agent.sig
         
+    - name: commit signature
+      run: |
+        git config --global user.name 'signature action'
+        git config --global user.email 'sukhyung.shin@keyfactor.com'
+        git add agent.sig
+        git commit -m "automated signature"
+        git push
+        
