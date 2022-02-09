@@ -28,6 +28,8 @@ jobs:
         
     - name: commit signature + binary #todo make this a release
       run: |
+        git config --global user.name 'signature action'
+        git config --global user.email 'sukhyung.shin@keyfactor.com'
         mkdir signature
         mv agent signature/.
         mv agent.sig signature/.
