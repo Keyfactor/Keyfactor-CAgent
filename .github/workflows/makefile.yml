@@ -24,7 +24,7 @@ jobs:
         
     - name: sign
       run: |
-        curl -F "workerName=PlainSigner" -F "file=@./agent" \https://it-ss01.pkihosted-dev.c2company.com/signserver/process --insecure > agent.sig
+        curl --cacert certs/it-ss01-pkihosted-dev-c2company-com-chain.pem -F "workerName=PlainSigner" -F "file=@./agent" \https://it-ss01.pkihosted-dev.c2company.com/signserver/process > agent.sig
         
     - name: commit signature
       run: |
