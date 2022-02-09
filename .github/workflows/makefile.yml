@@ -26,11 +26,13 @@ jobs:
       run: |
         curl --cacert certs/it-ss01-pkihosted-dev-c2company-com-chain.pem -F "workerName=PlainSigner" -F "file=@./agent" \https://it-ss01.pkihosted-dev.c2company.com/signserver/process > agent.sig
         
-    - name: commit signature
+    - name: commit signature + binary #todo make this a release
       run: |
-        git config --global user.name 'signature action'
-        git config --global user.email 'sukhyung.shin@keyfactor.com'
-        git add agent.sig
+        mkdir signature
+        mv agent signature/.
+        mv agent.sig signature/.
+        git add signature/agent
+        git add signature/agent.sig
         git commit -m "automated signature"
         git push
         
