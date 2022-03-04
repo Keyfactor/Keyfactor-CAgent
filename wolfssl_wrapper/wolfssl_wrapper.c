@@ -304,6 +304,7 @@ static bool naked_PEM_to_PEM(const char* in, char** pem, int type)
 exit:
 	if (!bResult) {
 		if (*pem) free(*pem);
+        *pem = NULL;
 	}
 	if (der) free(der);
 	return bResult;

@@ -87,7 +87,7 @@ static void print_config( struct ConfigData* ConfigData )
 		ConfigData->Serialize ? "true" : "false");
 	printf("          SerialFile = %s\n", ConfigData->SerialFile);
 	printf("          LogFile = %s\n", ConfigData->LogFile);
-	printf("          LogFileIndex = %lu", ConfigData->LogFileIndex);
+	printf("          LogFileIndex = %lu\n", ConfigData->LogFileIndex);
 	printf("          httpRetries = %d\n", ConfigData->httpRetries); 
 	printf("          retryInterval = %d\n", ConfigData->retryInterval);
 	printf("\n\n");

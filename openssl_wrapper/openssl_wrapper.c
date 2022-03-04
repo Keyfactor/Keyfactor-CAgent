@@ -356,9 +356,10 @@ void PemInventoryList_free(PemInventoryList* list)
 		}		
 		log_trace("%s::%s(%d) : Freeing PemInventoryList", LOG_INF);
 		if (list->items) free(list->items);
-		if (list) free(list);
-		list = NULL;
+        list->items = NULL;
 	}
+    if (list) free(list);
+    list = NULL;
 	return;
 } /* PemInventoryList_free */
 
