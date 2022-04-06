@@ -69,4 +69,4 @@ valgrind.log
 
 # Sig files
 signature/
-
+.idea/
