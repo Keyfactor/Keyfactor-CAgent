@@ -67,3 +67,6 @@ wolfssl_testing
 valgrind_output
 valgrind.log
 
+# Sig files
+signature/
+
