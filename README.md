@@ -1,76 +1,143 @@
 # C-Agent
-## Iot-orchestrator
+The C-Agent is a reference implementation of a Keyfactor Remote Agent geared toward use in IoT based solutions.
+The Keyfactor-CAgent can be built for three (3) different modes:
+- openSSL
+- wolfSSL
+- Raspberry Pi SPI TPM (e.g., SLB9760 or STPM4RasPI)
 
-The C-Agent is a reference implementation of a Keyfactor Orchestrator geared toward use in IoT based solutions.
+#
+#
+# OpenSSL build
+#
 
-# C-Agent Build Dependencies:
-Before building the agent, install the following dependencies:
+## Install the __dependencies__ depending on your Linux distribution:
 
-	build-essential
-	git
-	libcurl4-gnutls-dev
-	curl
-
-When building for openSSL, also install this dependency:
-
-	libssl-dev
-
-When building the wolfSSL version, also install these dependencies:
-
-	automake
-	autoconf
-	libtool
-
-For example, if you are on a Debian based build (Debian/Ubuntu/Xubuntu/Raspbian/...) you execute the following commands to install all of the above dependencies.
-	
+#### Debian based (e.g., Poky, Ubuntu, Raspian, Raspberry Pi OS, etc.)
 	sudo apt update
-	sudo apt install -y build-essential git libcurl4-gnutls-dev curl libssl-dev automake autoconf libtool
-	sudo apt autoremove -y
-	
-For RHEL based systems (rhel/centos/rocky...) the following commands should install the required dependencies.
-        
+	sudo apt install -y build-essential git libcurl4-gnutls-dev curl libssl-dev
+
+#### RHEL based (RHEL, CentOS, Rocky, etc.)
 	sudo yum update
-	sudo yum install -y curl-devel openssl-devel
+	sudo yum install -y build-essential git curl-devel curl openssl-devel
 
-# OpenSSL version requirements
-When running an openSSL release, version 1.1.1 or later is recommended.  
-The agent runs on openSSL 1.0.1.  To determine the openssl version installed on a Linux build, run the following command:
-
-	openssl version
-
-# wolfSSL build and install
-Make sure the Wolf dependencies are loaded.  Then clone the latest wolfSSL version (minimum v4.4.0), configure and build the version as follows:
-
+## Clone the git repository
 	cd ~
-	git clone https://github.com/wolfssl/wolfssl.git
-	cd wolfssl
+	git clone https://github.com/Keyfactor/Keyfactor-CAgent
+
+## Build the agent against the OpenSSL target
+	cd ~/Keyfactor-CAgent
+	make clean
+	make opentest -j$(nproc)
+
+## Configure and run the Agent (see below)
+
+#
+#
+# WolfSSL build
+#
+
+## Install the __dependencies__ depending on your Linux distribution:
+
+#### Debian based (e.g., Poky, Ubuntu, Raspian, Raspberry Pi OS, etc.)
+	sudo apt update
+	sudo apt install -y build-essential git automake autoconf libtool pkg-config wget
+
+#### RHEL based (RHEL, CentOS, Rocky, etc.)
+	sudo yum update
+	sudo yum install -y build-essential git automake autoconf libtool pkg-config wget
+
+## Download, build, and install wolfSSL
+#### Make sure the Wolf dependencies are loaded.  Then clone the latest wolfSSL version (minimum v4.4.0), configure and build the version as follows:
+	cd ~
+	wget https://github.com/wolfSSL/wolfssl/archive/v5.0.0-stable.tar.gz
+	tar -xzf v5.0.0-stable.tar.gz
+	cd wolfssl-5.0.0-stable
 	./autogen.sh
-	./configure --enable-all
-	make -j$(nproc)
+	./configure --enable-tls13 --enable-all
+	make
 	sudo make install
 	sudo ldconfig -v | grep libwolfssl
 
-Make sure the last command has a line that reads out something similar to:
+#### Make sure the last command has a line that reads out something similar to:
+	libwolfssl.so.30 -> libwolfssl.so.30.0.0
+#### That tells you that the library is installed correctly.
 
-	libwolfssl.so.24 -> libwolfssl.so.24.2.0
-
-That tells you that the library is installed correctly.
-
-# Making the Agent
-It is possible to build both the openSSL and the wolfSSL version of the agent by using different make switches, see below.
-
+## Download, build, and install cURL for use with wolfSSL
 	cd ~
-	git clone https://github.com/Keyfactor/Keyfactor-CAgent.git
+	wget https://github.com/curl/curl/archive/refs/tags/curl-7_81_0.tar.gz
+	tar -xvf curl-7_81_0.tar.gz
+	cd ~/cd curl-curl-7_81_0/
+	autoreconf -fi
+	./configure --enable-warnings --enable-werror --enable-headers-api --with-wolfssl --enable-debug
+	make -j$(nproc)
+	sudo make install
+	sudo ldconfig
+
+## Clone the Keyfactor-CAgent git repository
+	cd ~
+	git clone https://github.com/Keyfactor/Keyfactor-CAgent
+
+## Build the agent against the WolfSSL target
 	cd ~/Keyfactor-CAgent
-	make clean <----- do this to clean all objects and rebuild all
+	make clean
+	make wolftest -j$(nproc)
 
-Only build one version of the agent, either openSSL or wolfSSL:
+## Configure and Run the Agent (see below)
 
-	make opentest -j$(nproc) <-------- The openssl build 
-	make wolftest -j$(nproc) <-------- The wolfssl build 
-	make tpm -j$(nproc) <------------- For use with the SLB9670 & Raspberry Pi
-	
-# Running the agent
+#
+#
+# Raspberry Pi + openSSL + TPM Build (Coming soon)
+#
+Coming soon
+#
+#
+# AREA COMMON TO ALL BUILDS 
+#
+
+# Configure the agent
+
+### Create required directories, files, and update ownership
+	sudo mkdir --parents /home/keyfactor/Keyfactor-CAgent/certs/
+	sudo chown $(whoami):$(whoami) /home/keyfactor/Keyfactor-CAgent/certs
+
+### Add your Keyfactor Test Instance's Root Certificate to the trust.store
+#### First get your Test Instance's Root Certificate by navigating to the web site & downloading the certificate as a PEM file.
+	nano /home/keyfactor/Keyfactor-CAgent/certs/trust.store
+#### Open the PEM file in a text editor and copy into the trust.store file
+
+### Modify the agent configuration file
+	cd ~/Keyfactor-CAgent
+	nano config.json
+#### Add these data lines into the file, replacing the Hostname, Username, and Password entries with the relevant data from your Marketplace instance.  
+#### Also replace the Agent name and CSR Subject with a unique name to your Marketplace instance.
+#### Also note this file is case senstivive!
+	{
+		"AgentId": "",
+		"AgentName": "UniqueName",
+		"Hostname": "www.yourtestdrive.com",
+		"Username": "testdrive\\yourusername",
+		"Password": "yourpassword",
+		"VirtualDirectory": "KeyfactorAgents",
+		"TrustStore": "/home/keyfactor/Keyfactor-CAgent/certs/trust.store",
+		"AgentCert": "/home/keyfactor/Keyfactor-CAgent/certs/Agent-cert.pem",
+		"AgentKey": "/home/keyfactor/Keyfactor-CAgent/certs/Agent-key.pem",
+		"CSRKeyType": "ECC",
+		"CSRKeySize": 256,
+		"CSRSubject": "CN=UniqueName",
+		"EnrollOnStartup": true,
+		"UseSsl": true,
+		"LogFile": "agent.log"
+	}
+
+#### The Agent uses a config.json file to provide inputs into the system.
+#### For this reference example, we use unencrypted passwords, usernames, and the like.
+#### In a full implementation, this data is either secured in trusted element space and/or encrypted and stored as a blob.
+#### To allow easier exploration, this is not done here & is implemented depending on physical hardware and business requirements.
+
+#
+#
+#
+# APPENDIX A: Agent switches
 
 	./agent -l <switch_see_below>  enables logging (default is info)
 	./agent -l t is the greatest detail mode and includes traced curl output
@@ -88,51 +155,57 @@ Only build one version of the agent, either openSSL or wolfSSL:
 	./agent -e <engine> the crypto engine to use (e.g., tpm2tss) NOTE:
 		 				must compile the TPM version of the agent
 
-# Agent History
-	version 2.8.5
-		Modified logging to use heap.  
-		Logging now can use a large file (e.g. 5MBytes) that will roll over when it hits the max file size.
-		The system will interact with the 5MByte file in smaller chunks (e.g., 256kBytes) of heap memory.
-	version 2.8.4
-		Fixed issue where a re-registered agent did not have AgentId updated
-	version 2.8.3
-		Additional memory leaks found and squashed
-	version 2.8.2
-		Fixed some memory leaks
-	version 2.8.1
-		Fixed logging to file bug
-	version 2.8.0
-		Added support for bootstrap certificates (defined in config.json)
-		Updated Licensing information
-	version 2.7.2
-		Fixed a bug where CodeString isn't sent by platform, but HResult is
-	version 2.7.1
-		Fixed bug with agent cert expiry
-	version 2.7.0
-		Added -h switch.  Use this to have the AgentName = hostname_datetime
-		Added second hit to /Session/Register with client parameters used by the Registration Handler to configure re-enrollment jobs on the certificate stores.
-	version 2.6.1
-		Added -c switch to allow configuration file location to be passed to the agent
-	version 2.6.0
-		Updated agent for v8.5.2 of the Keyfactor Platform
-	version 2.5.2
-		Fixed bugs in openSSL layer when performing management jobs
-	version 2.5.1 
-		Fixed a bug in the openSSL wrapper cleanup causing segfaults
-		Added a check to the inventory and management jobs to validate cert store exists
-		Added sanity checks on the initital configuration file
-		Added ECC 192 key generation
-		Set default logging level to INFO
-	version 2.5.0
-		Log to file upon agent shutting down
-		Agent runs through all jobs once, this allows cron to schedule it
-		Added warning log level
-		Added a priority queue for agent jobs upon initial retrieval
-		Ignore chained jobs - all inventory jobs run immediate
-		Check if a store is a directory before reading/writing
-		Check if re-enrollment, inventory, or managment jobs are targeting the agent store & don't run them
-		Added agent cert re-enrollment upon platform requesting it
-	version 2.1.0
-		Added TPM for raspberry pi with Infineon SLB9670 and openSSL
-	version 2.0.0
-		Created wrapper classes to separate Keyfactor Platform from ssl/crypto implementation
+# APPENDIX B: Complete Configuration file data
+__AgentID__ : Assigned by Keyfactor Control.  Please leave blank.
+
+__AgentName__ : <optional> Leave blank if using the `-h` argument with the agent. This is <required> if not using the `-h` switch.
+
+__ClientParameterPath__ :  <optional> Used to pass optional client parameters to the Registration session.
+
+__Hostname__ : <required> Either the IP address or the FQDN of the Keyfactor Control Web Address
+
+__Password__ : <optional> If using basic authentication to the Keyfactor Control Platform, then the password for the user.  This can also be omitted if a reverse proxy is injecting authentication credentials into the HTTP header.
+
+__Username__ : <optional> If using basic authentication to the Keyfactor Control Platform, then the domain and username to log into the Keyfactor Control Platform (remember, the \ character must be escaped -- e.g., KEYFACTOR\\Administrator).  This can also be omitted if a reverse proxy is injecting authentication credentials into the HTTP header.
+
+__VirtualDirectory__ : <required> Set this to KeyfactorAgents if you are not using a reverse proxy.  If you are using a reverse-proxy, set it to the virtual directory that is mapped to KeyfactorAgents.
+
+__TrustStore__ : <required> The location of additional certificates that are trusted by the Agent.  This list is appended to the standard CA certificate store located in `/etc/ssl/certs/ca-certificates.crt` for Ubuntu.
+
+__AgentCert__ : <required> The (eventual) location of the Agent's certificate.  This is the certificate used by the Agent to call into the platform.
+
+__AgentKey__ : <required> The (eventual) location of the Agent's private key.  This is the key used by the Agent to call into the platform.
+
+__AgentKeyPassword__ : <optional> An optional passphrase for decoding the Agent Key.  Note, if a TPM, Secure Element, or secure area is used, this **must not be defined**.
+
+__CSRKeyType__ : <required> The Key type for the AgentKey (ECC or RSA).  This must match the template defined in the Keyfactor Platform.
+
+__CSRKeySize__ : <required> The Key size for the AgentKey.  This must be equal to or greater than the minimum size defined in the template.
+
+__CSRSubject__ : <optional> If the `-h` command line switch is used, this field is not used.  This field is <required> if the command line switch is not used.
+
+__EnrollOnStartup__ : <required> true = The agent will register itself with the platform.   The agent will set this to false once the agent has registered and been approved.
+
+__UseBootstrapCert__ : <optional> true = Use a bootstrap certificate when registering with the platform.  false = otherwise.
+
+__BootstrapCert__ : <optional/required> If UseBootstrapCert is true, this is required & is the path/filename for the certificate.
+
+__BootstrapKey__ : <optional/required> If UseBootstrapCert is false, this is required & is the path/filename of the private key for the bootstrap certificate.
+
+__BootstrapKeyPassword__ : <optional> An optional passphrase used to decode the bootstrap key.
+
+__UseSsl__ : <required> true = https:// is used.  false = http:// is used. Both refer to the Keyfactor Control Platform communications.  Really, this should always be true in a production environment.
+
+__Serialize__ : <optional> true = use a shared network file to grab a serial number/name combination for the AgentName and CN.  false = otherwise.Typically this is an nfs file store that is on the production line.  Most IoT implementations do not use this method, as UKIDs and names are defined by the host and UKID chips (e.g., [1-wire EEPROM with 64-bit UKID](https://www.microchip.com/wwwproducts/en/AT21CS01) )
+
+__SerialFile__ : <optional> The location of a mounted nfs file store & file to use in the serialization operation.
+
+__LogFile__ : <required> The path/filename of a log file for the agent.  **NOTE:** This log file uses the same logging level as the agent.  (See command line arguments for the agent)
+
+__httpRetries__ : <required> The number of times the agent will attempt to connect to the Keyfactor Control platform before recording an error.  Minimum value is 1.
+
+__retryInterval__ : <required> The time delay (in seconds) between httpRetries.
+
+__LogFileIndex__ : <AgentUseOnly> This is used as an index into the LogFile to allow for a rolling maximum sized log file. 
+
+#### __WARNING:__ if the Agent's LogFile is deleted, this **has** to be set to zero (0).
