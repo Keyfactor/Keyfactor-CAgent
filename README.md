@@ -178,7 +178,7 @@ __AgentCert__ : <required> The (eventual) location of the Agent's certificate.  
 
 __AgentKey__ : <required> The (eventual) location of the Agent's private key.  This is the key used by the Agent to call into the platform.
 
-__AgentKeyPassword__ : <optional> An optional passphrase for decoding the Agent Key.  Note, if a TPM, Secure Element, or secure area is used, this **must not be defined**.
+__AgentKeyPassword__ : <optional> An optional passphrase for decoding the Agent Key.  Note, if a TPM, Secure Element, or secure area is used, this **must be defined**.
 
 __CSRKeyType__ : <required> The Key type for the AgentKey (ECC or RSA).  This must match the template defined in the Keyfactor Platform.
 
