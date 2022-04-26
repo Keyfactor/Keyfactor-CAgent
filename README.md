@@ -135,6 +135,8 @@ Coming soon
 #### To allow easier exploration, this is not done here & is implemented depending on physical hardware and business requirements.
 
 ### Run the Agent
+	cd ~/Keyfactor-CAgent
+	./agent -l t
 
 #
 #
