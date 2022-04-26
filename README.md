@@ -134,12 +134,10 @@ Coming soon
 #### In a full implementation, this data is either secured in trusted element space and/or encrypted and stored as a blob.
 #### To allow easier exploration, this is not done here & is implemented depending on physical hardware and business requirements.
 
-### Run the Agent
+# Run the Agent
 	cd ~/Keyfactor-CAgent
 	./agent -l t
 
-#
-#
 #
 # APPENDIX A: Agent switches
 
