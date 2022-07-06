@@ -76,6 +76,7 @@ extern struct ScheduledJob* currentJob; /* Defined in schedule.c */
 /* 2.8.4.0 = Fixed re-registration issue where AgentId was not updated        */
 /* 2.8.5.0 = Changed logging functionality                                    */
 /* 2.8.6.0 = Minor bug fixes                                                  */
-#define AGENT_VERSION 0x0002000800060000
+/* 2.8.7.0 = Fixed Agent cert renewal issue for A0100007 and A0100008 codes   */
+#define AGENT_VERSION 0x0002000800070000
 
 #endif /* AGENT_H_ */

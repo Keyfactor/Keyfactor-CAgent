@@ -702,9 +702,9 @@ int register_session(struct SessionInfo* session,
  				}
 			}
 			else if(resp->Result.Status == STAT_ERR	&& 
-					resp->Result.Error.CodeString && 
-					(strcasecmp("A0100007", resp->Result.Error.CodeString) || 
-					 strcasecmp("A0100008", resp->Result.Error.CodeString)) )
+					resp->Result.Error.CodeString &&
+                    ((0 == strcasecmp("A0100007", resp->Result.Error.CodeString)) ||
+                     (0 == strcasecmp("A0100008", resp->Result.Error.CodeString))) )
 			{
 				log_info("%s::%s(%d): Re-enrolling Agent "
 					"certificate, WITH session token", LOG_INF);
@@ -723,8 +723,8 @@ int register_session(struct SessionInfo* session,
 			AgentApiResult_log(resp->Result, NULL, NULL);
 			if (resp->Result.Status == STAT_ERR	&& 
 				resp->Result.Error.CodeString && 
-				(strcasecmp("A0100007", resp->Result.Error.CodeString) || 
-				 strcasecmp("A0100008", resp->Result.Error.CodeString)) )
+				((0 == strcasecmp("A0100007", resp->Result.Error.CodeString)) ||
+                 (0 == strcasecmp("A0100008", resp->Result.Error.CodeString))) )
 			{
 				log_info("%s::%s(%d): Re-enrolling Agent "
 					"certificate, no session token", LOG_INF);
