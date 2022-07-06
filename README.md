@@ -66,7 +66,8 @@ The Keyfactor-CAgent can be built for three (3) different modes:
 	cd ~
 	wget https://github.com/curl/curl/archive/refs/tags/curl-7_81_0.tar.gz
 	tar -xvf curl-7_81_0.tar.gz
-	cd ~/cd curl-curl-7_81_0/
+	cd ~/
+    cd curl-curl-7_81_0/
 	autoreconf -fi
 	./configure --enable-warnings --enable-werror --enable-headers-api --with-wolfssl --enable-debug
 	make -j$(nproc)
