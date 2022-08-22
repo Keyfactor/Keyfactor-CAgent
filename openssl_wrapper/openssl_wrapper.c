@@ -104,6 +104,109 @@ EC_KEY* newEcc = NULL;
 /******************************************************************************/
 
 /**                                                                           */
+/* Get the first PEM structure in a file location.  If the structure is a     */
+/* certificate, then try and convert it into a x509 structure.                */
+/*                                                                            */
+/* @param  - filename = path and filename to read                             */
+/* @return - A populated x509 structure if we are successful                  */
+/*           NULL, if we are not successful                                   */
+/*                                                                            */
+static X509* get_single_cert(const char* filename) {
+    X509* x509 = NULL;
+    char* name = NULL;
+    char* header = NULL;
+    unsigned char* data = NULL;
+    long length = 0;
+
+    do {
+        /* Open the filestore */
+        log_trace("%s::%s(%d) : Opening %s", LOG_INF, filename);
+        FILE* fp = fopen(filename, "r");
+        if(!fp) {
+            char* errStr = strerror(errno);
+            log_error("%s::%s(%d) : Unable to open store at %s: %s", LOG_INF, filename, errStr);
+            free(errStr);
+            break;
+        }
+
+        /* read the file & attempt to convert it to a x509 certificate */
+        /* Don't lose the pointer so it can be freed */
+        const unsigned char* tempData = NULL;
+        if (PEM_read(fp, &name, &header, &data, &length)) {
+            tempData = data;
+            if ( 0 == (strcmp(name, "CERTIFICATE")) ) {
+                log_trace("%s::%s(%d) : Found a certificate, continuing", LOG_INF);
+                if ((d2i_X509(&x509, &tempData, length))) {
+                    log_debug("%s::%s(%d) : Successfully converted PEM into an x509 cert", LOG_INF);
+                }
+                else {
+                    log_error("%s::%s(%d) : Failed to convert read certificate into an x509 cert", LOG_INF);
+                    if (name) OPENSSL_free(name);
+                    if (header) OPENSSL_free(header);
+                    if (data) OPENSSL_free(data);
+                    break;
+                }
+            }
+            else {
+                log_error("%s::%s(%d) : Error, file is not a certificate", LOG_INF);
+                if (name) OPENSSL_free(name);
+                if (header) OPENSSL_free(header);
+                if (data) OPENSSL_free(data);
+                break;
+            }
+            if (name) OPENSSL_free(name);
+            if (header) OPENSSL_free(header);
+            if (data) OPENSSL_free(data);
+        }
+        else {
+            log_error("%s::%s(%d) : Error parsing certificate", LOG_INF);
+            break;
+        }
+    } while(false);
+
+    return x509;
+} /* get_single_cert */
+
+/**                                                                           */
+/* Convert an ASN1 encoded time to a string like Jul 25 19:44:44 2022 GMT     */
+/*                                                                            */
+/* @param  - buf = A buffer to store the converted time into                  */
+/*           bufLen = the maximum buffer size in bytes                        */
+/*           date = the ASN1 encoded date                                     */
+/* @return - true  = we were able to convert the time into a string           */
+/*           false = we failed to convert the time                            */
+/*                                                                            */
+static bool get_datestring_ASN1(char* buf, int bufLen, const ASN1_TIME* date) {
+    bool bResult = false;
+    BIO *bio = BIO_new(BIO_s_mem());
+    do {
+        if (bio) {
+            if (1 == ASN1_TIME_print(bio, date)) {
+                int written = BIO_read(bio, buf, bufLen - 1);
+                if (0 < written) {
+                    buf[written] = '\0'; /* Null terminate */
+                    log_debug("%s::%s(%d) : converted string = %s", LOG_INF, buf);
+                    if (bio) BIO_free(bio);
+                    bResult = true; /* We are good to go */
+                } else {
+                    log_error("%s::%s(%d) : Error converting ASN1 date to string", LOG_INF);
+                    if (bio) BIO_free(bio);
+                    break;
+                }
+            } else {
+                log_error("%s::%s(%d) : ASN1 date format on certificate is bad", LOG_INF);
+                if (bio) BIO_free(bio);
+                break;
+            }
+        } else {
+            log_error("%s::%s(%d) : Out of memory -- exiting", LOG_INF);
+            exit(EXIT_FAILURE);
+        }
+    } while(false);
+    return bResult;
+} /* get_datestring_ASN1 */
+
+/**                                                                           */
 /* Compute the sha1 hash of the certificate                                   */
 /*                                                                            */
 /* @param  - [Input] : cert = the X509 cert to compute the thumbprint         */
@@ -2359,6 +2462,126 @@ cleanup:
 	}
 	return bResult;
 } /* ssl_remove_cert_from_store */
+
+/**                                                                           */
+/* Check to see if a certificate is within its active dates                   */
+/*                                                                            */
+/* @param  - certFile = path/filename of certificate to check                 */
+/* @return - true  = Certificate is within its active window                  */
+/*           false = Certificate has an issue or is not active yet or is      */
+/*                   expired.                                                 */
+/*                                                                            */
+bool ssl_is_cert_active(char* certFile) {
+    bool bResult = false;
+    X509* x509 = NULL;
+
+    char errBuf[256];
+    int length = 0;
+    const ASN1_TIME* start_date = NULL;
+    const ASN1_TIME* end_date = NULL;
+    static const uint8_t bufLen = 30;
+    char notBeforeString[bufLen];
+    char notAfterString[bufLen];
+    char nowASN1string[bufLen];
+    ASN1_TIME* now_asn1 = NULL;
+    time_t now = 0;
+
+    do {
+        log_info("%s::%s(%d) : Verify certificate is active", LOG_INF);
+        log_trace("%s::%s(%d) : Reading PEM file %s", LOG_INF, certFile);
+        x509 = get_single_cert(certFile);
+        if (NULL == x509) {
+            log_error("%s::%s(%d) : Error getting certificate from file %s", LOG_INF, certFile);
+            break;
+        }
+
+        log_trace("%s::%s(%d) : Getting certificate start date", LOG_INF);
+        start_date = X509_get0_notBefore(x509);
+        if(!start_date) {
+            log_warn("%s::%s(%d) : Cannot get start date of the certificate", LOG_INF);
+            break;
+        }
+        else {
+            if (get_datestring_ASN1(notBeforeString, bufLen, start_date)) {
+                log_trace("%s::%s(%d) : Successfully converted notBeforeDate = %s", LOG_INF, notBeforeString);
+            }
+            else {
+                log_error("%s::%s(%d) : Error converting notBeforeDate, assuming cert is bad", LOG_INF);
+                break;
+            }
+        }
+
+        log_trace("%s::%s(%d) : Getting certificate end date", LOG_INF);
+        end_date = X509_get0_notAfter(x509);
+        if(!end_date) {
+            log_warn("%s::%s(%d) : Cannot get end date of the certificate", LOG_INF);
+            break;
+        }
+        else {
+            if (get_datestring_ASN1(notAfterString, bufLen, end_date)) {
+                log_trace("%s::%s(%d) : Successfully converted notAfterString = %s", LOG_INF, notAfterString);
+            }
+            else {
+                log_error("%s::%s(%d) : Error converting notAfterString, assuming cert is bad", LOG_INF);
+                break;
+            }
+        }
+
+        if(start_date && end_date) {
+            log_verbose("%s::%s(%d) : Certificate is valid from %s to %s", LOG_INF, notBeforeString, notAfterString);
+        }
+
+        log_trace("%s::%s(%d) : Getting current GMT time", LOG_INF);
+        now = time(&now);
+        if( (time_t)-1 == now ) {
+            log_error("%s::%s(%d) : Failed to get local time", LOG_INF);
+            break;
+        }
+        now = mktime(gmtime(&now));
+        if( (time_t)-1 == now ) {
+            log_error("%s::%s(%d) : Failed to convert local time to GMT", LOG_INF);
+            break;
+        }
+        log_debug("%s::%s(%d) : Current GMT time %ld", LOG_INF, now);
+        log_debug("%s::%s(%d) : ctime = %s", LOG_INF, ctime(&now));
+        /* Convert the time to ASN1 format */
+        now_asn1 = ASN1_TIME_adj(now_asn1, now, 0, 0);
+        if(get_datestring_ASN1(nowASN1string, bufLen, now_asn1)) {
+            log_trace("%s::%s(%d) : Successfully converted nowASN1string = %s", LOG_INF, nowASN1string);
+        }
+        else {
+            log_warn("%s::%s(%d) : Couldn't decode now_asn1; not fatal, continuing", LOG_INF);
+        }
+
+        int day = 0;
+        int sec = 0;
+        log_trace("%s::%s(%d) : Comparing start times FROM = %s and TO = %s", LOG_INF, nowASN1string, notBeforeString);
+        ASN1_TIME_diff(&day, &sec, now_asn1, start_date);
+        log_debug("%s::%s(%d) : day = %d    sec = %d", LOG_INF, day, sec);
+        if( (0 < day) || (0 < sec) ) {
+            log_error("%s::%s(%d) : Error certificate is NOT active yet", LOG_INF);
+            break;
+        }
+
+        log_trace("%s::%s(%d) : Comparing end times FROM = %s and TO = %s", LOG_INF, nowASN1string, notAfterString);
+        ASN1_TIME_diff(&day, &sec, now_asn1, end_date);
+        log_debug("%s::%s(%d) : day = %d    sec = %d", LOG_INF, day, sec);
+        if( (0 > day) || (0 > sec) ) {
+            log_error("%s::%s(%d) : Error certificate is EXPIRED", LOG_INF);
+            break;
+        }
+
+        log_info("%s::%s(%d) : Certificate dates are ok", LOG_INF);
+        bResult = true;
+    } while(false);
+
+    if (!bResult) {
+        log_info("%s::%s(%d) : Certificate dates are not ok", LOG_INF);
+    }
+    if (x509) X509_free(x509);
+
+    return bResult;
+} /* ssl_is_cert_active */
 
 /**                                                                           */
 /* Clean up all of the openSSL items that are outstanding                     */

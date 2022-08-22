@@ -340,6 +340,102 @@ static void set_registration_parameters(struct SessionRegisterReq* sessionReq)
 } /* set_registration_parameters */
 
 /**                                                                           */
+/* Check a certificate's expiry date                                          */
+/*                                                                            */
+/* @param  - [Input] certFile = path & filename of certificate to inspect     */
+/* @return - certificate has not expired = true                               */
+/*           otherwise = false                                                */
+/*                                                                            */
+static bool is_cert_active(char* certFile) {
+    bool bResult = false;
+
+    log_trace("%s::%s(%d) : Does cert file exist at %s?", LOG_INF, certFile);
+    if (0 == file_exists(certFile)) {
+        log_error("%s::%s(%d) : File %s does not exist", LOG_INF, certFile);
+        goto exit;
+    } else {
+        log_trace("%s::%s(%d) : Yes cert file exists -- continuing to date check", LOG_INF);
+    }
+
+    bResult = ssl_is_cert_active(certFile);
+
+    exit:
+    return bResult;
+} /* is_cert_active */
+
+/**                                                                           */
+/* Reset the agent as a new one.  The next run of the agent will then         */
+/* go through the re-provisioning process.                                    */
+/*                                                                            */
+/* @param  - none                                                             */
+/* @return - none                                                             */
+/*                                                                            */
+static void reset_agent(void) {
+    char* savedName = NULL;
+    char* savedId = NULL;
+    savedName = strdup(ConfigData->AgentName);
+    savedId = strdup(ConfigData->AgentId);
+    /* save current name */
+    /* Reset the agent id */
+    if ((ConfigData->AgentId) && (0 < strlen(ConfigData->AgentId))) {
+        free(ConfigData->AgentId);
+        ConfigData->AgentId = NULL;
+    }
+    ConfigData->AgentId = strdup("");
+
+    /* Adjust the agent name by appending a datetime */
+    /* NOTE: if a datetime is already added, be sure to remove it. */
+    char* tempName = get_prefix_substring(ConfigData->AgentName, '_');
+    if (NULL == tempName) {
+        log_debug("%s::%s(%d) : Appending datetime to %s", LOG_INF, ConfigData->AgentName);
+        tempName = strdup(ConfigData->AgentName);
+    }
+    else {
+        log_debug("%s::%s(%d) : Appending datetime to %s", LOG_INF, tempName);
+    }
+    /* get the datetime */
+    struct tm* tm = NULL;
+    time_t t;
+    char tBuf[DATE_TIME_LEN+1];
+    tm = gmtime(&t);
+    (void)strftime(tBuf, DATE_TIME_LEN+1, "%Y%m%d%H%M%S", tm);
+    log_verbose("%s::%s(%d) : Date time is %s", LOG_INF, tBuf);
+    /* Now we can adjust the Agent's Name */
+    if ((ConfigData->AgentName) && (0 < strlen(ConfigData->AgentName))) {
+        free(ConfigData->AgentName);
+        ConfigData->AgentName = NULL;
+    }
+    int correctBytes = (strlen(tempName)+DATE_TIME_LEN+2);
+    ConfigData->AgentName = calloc(correctBytes, sizeof(char));
+    if (0 >= snprintf(ConfigData->AgentName,correctBytes,"%s_%s",tempName,tBuf)) {
+        log_error("%s::%s(%d) : Fatal error rewriting agent name, not changing name or ID", LOG_INF);
+        ConfigData->AgentName = strdup(savedName);
+        ConfigData->AgentId = strdup(savedId);
+    }
+    else {
+        /* as long as we get here we successfully wrote the new agent name, so re-enroll */
+        ConfigData->EnrollOnStartup = true;
+    }
+
+    if (tempName) {
+        free(tempName);
+        tempName = NULL;
+    }
+    if (savedName) {
+        free(savedName);
+        savedName = NULL;
+    }
+    if (savedId) {
+        free(savedId);
+        savedId = NULL;
+    }
+
+    config_save();
+
+    return;
+} /* reset_agent */
+
+/**                                                                           */
 /* We need to hit the /Session/Register a second time to get the platform to  */
 /* assign store re-enrollment jobs the first time the agent calls in.         */
 /* This can't be done via a blueprint, but can be done via a call to          */
@@ -654,6 +750,16 @@ int register_session(struct SessionInfo* session,
 		}
 		firstAgentRegistration = true;
 	}
+    else {
+        /* Check the validity of the Agent cert if we aren't in the enrollment phase */
+        if (is_cert_active(ConfigData->AgentCert)) {
+            log_trace("%s::%s:(%d) : Agent cert checks OK", LOG_INF);
+        } else {
+            log_error("%s::%s(%d) : Agent cert has expired - resetting Agent as a new device", LOG_INF);
+            reset_agent();
+            return 998;
+        }
+    }
 
 	/* Send the request up to the platform */
 	reqString = SessionRegisterReq_toJson(sessionReq);

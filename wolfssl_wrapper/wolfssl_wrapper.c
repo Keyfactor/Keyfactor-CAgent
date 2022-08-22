@@ -2504,6 +2504,137 @@ cleanup:
 } /* ssl_remove_cert_from_store */
 
 /**                                                                           */
+/* Verify if a provided certificate (in PEM format) is within its dates       */
+/*                                                                            */
+/* @param  - [Input] certFile = the filename with the PEM                     */
+/* @return - Cert is in active range = true                                   */
+/*           otherwise = false                                                */
+bool ssl_is_cert_active(char* certFile)
+{
+    bool bResult = false;
+    WOLFSSL_X509* x509 = NULL;
+    const unsigned char* start_date = NULL;
+    const unsigned char* end_date = NULL;
+    time_t start_time = 0;
+    time_t end_time = 0;
+    time_t now = 0;
+
+    do
+    {
+        log_info("%s::%s(%d) : Verify certificate is active", LOG_INF);
+        log_trace("%s::%s(%d) : Reading PEM file %s", LOG_INF, certFile);
+        x509 = wolfSSL_X509_load_certificate_file(certFile, SSL_FILETYPE_PEM);
+        if (NULL == x509)
+        {
+            log_error("%s::%s(%d) : Error reading PEM file", LOG_INF);
+            break;
+        }
+
+        log_trace("%s::%s(%d) : Getting certificate start date", LOG_INF);
+        start_date = wolfSSL_X509_notBefore(x509);
+        if(!start_date)
+        {
+            log_warn("%s::%s(%d) : Cannot get start date of the certificate",
+                     LOG_INF);
+            break;
+        }
+
+        log_trace("%s::%s(%d) : Getting certificate end date", LOG_INF);
+        end_date = wolfSSL_X509_notAfter(x509);
+        if(!end_date)
+        {
+            log_warn("%s::%s(%d) : Cannot get end date of the certificate",
+                     LOG_INF);
+            break;
+        }
+
+        if(start_date && end_date)
+        {
+            log_verbose("%s::%s(%d) : Certificate is valid from "
+                        "20%c%c-%c%c-%c%c %c%c:%c%c:%c%c GMT to "
+                        "20%c%c-%c%c-%c%c %c%c:%c%c:%c%c GMT",
+                        LOG_INF,
+                        (char)start_date[2], (char)start_date[3],
+                        (char)start_date[4], (char)start_date[5],
+                        (char)start_date[6], (char)start_date[7],
+                        (char)start_date[8], (char)start_date[9],
+                        (char)start_date[10], (char)start_date[11],
+                        (char)start_date[12], (char)start_date[13],
+                        (char)end_date[2], (char)end_date[3],
+                        (char)end_date[4], (char)end_date[5],
+                        (char)end_date[6], (char)end_date[7],
+                        (char)end_date[8], (char)end_date[9],
+                        (char)end_date[10], (char)end_date[11],
+                        (char)end_date[12], (char)end_date[13]);
+        }
+
+        log_trace("%s::%s(%d) : Converting start date to a time_t structure",
+                  LOG_INF);
+        string_to_time_t(start_date, &start_time);
+        if( (time_t)-1 == start_time )
+        {
+            log_error("%s::%s(%d) : Failed to convert start date structure"
+                      " to time_t", LOG_INF);
+            break;
+        }
+
+        log_trace("%s::%s(%d) : Converting end date to a time_t structure",
+                  LOG_INF);
+        string_to_time_t(end_date, &end_time);
+        if( (time_t)-1 == end_time )
+        {
+            log_error("%s::%s(%d) Failed to convert end date to a time_t "
+                      "structure", LOG_INF);
+            break;
+        }
+
+        log_trace("%s::%s(%d) : Getting curent GMT time", LOG_INF);
+        now = time(&now);
+        if( (time_t)-1 == now )
+        {
+            log_error("%s::%s(%d) : Failed to get local time", LOG_INF);
+            break;
+        }
+        now = mktime(gmtime(&now));
+        if( (time_t)-1 == now )
+        {
+            log_error("%s::%s(%d) : Failed to convert local time to GMT", LOG_INF);
+            break;
+        }
+
+        log_trace("%s::%s(%d) : Current GMT time %ld", LOG_INF, now);
+        log_trace("%s::%s(%d) : %s", LOG_INF, ctime(&now));
+        log_verbose("%s::%s(%d) : Comparing start time of %ld to "
+                    "current time of %ld", LOG_INF, start_time, now);
+
+        if( now < start_time )
+        {
+            log_error("%s::%s(%d) : Error certificate is NOT active yet", LOG_INF);
+            break;
+        }
+
+        log_verbose("%s::%s(%d) : Comparing end time of %ld to "
+                    "current time of %ld", LOG_INF, end_time, now);
+
+        if( now > end_time )
+        {
+            log_error("%s::%s(%d) : Error certificate is EXPIRED", LOG_INF);
+            break;
+        }
+
+        log_info("%s::%s(%d) : Certificate dates are ok", LOG_INF);
+        bResult = true;
+    } while(false);
+
+    if (!bResult)
+    {
+        log_info("%s::%s(%d) : Certificate dates are not ok", LOG_INF);
+    }
+    if (x509) wolfSSL_X509_free(x509);
+    return bResult;
+} /* ssl_isCertActive */
+
+/**                                                                           */
 /* Initialize the platform to use wolfssl                                     */
 /*                                                                            */
 /* @param  - none                                                             */

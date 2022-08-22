@@ -75,6 +75,8 @@ bool ssl_init(void);
 
 bool ssl_cleanup(void);
 
+bool ssl_is_cert_active(char* certFile);
+
 /* This is required to allow us to seed the wolfssl random with supplied data */
 #define CUSTOM_RAND_TYPE byte /* Our custom function returns a byte at a time */
 extern byte custom_rng_seed_generator(void);

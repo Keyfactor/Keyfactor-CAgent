@@ -88,6 +88,8 @@ void ssl_init(void);
 
 void ssl_cleanup(void);
 
+bool ssl_is_cert_active(char* certFile);
+
 
 #endif /* OPENSSL_WRAPPER_H */
 

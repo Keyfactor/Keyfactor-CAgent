@@ -1,0 +1,27 @@
+name: Update README
+on: [push, workflow_dispatch]
+
+jobs:
+  update_readme:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@master
+
+      - uses: cuchi/jinja2-action@v1.2.0
+        with:
+          template: README.md.tpl
+          output_file: README.md
+          data_file: integration-manifest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.SDK_SYNC_PAT }}
+        
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          push_options: '--force'
+          commit_message: Update generated README          
+          commit_user_name: Keyfactor
+          commit_user_email: keyfactor@keyfactor.github.io
+          commit_author: Keyfactor <keyfactor@keyfactor.github.io>
