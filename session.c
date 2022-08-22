@@ -52,6 +52,19 @@
 /******************************************************************************/
 /************************ LOCAL FUNCTION DEFINITIONS/**************************/
 /******************************************************************************/
+/**                                                                           */
+/* Add any customer specific client parameters to the session request         */
+/*                                                                            */
+/* @param  [Output] : sessionReq = The request structure to add data into     */
+/* @return : void                                                             */
+/*                                                                            */
+static void add_custom_client_parameters(struct SessionRegisterReq* sessionReq) {
+    /*
+     * To send custom ClientParameters to the platform, do something like this:
+    SessionRegisterReq_addNewClientParameter(sessionReq, "devicetype", "linux");
+    */
+    return;
+} /* add_custom_client_parameters */
 
 /**                                                                           */
 /* Modify the config.json file with the AgentId if EnrollOnStartup is true.   */
@@ -335,6 +348,8 @@ static void set_registration_parameters(struct SessionRegisterReq* sessionReq)
 
 	/* Add the agent's capabilities, so the Platform knows what to expect */
 	register_add_capabilities(sessionReq);
+    /* Add any custom parameters for this customer */
+    add_custom_client_parameters(sessionReq);
 
 	return;
 } /* set_registration_parameters */
@@ -478,6 +493,8 @@ static int do_second_registration(struct SessionInfo* session,
 	sessionReq->AgentVersion = agentVersion;
 	/* Add the agent's capabilities, so the Platform knows what to expect */
 	register_add_capabilities(sessionReq);
+    /* Add any custom parameters for this customer */
+    add_custom_client_parameters(sessionReq);
 
 	/* Now add a parameter to let the registration handler know it */
 	/* Needs to create the re-enrollment job on the CGM Cert Store */

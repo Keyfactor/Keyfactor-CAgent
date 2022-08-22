@@ -57,7 +57,7 @@ extern struct ScheduledJob* currentJob; /* Defined in schedule.c */
 /*             * Fixed a bug in openSSL cleanup causing segfaults             */
 /*             * Added a check to the inventory and management jobs to        */
 /*               validate cert store exists                                   */
-/*             * Added sanity checks on the intital configuration file        */
+/*             * Added sanity checks on the initial configuration file        */
 /*             * Set default logging level to INFO                            */
 /* 2.5.2.0 = Fixed bugs in openSSL layer when performing management jobs      */
 /* 2.6.0.0 = Modified Agent to work with Keyfactor Platform v8.5.2            */
@@ -79,6 +79,8 @@ extern struct ScheduledJob* currentJob; /* Defined in schedule.c */
 /* 2.8.7.0 = Fixed Agent cert renewal issue for A0100007 and A0100008 codes   */
 /* 2.8.8.0 = Agent now re-registers as new agent if its own certificate       */
 /*           has expired                                                      */
-#define AGENT_VERSION 0x0002000800080000
+/* 2.9.0.0 = Added custom client parameters stub to sessions.  These params   */
+/*           get added to every hit of /Session/Register                      */
+#define AGENT_VERSION 0x0002000900000000
 
 #endif /* AGENT_H_ */
