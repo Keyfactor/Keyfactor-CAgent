@@ -42,15 +42,15 @@
 #define PLATORM_ENROLL_STORES "registration-enroll-stores"
 
 /******************************************************************************/
-/************************ LOCAL GLOBAL STRUCTURES/*****************************/
+/************************ LOCAL GLOBAL STRUCTURES *****************************/
 /******************************************************************************/
 
 /******************************************************************************/
-/************************** LOCAL GLOBAL VARIABLES/****************************/
+/************************** LOCAL GLOBAL VARIABLES ****************************/
 /******************************************************************************/
 
 /******************************************************************************/
-/************************ LOCAL FUNCTION DEFINITIONS/**************************/
+/************************ LOCAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
 /**                                                                           */
 /* Add any customer specific client parameters to the session request         */
@@ -697,7 +697,7 @@ static bool do_first_registration_response(struct SessionRegisterResp* resp,
 /*                                                                            */
 /* @param  [Input] : resp = the platform response to parse                    */
 /* @param  [Output] : session = the session data to populate                  */
-/* @param  [Output] : schedule = string to print into
+/* @param  [Output] : schedule = string to print into                         */
 /* @param  [Output] : pJobList = the head pointer to a linked list of jobs    */
 static void do_normal_registration_response(struct SessionRegisterResp* resp, 
 	struct SessionInfo* session, struct ScheduledJob** pJobList, char* schedule)

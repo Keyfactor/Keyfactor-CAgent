@@ -9,17 +9,19 @@ CFLAGS += -Wextra
 # turn warnings into errors
 CFLAGS += -Werror
 
-# suppress warnings for a couple of things
+# suppress warnings for some things
 CFLAGS += -Wno-unused-parameter
 CFLAGS += -Wno-missing-field-initializers
 CFLAGS += -Wno-missing-braces
+CFLAGS += -Wno-unused-variable
+CFLAGS += -Wno-unused-but-set-variable
+CFLAGS += -Wno-unused-label
+CFLAGS += -Wno-unused-function
+CFLAGS += -Wno-pointer-sign
 
-#CFLAGS += -fsanitize=address
 CFLAGS += -fno-strict-aliasing
-#CFLAGS += -fstack-protector-all
 CFLAGS += -Wno-ignored-qualifiers
           
-#DEBUG_FLAGS = -g3 -ggdb3 -O0
 DEBUG_FLAGS = -g0 -O0
 DEFINES = 
 #DEFINES += -D__RUN_CHAIN_JOBS__
@@ -58,6 +60,14 @@ opentest: DEFINES += -D__OPEN_SSL__
 opentest: ${OOBJ}
 	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${OPENLIBS}
 
+openlib: DEFINES += -D__OPEN_SSL__
+openlib: ${OOBJ}
+	${CC} -shared ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o libagent.so $^ ${OPENLIBS}
+
+openinstall: libagent.so
+	sudo cp libagent.so /usr/lib
+	sudo chmod 755 /usr/lib/libagent.so
+
 rpi9670test: DEFINES += -D__OPEN_SSL__ -D__TPM__
 rpi9670test: ${OOBJ}
 	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${OPENLIBS} ${RPI_TSSLIBS}
@@ -67,7 +77,7 @@ test: wolftest
 # define the builds
 %.o: %.c
 	$(info building $@ from $<)
-	- @${CC} ${DEFINES} ${WARN_FLAGS} ${DEBUG_FLAGS} ${C_STD} -c -o $@ $<
+	- @${CC} ${CFLAGS} ${DEFINES} ${WARN_FLAGS} ${DEBUG_FLAGS} ${C_STD} -c -o $@ $<
 
 # define the clean or delete commands
 .PHONY: deleteallobs
