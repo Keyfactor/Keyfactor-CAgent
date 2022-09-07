@@ -24,10 +24,15 @@ The Keyfactor-CAgent can be built for three (3) different modes:
 	cd ~
 	git clone https://github.com/Keyfactor/Keyfactor-CAgent
 
-## Build the agent against the OpenSSL target
+## Build the agent against the OpenSSL target (64-bit OSes - not Raspberry Pi)
 	cd ~/Keyfactor-CAgent
 	make clean
 	make opentest -j$(nproc)
+
+## Build the agent against the openSSL target for 32-bit OSes like RaspOS
+    cd ~/Keyfactor-CAgent
+    make clean
+    make openpi -j$(nproc)
 
 ## Configure and run the Agent (see below)
 
@@ -78,16 +83,21 @@ The Keyfactor-CAgent can be built for three (3) different modes:
 	cd ~
 	git clone https://github.com/Keyfactor/Keyfactor-CAgent
 
-## Build the agent against the WolfSSL target
+## Build the agent against the WolfSSL target - (64-bit OSes, not Raspberry Pi)
 	cd ~/Keyfactor-CAgent
 	make clean
 	make wolftest -j$(nproc)
+
+## Build the agent against the wolfSSL target - (32-bit OSes like RaspOS)
+    cd ~/Keyfactor-CAgent
+    make clean
+    make wolftest -j$(nproc)
 
 ## Configure and Run the Agent (see below)
 
 #
 #
-# Raspberry Pi + openSSL + TPM Build (Coming soon)
+# TPM Build (Coming soon)
 #
 Coming soon
 #
