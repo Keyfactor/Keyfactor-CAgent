@@ -64,6 +64,10 @@ openlib: DEFINES += -D__OPEN_SSL__
 openlib: ${OOBJ}
 	${CC} -shared ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o libagent.so $^ ${OPENLIBS}
 
+openpi: DEFINES += -D__OPEN_SSL__ -Wno-format
+openpi: ${OOBJ}
+	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${OPENLIBS}
+
 openinstall: libagent.so
 	sudo cp libagent.so /usr/lib
 	sudo chmod 755 /usr/lib/libagent.so
