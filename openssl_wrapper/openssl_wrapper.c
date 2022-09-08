@@ -53,7 +53,7 @@
 #endif
 
 #define RSA_DEFAULT_EXP 65537
-#define MAX_CSR_SIZE 1024 
+#define MAX_CSR_SIZE 2048
 #define SHA1LEN 20
 
 /******************************************************************************/
@@ -1826,7 +1826,7 @@ char* ssl_generate_csr(const char* asciiSubject, size_t* csrLen,
 {
 	X509_REQ* req = NULL;
 	X509_NAME* subject = NULL;
-	unsigned char* reqBytes = NULL;
+	unsigned char reqBytes[MAX_CSR_SIZE] = {0};
 	char* csrString = NULL;
 	int result = SSL_SUCCESS;
 	char errBuf[120];
@@ -1915,35 +1915,29 @@ char* ssl_generate_csr(const char* asciiSubject, size_t* csrLen,
 	/*     string; the result is a PEM without the BEGIN CERTIFICATE REQUEST */
 	/*     and END CERTIFICATE REQUEST                                       */
 	/*************************************************************************/
-	if( SSL_SUCCESS == result )	
-	{
-		log_verbose("%s::%s(%d) : Encoding the CSR and converting it to a "
-			"base 64 encoded string.", LOG_INF);
-		reqBytes = calloc(MAX_CSR_SIZE,sizeof(*reqBytes)); 
-		if ( reqBytes )
-		{
-			unsigned char* tempReqBytes = reqBytes;
-			/* Encode the CSR request as a PKCS#10 certificate request */
-			int writeLen = i2d_X509_REQ(req, &tempReqBytes);
-			/* Now convert this structure to an ASCII string */
-			csrString = base64_encode(reqBytes, (size_t)writeLen, false, NULL);
-			*csrLen = (size_t)writeLen; // GM Specific Code
-			log_trace("%s::%s(%d) : csrString=%s", LOG_INF, csrString);
-			log_trace("%s::%s(%d) : csrLen = %ld", LOG_INF, *csrLen);
-		}
-		else
-		{
-			log_error("%s::%s(%d) : Out of memory allocating %u bytes for"
-				" reqBytes", LOG_INF, MAX_CSR_SIZE);
-			append_linef(pMessage, "Out of memory allocating %u bytes for"
-				" reqBytes", MAX_CSR_SIZE);
-			csrString = NULL;
-		}
+	if( SSL_SUCCESS == result )	{
+		log_verbose("%s::%s(%d) : Encoding the CSR and converting it to a base 64 encoded string.", LOG_INF);
+        unsigned char* tempReqBytes = reqBytes;
+        /* Encode the CSR request as a PKCS#10 certificate request */
+        int writeLen = i2d_X509_REQ(req, &tempReqBytes);
+        /* Now convert this structure to an ASCII string */
+        csrString = base64_encode(reqBytes, (size_t)writeLen, false, NULL);
+        *csrLen = (size_t)writeLen; // GM Specific Code
+        log_trace("%s::%s(%d) : csrString=%s", LOG_INF, csrString);
+        log_trace("%s::%s(%d) : csrLen = %ld", LOG_INF, *csrLen);
+        if (MAX_CSR_SIZE < *csrLen) {
+            log_error("%s::%s(%d) : The length of the CSR = %ld which is longer than the maximum defined "
+                      "length of %d -- ABORTING, please increase the maximum CSR length above %ld and re-compile",
+                      LOG_INF, *csrLen, MAX_CSR_SIZE, *csrLen);
+            exit(EXIT_FAILURE);
+        }
 	}
 
-	if ( reqBytes )	free(reqBytes);
+    log_trace("%s::%s(%d) : Freeing req via X509_REQ_free", LOG_INF);
 	if ( req ) X509_REQ_free(req);
+    log_trace("%s::%s(%d) : Freeing subject via X509_NAME_free", LOG_INF);
 	if ( subject ) X509_NAME_free(subject);
+    subject = NULL;
 	return csrString;
 } /* ssl_generate_csr */
 
