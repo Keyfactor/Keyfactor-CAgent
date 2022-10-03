@@ -437,6 +437,7 @@ static void reset_agent(void) {
         ConfigData->EnrollOnStartup = true;
     }
 
+cleanup:
     if (tempName) {
         free(tempName);
         tempName = NULL;
