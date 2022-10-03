@@ -82,6 +82,7 @@ extern struct ScheduledJob* currentJob; /* Defined in schedule.c */
 /* 2.9.0.0 = Added custom client parameters stub to sessions.  These params   */
 /*           get added to every hit of /Session/Register                      */
 /* 2.9.1.0 = Fixed issue where CSRs max length was too small for RSA/4096     */
-#define AGENT_VERSION 0x0002000900010000
+/* 2.9.2.0 = Fixed but in getting date time for agent's name                  */
+#define AGENT_VERSION 0x0002000900020000
 
 #endif /* AGENT_H_ */

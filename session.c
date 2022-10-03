@@ -412,6 +412,11 @@ static void reset_agent(void) {
     struct tm* tm = NULL;
     time_t t;
     char tBuf[DATE_TIME_LEN+1];
+    log_verbose("%s::%s(%d) : Retrieving time from OS", LOG_INF);
+    if ( !time(&t) ) {
+        log_error("%s::%s(%d) : Error getting time from OS", LOG_INF);
+        goto cleanup;
+    }
     tm = gmtime(&t);
     (void)strftime(tBuf, DATE_TIME_LEN+1, "%Y%m%d%H%M%S", tm);
     log_verbose("%s::%s(%d) : Date time is %s", LOG_INF, tBuf);
