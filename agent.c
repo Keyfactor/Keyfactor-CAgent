@@ -144,6 +144,7 @@ static int parse_parameters( int argc, char *argv[] )
 				else if (0 == strcmp(argv[i+1], "w")) 
 				{
 					log_set_warn(true);
+                    i++;
 				}
 				else 
 				{
