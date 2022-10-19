@@ -2503,6 +2503,63 @@ cleanup:
 	return bResult;
 } /* ssl_remove_cert_from_store */
 
+/* Convert a string representation of a DateTime to a Unix time_t             */
+/* The string needs to be YYMMDDHHMMSS where YY = 20YY for the year           */
+/* This is the format that x509 holds for start and expiry dates              */
+/*                                                                            */
+/* @param  -[Input] : date = the datetime as YYMMDDHHMMSS                     */
+/* @param  -[Output] : time = the returned time_t                             */
+/* @return - success = true                                                   */
+/*         - failure = false                                                  */
+/*                                                                            */
+
+static bool string_to_time_t(const unsigned char* date, time_t* time)
+{
+    bool bResult = false;
+    struct tm dt;
+    int temp = 0;
+    const int ascii_0 = 48; /* Decimal value of ASCII zero */
+
+    temp = 2000 + ((int)(date[2] - ascii_0) * 10) + ((int)(date[3] - ascii_0));
+    temp = temp - 1900;
+    dt.tm_year = temp;
+    log_trace("%s::%s(%d) : tm_year = %d", LOG_INF, dt.tm_year);
+    temp = ((int)(date[4] - ascii_0) * 10) + ((int)(date[5] - ascii_0));
+    dt.tm_mon = --temp;
+    log_trace("%s::%s(%d) : tm_mon = %d", LOG_INF, dt.tm_mon);
+    temp = ((int)(date[6] - ascii_0) * 10) + ((int)(date[7] - ascii_0));
+    dt.tm_mday = temp;
+    log_trace("%s::%s(%d) : tm_mday = %d", LOG_INF, dt.tm_mday);
+    temp = ((int)(date[8] - ascii_0) * 10) + ((int)(date[9] - ascii_0));
+    dt.tm_hour = temp;
+    log_trace("%s::%s(%d) : tm_hour = %d", LOG_INF, dt.tm_hour);
+    temp = ((int)(date[10] - ascii_0) * 10) + ((int)(date[11] - ascii_0));
+    dt.tm_min = temp;
+    log_trace("%s::%s(%d) : tm_min = %d", LOG_INF, dt.tm_min);
+    temp = ((int)(date[12] - ascii_0) * 10) + ((int)(date[13] - ascii_0));
+    dt.tm_sec = temp;
+    log_trace("%s::%s(%d) : tm_sec = %d", LOG_INF, dt.tm_sec);
+    dt.tm_isdst = -1;
+
+    *time = mktime(&dt);
+    if ((time_t)-1 == *time)
+    {
+        log_error("%s::%s(%d) : Unable to convert time", LOG_INF);
+        goto exit;
+    }
+    else
+    {
+
+        log_trace("%s::%s(%d) : %ld is the converted time", LOG_INF, *time);
+        log_trace("%s::%s(%d) : %s", LOG_INF, ctime(time));
+        log_trace("%s::%s(%d) : %s", LOG_INF,ctime(time));
+    }
+    bResult = true;
+
+    exit:
+    return bResult;
+} /* string_to_time_t */
+
 /**                                                                           */
 /* Verify if a provided certificate (in PEM format) is within its dates       */
 /*                                                                            */

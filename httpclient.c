@@ -77,15 +77,13 @@ struct MemoryStruct {
 /* @return - success = the number of bytes taken care of                      */
 /*           failure = the number of bytes taken care of                      */
 /*                                                                            */
-static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, 
-  void *userp)
+static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
   size_t realsize = size * nmemb;
   struct MemoryStruct *mem = (struct MemoryStruct *)userp;
 
   mem->memory = realloc( mem->memory, (mem->size + realsize + 1) );
-  if( NULL == mem->memory )  
-  {
+  if( NULL == mem->memory )  {
     log_error("%s::%s(%d): out of memory", LOG_INF);
     return 0;
   }

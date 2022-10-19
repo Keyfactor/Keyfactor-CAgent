@@ -2098,62 +2098,54 @@ bool ssl_PemInventoryItem_create(struct PemInventoryItem** pem, const char* cert
 	/* Convert the DER to an internal structure */
 	const unsigned char** tempPtrPtr = (const unsigned char**)&certDER;
 	log_trace("%s::%s(%d) : Converting DER to internal cert", LOG_INF);
-	if (d2i_X509(&cert, tempPtrPtr, certLen))
-	{
+	if (d2i_X509(&cert, tempPtrPtr, certLen)) {
 		log_trace("%s::%s(%d) : Converting cert to X509", LOG_INF);
 		cbio = BIO_new(BIO_s_mem());
+        if (NULL == cbio) {
+            log_error("%s::%s(%d) : cbio is NULL -- error in SSL call to BIO_new(BIO_s_mem())", LOG_INF);
+            goto exit;
+        }
 		PEM_write_bio_X509(cbio, cert);
-	}
-	
-	if (cbio)
-	{
-		cert = PEM_read_bio_X509(cbio, NULL, 0, NULL);
-		if ( NULL == cert )
-		{
-			log_error("%s::%s(%d) : This is not a valid X509 cert: \n%s", 
-				LOG_INF, certASCII);
-			goto cleanup;
-		}
-		/* cert now contains the X509 cert */
-		if ( NULL == (*pem = PemInventoryItem_new()) )
-		{
-			log_error("%s::%s(%d) : Out of memory",	LOG_INF);
-			goto cleanup;
-		}
-		/* Populate the PemInventoryItem with a thumbprint */
-		if ( PemInventoryItem_populate(*pem, cert) )
-		{
-			bResult = true;
-		}
-		else
-		{
-			log_error("%s::%s(%d) : Error populating cert", LOG_INF);
-		}
-	}
-	else
-	{
-		log_error("%s::%s(%d) : Out of memory", LOG_INF);
+        if (NULL == cbio) {
+            log_error("%s::%s(%d) : cbio is NULL -- error in SSL call to PEM_write_bio_X509", LOG_INF);
+            goto cleanup;
+        }
 	}
 
+    cert = PEM_read_bio_X509(cbio, NULL, 0, NULL);
+    if ( NULL == cert ) {
+        log_error("%s::%s(%d) : This is not a valid X509 cert: \n%s", LOG_INF, certASCII);
+        goto exit;
+    }
+    /* cert now contains the X509 cert */
+    if ( NULL == (*pem = PemInventoryItem_new()) ) {
+        log_error("%s::%s(%d) : Out of memory",	LOG_INF);
+        goto cleanup;
+    }
+    /* Populate the PemInventoryItem with a thumbprint */
+    if ( PemInventoryItem_populate(*pem, cert) ) {
+        bResult = true;
+    } else {
+        log_error("%s::%s(%d) : Error populating cert", LOG_INF);
+    }
+
 cleanup:
-	if (certDER) 
-	{ 
+	if (certDER) {
 		log_trace("%s::%s(%d) : Freeing certDER", LOG_INF);
 		certDER -= certLen; /* Remember d2i forwarded this, so set it back */
 		free(certDER); 
 	}
-	if (cert) 
-	{ 
+	if (cert) {
 		log_trace("%s::%s(%d) : Freeing cert", LOG_INF);
 		X509_free(cert); 
 	}
-	if (cbio) 
-	{ 
+	if (cbio) {
 		log_trace("%s::%s(%d) : Freeing cbio", LOG_INF);
 		BIO_free(cbio); 
 	}
 
-	return bResult;
+exit:
+    return bResult;
 } /* ssl_PemInventoryItem_create */
 
 /**                                                                           */
