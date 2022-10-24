@@ -2318,17 +2318,18 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,
 		/**************************/
 		log_trace("%s::%s(%d) : Writing certs to store", LOG_INF);
 		bio = BIO_new(BIO_s_mem()); /* Get new memory to store the bio */
+        log_trace("%s::%s(%d) : bio returned %s", LOG_INF, (NULL == bio) ? "NULL" : "a memory location");
 		/* At this point i points to the pemList & */
 		/* PEMx509List of the cert to delete */
 		for (int j = 0; pemList->item_count > j; j++)
 		{
+            log_trace("%s::%s(%d) : Attempting to write cert #%d of #%d to store", LOG_INF, j, (pemList->item_count));
 			if (i != j)
 			{
 				ret = BIO_puts(bio, pemList->items[j]->cert);					 
 				if ( 0 != ret )
 				{
-					log_error("%s::%s(%d) : Failed to add cert to store %s", 
-						LOG_INF, storePath);
+					log_error("%s::%s(%d) : Failed to add cert to store %s ret value = %d", LOG_INF, storePath, ret);
 					goto cleanup;
 				}
 			}
