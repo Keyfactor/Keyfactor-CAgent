@@ -2327,7 +2327,7 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,
 			if (i != j)
 			{
 				ret = BIO_puts(bio, pemList->items[j]->cert);					 
-				if ( 0 != ret )
+				if ( 0 > ret )
 				{
 					log_error("%s::%s(%d) : Failed to add cert to store %s ret value = %d", LOG_INF, storePath, ret);
 					goto cleanup;
@@ -2344,7 +2344,7 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,
 			if ( !is_cert_key_match(pemX509Array->certs[i], keyArray->keys[k]) )
 			{
 				ret = write_key_bio(bio, password, keyArray->keys[k]);
-				if ( 0!= ret )
+				if ( 0 > ret )
 				{
 					log_error("%s::%s(%d) : Failed to add key to store %s",
 						LOG_INF, storePath);
