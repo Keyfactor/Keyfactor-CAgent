@@ -56,6 +56,10 @@
 #define MAX_CSR_SIZE 2048
 #define SHA1LEN 20
 
+static const char x509PEMHeader[30] = "-----BEGIN CERTIFICATE-----\n\0";
+static const char x509PEMFooter[30] = "-----END CERTIFICATE-----\n\0";
+static const int MAX_CERT_SIZE = 4096;
+
 /******************************************************************************/
 /************************ LOCAL GLOBAL STRUCTURES *****************************/
 /******************************************************************************/
@@ -102,6 +106,120 @@ EC_KEY* newEcc = NULL;
 /******************************************************************************/
 /************************ LOCAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
+
+/**                                                                           */
+/*  @fn pemify                                                                */
+/*                                                                            */
+/*  @brief Convert a single base64 string (with no carriage returns) into     */
+/*  a 64 byte wide string with carriage returns.  Prepend a supplied header   */
+/*  and postpend a supplied footer.                                           */
+/*                                                                            */
+/*  @param - [Input/Output] pToB64 - a pointer to the base64 string to break  */
+/*           into 64 byte wide rows.  NOTE: The string pointed to by this     */
+/*           parameter is re-sized & the result is placed into this structure.*/
+/*           That is, the original contents are destroyed.                    */
+/*         - [Input] header - The PEM header to prepend                       */
+/*         - [Input] footer - The PEM footer to post-pend                     */
+/*  @returns true = successfull execution & the string pointed to by pToB64   */
+/*                  is replaced with the new value                            */
+/*           false = failure & the string pointed to by pToB64 is unchanged   */
+/*                                                                            */
+static bool pemify(char** pToB64, const char* header, const char* footer) {
+    char result[MAX_CERT_SIZE];
+    bool worked = false;
+    size_t tempSize = 0;
+    size_t base64Length = strlen(*pToB64);
+    size_t inputArrayPtr = 0;
+    size_t outputArrayPtr = 0;
+    size_t lenToWrite = 64;
+
+    /* Validate the input parameters */
+    if (NULL == pToB64) {
+        log_error("%s::%s(%d) : The Base64 pointer must not be null", LOG_INF);
+        return false;
+    }
+    if (NULL == *pToB64) {
+        log_error("%s::%s(%d) : The input string must not be null", LOG_INF);
+        return false;
+    }
+    if (NULL == header) {
+        log_error("%s::%s(%d) : The header string must not be null", LOG_INF);
+        return false;
+    }
+    if (NULL == footer) {
+        log_error("%s::%s(%d) : The footer string must not be null", LOG_INF);
+        return false;
+    }
+    /* We need to be VERY careful here to not overrun these buffers! */
+    /* So validate this stuff!!! */
+    tempSize = strlen(header) + strlen(footer) + strlen(*pToB64);
+    log_debug("%s::%s(%d) : The size of the header + footer + data leads to a string of size %lu bytes "
+              "the buffer is of size %d", LOG_INF, tempSize, MAX_CERT_SIZE);
+    if ((size_t)MAX_CERT_SIZE < (tempSize + 1)) {
+        log_error("%s::%s(%d) : The size of the header + footer + data is too large for the buffer, which is "
+                  "sized at %d bytes", LOG_INF, MAX_CERT_SIZE);
+        return false;
+    }
+
+    do {
+        log_trace("%s::%s(%d) : Writing to result variable PEM header = %s", LOG_INF, header);
+        tempSize = strlen(header);
+        memcpy(result, header,tempSize); // don't copy \0
+        outputArrayPtr += tempSize;
+        log_trace("%s::%s(%d) : Successfully wrote PEM header to result variable", LOG_INF);
+
+        log_trace("%s::%s(%d) : Attempting to parse the input string:\n%s", LOG_INF, *pToB64);
+        log_trace("%s::%s(%d) : The input string is %lu characters long", LOG_INF, base64Length);
+        inputArrayPtr = 0;
+        while (base64Length > inputArrayPtr) {
+            if (base64Length < (inputArrayPtr+lenToWrite)) {
+                lenToWrite = (base64Length - inputArrayPtr);
+            } else {
+                lenToWrite = 64; // Write 64 bytes
+            }
+            log_trace("%s::%s(%d) : Attempting to write %lu bytes from input array at location %lu into output "
+                      "array at location %lu", LOG_INF, lenToWrite, inputArrayPtr, outputArrayPtr);
+            memcpy(result+outputArrayPtr, *pToB64+inputArrayPtr, lenToWrite);
+            inputArrayPtr += lenToWrite; // Increment the pointer into the input array by 64. 0,64,128,192,etc.
+            outputArrayPtr += lenToWrite; // Increment the pointer into the result array
+            log_trace("%s::%s(%d) : Attempting to write a carriage return into output array at location %lu",
+                      LOG_INF, outputArrayPtr);
+            result[outputArrayPtr] = '\n';
+            outputArrayPtr++;
+            result[outputArrayPtr] = '\0'; // Temporarily end this string so we can print it.
+            log_debug("%s::%s(%d) : Current result is %lu long", LOG_INF, strlen(result));
+        }
+        worked = true;
+    } while(false);
+
+    if (worked) {
+        log_trace("%s::%s(%d) : Writing to result variable PEM footer = %s", LOG_INF, header);
+        tempSize = strlen(footer);
+        memcpy(result+outputArrayPtr, footer,tempSize); // don't copy \0
+        outputArrayPtr += tempSize;
+        result[outputArrayPtr] = '\0'; // Now add the \0 explicitly
+        log_trace("%s::%s(%d) : Successfully wrote PEM footer to result variable", LOG_INF);
+    }
+
+    if (worked) {
+        if (*pToB64) {
+            tempSize = strlen(result) + 1;
+            *pToB64 = (char *)realloc(*pToB64,tempSize);
+            if (NULL == *pToB64) {
+                log_error("%s::%s(%d) : Out of memory in realloc", LOG_INF);
+                worked = false;
+            } else {
+                log_trace("%s::%s(%d) : Successfully reallocated memory", LOG_INF);
+                memcpy(*pToB64,result,tempSize);
+                worked = true;
+            }
+        }
+    } else {
+        log_error("%s::%s(%d) : Could not PEMify the input string\n%s", LOG_INF, *pToB64);
+    }
+
+    return worked;
+} /* pemify */
 
 /**                                                                           */
 /* Get the first PEM structure in a file location.  If the structure is a     */
@@ -555,8 +673,7 @@ static bool PemInventoryItem_populate(PemInventoryItem* pem, X509* cert)
 		if (0 < contLen)
 		{
 			/* Store the b64 encoded DER version of the pem in here */
-			log_trace("%s::%s(%d) : Storing certContent into PEMInventoryItem", 
-				LOG_INF);
+			log_trace("%s::%s(%d) : Storing certContent into PEMInventoryItem", LOG_INF);
 			pem->cert = base64_encode(certContent, contLen, false, NULL);
 			pem->thumbprint_string = strdup(thumb);
 			pem->has_private_key = false;
@@ -564,8 +681,7 @@ static bool PemInventoryItem_populate(PemInventoryItem* pem, X509* cert)
 		}
 		else
 		{
-			log_error("%s::%s:(%d) : Error decoding cert i2d_X509\n%s",	
-				LOG_INF, certContent);
+			log_error("%s::%s:(%d) : Error decoding cert i2d_X509\n%s", LOG_INF, certContent);
 		}
 	}
 	else
@@ -1064,7 +1180,9 @@ static unsigned long write_cert_bio(BIO* bio, const char* b64cert)
 	bool result = false;
 	char *certBytePtr = NULL;
 
+    log_trace("%s::%s(%d) : Attempting to decode DER", LOG_INF);
 	certBytePtr = base64_decode(b64cert, -1, &outLen);
+    log_trace("%s::%s(%d) : Decoded certificate and got contents of \n%s", LOG_INF, certBytePtr);
 	const unsigned char** tempPtrPtr = (const unsigned char**)&(certBytePtr);
 
 	if (d2i_X509(&certStruct, tempPtrPtr, outLen)) 
@@ -1256,7 +1374,7 @@ cleanup:
 /* @param  - [Output]: pPemList = the PemInventory                            */
 /* @param  - [Output]: (optional) pPemArray = the X509 cert array which is    */
 /*                     mapped 1:1 with the pPemList. The latter only contains */
-/*                     the ASCII representation of the cert.                  */
+/*                     the NAKED PEM representation of the cert.              */
 /* @param  - [Input] : returnX509array =                                      */
 /*                     true if you want the array passed back via pPemArray   */
 /*                      NOTE: This means the calling function must dispose    */
@@ -2245,8 +2363,7 @@ bool ssl_Store_Cert_add(const char* storePath, const char* certASCII)
 /* @return - success : true                                                   */
 /*           failure : false                                                  */
 /*                                                                            */
-bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb, 
-	const char* keyPath, const char* password)
+bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb, const char* keyPath, const char* password)
 {
 	bool bResult = false;
 	PemInventoryList* pemList = NULL;
@@ -2255,6 +2372,7 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,
 	/* Write the modified store into memory */
 	BIO* bio = NULL;
 	char* data = NULL;
+    char* pem = NULL;
 	size_t len = 0;
 	int ret = 0;
 
@@ -2262,23 +2380,18 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,
 	/* 1.) Get the PEM inventory, X509 PEM, and list of private keys          */
 	/*     in the store                                                       */
 	/**************************************************************************/
-	log_trace("%s::%s(%d) : Get PEM inventory",
-		LOG_INF);
+	log_trace("%s::%s(%d) : Get PEM inventory",	LOG_INF);
 	if ( 0 != get_inventory(storePath, password, &pemList, &pemX509Array, true, 
-		&keyArray, true) )
-	{
-		if ( pemList )
-		{
+		&keyArray, true) )	{
+		if ( pemList )	{
 			PemInventoryList_free(pemList);
 			pemList = NULL;
 		}
-		if ( pemX509Array )
-		{
+		if ( pemX509Array )	{
 			PEMx509List_free(pemX509Array);
 			pemX509Array = NULL;
 		}
-		if ( keyArray )
-		{
+		if ( keyArray )	{
 			PrivKeyList_free(keyArray);
 			keyArray = NULL;
 		}
@@ -2287,32 +2400,25 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,
 	}
 
 	/**************************************************************************/
-	/* 2.) Search for the certificate inside of the store by sha1 hash        */
+	/* 2.) Search for the certificate in the store by sha1 hash               */
 	/**************************************************************************/
-	log_trace("%s::%s(%d) : Search for matching hash to remove in inventory", 
-		LOG_INF);
+	log_trace("%s::%s(%d) : Search for matching hash to remove in inventory", LOG_INF);
 	bool certFound = false;
 	int i = pemList->item_count-1;
-	while ( (!certFound) && (0 <= i) )
-	{
+	while ( (!certFound) && (0 <= i) )	{
 		log_trace("%s::%s(%d) : thumb #%d compared", LOG_INF, i);
-		if (0 == strcasecmp(searchThumb, pemList->items[i]->thumbprint_string) )
-		{
+		if (0 == strcasecmp(searchThumb, pemList->items[i]->thumbprint_string) ) {
 			certFound = true;
-		}
-		else
-		{
+		} else {
 			i--;
 		}
 	}
-	log_verbose("%s::%s(%d) : Found cert: %s", LOG_INF, 
-		(certFound ? "yes" : "no"));
+	log_verbose("%s::%s(%d) : Found cert: %s", LOG_INF, (certFound ? "yes" : "no"));
 
 	/**************************************************************************/
 	/* 3.) Update the store, but skip the cert we want to remove              */
 	/**************************************************************************/
-	if ( certFound )
-	{
+	if ( certFound ) {
 		/**************************/
 		/* 3a.) Add all the certs */
 		/**************************/
@@ -2321,31 +2427,43 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,
         log_trace("%s::%s(%d) : bio returned %s", LOG_INF, (NULL == bio) ? "NULL" : "a memory location");
 		/* At this point i points to the pemList & */
 		/* PEMx509List of the cert to delete */
-		for (int j = 0; pemList->item_count > j; j++)
-		{
-            log_trace("%s::%s(%d) : Attempting to write cert #%d of #%d to store", LOG_INF, j, (pemList->item_count));
-			if (i != j)
-			{
-				ret = BIO_puts(bio, pemList->items[j]->cert);					 
-				if ( 0 > ret )
-				{
-					log_error("%s::%s(%d) : Failed to add cert to store %s ret value = %d", LOG_INF, storePath, ret);
-					goto cleanup;
-				}
-			}
+		for (int j = 0; pemList->item_count > j; j++) {
+			if (i != j)	{
+                log_trace("%s::%s(%d) : Attempting to write cert #%d of #%d to bio",
+                          LOG_INF, j+1, (pemList->item_count));
+                len = strlen(pemList->items[j]->cert) + 1;
+                if (NULL != pem) free(pem);
+                pem = calloc(len, sizeof(*pem)); // get some memory to store the eventual PEM file
+                if (NULL == pem) {
+                    log_error("%s::%s(%d) : Out of memory", LOG_INF);
+                    goto cleanup;
+                } else {
+                    memcpy(pem, pemList->items[j]->cert, len); // Copy the single string
+                    if (false == pemify(&pem, x509PEMHeader, x509PEMFooter)) {
+                        log_error("%s::%s(%d) : Failed to add cert to store %s", LOG_INF, storePath);
+                        goto cleanup;
+                    } else {
+                        if (0 >= BIO_puts(bio, pem)) {
+                            log_error("%s::%s(%d) : Failed to write PEM into BIO", LOG_INF);
+                            goto cleanup;
+                        } else {
+                            log_trace("%s::%s(%d) : Successfully wrote PEM into BIO", LOG_INF);
+                        }
+                    }
+                }
+			} else {
+                log_trace("%s::%s(%d) : Skipping bio write of cert #%d of #%d", LOG_INF, j+1, (pemList->item_count));
+            }
 		}
 		/**********************************************************************/
 		/* 3b.) Add all the keys found but the one for the cert we don't want */
 		/**********************************************************************/
 		/* Now, loop through all the private keys & */
 		/* save them too, except the one */
-		for (int k = 0; keyArray->key_count > k; k++)
-		{
-			if ( !is_cert_key_match(pemX509Array->certs[i], keyArray->keys[k]) )
-			{
+		for (int k = 0; keyArray->key_count > k; k++) {
+			if ( !is_cert_key_match(pemX509Array->certs[i], keyArray->keys[k]) ) {
 				ret = write_key_bio(bio, password, keyArray->keys[k]);
-				if ( 0 > ret )
-				{
+				if ( 0 > ret ) {
 					log_error("%s::%s(%d) : Failed to add key to store %s",
 						LOG_INF, storePath);
 					goto cleanup;
@@ -2359,8 +2477,7 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,
 		data = NULL;
 		len = BIO_get_mem_data(bio, &data);
 		ret = replace_file(storePath, data, len, true);
-		if( 0 != ret)
-		{
+		if( 0 != ret) {
 			char* errStr = strerror(ret);
 			log_error("%s::%s(%d) : Unable to write key at %s: %s", 
 				LOG_INF, storePath, errStr);
@@ -2371,29 +2488,24 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,
 		/* 3d.) Optional: if a keystore was provided, remove that key */
 		/*      from the keystore                                     */
 		/**************************************************************/
-		if ( keyPath )
-		{
+		if ( keyPath ) {
 			BIO_free(bio);
 			free(data);
-			if ( keyArray )
-			{
+			if ( keyArray ) {
 				PrivKeyList_free(keyArray); /* Free this bit of keys */
 			}
 			/* And populate it with the keystore located at keyPath */
 			ret = get_key_inventory(keyPath, password, &keyArray);
-			if ( 0 != ret )
-			{
+			if ( 0 != ret ) {
 				log_error("%s::%s(%d) : Error reading keystore %s",	
 					LOG_INF, keyPath);
 				goto cleanup;
 			}
 			bio = BIO_new(BIO_s_mem()); /* Get new memory to store the bio */
 			/* Write the keys to bio memory */
-			for (int x = keyArray->key_count; 0 < x; x--)
-			{
+			for (int x = keyArray->key_count; 0 < x; x--) {
 				ret = write_key_bio(bio, password, keyArray->keys[x]);
-				if ( 0 != ret )
-				{
+				if ( 0 != ret ) {
 					log_error("%s::%s(%d) : Failed to add key to store %s", 
 						LOG_INF, keyPath);
 					goto cleanup;
@@ -2405,46 +2517,37 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,
 			/*******************************/
 			data = NULL;
 			len = BIO_get_mem_data(bio, &data);
+            log_trace("%s::%s(%d) : Writing data %s", LOG_INF, data);
 			ret = replace_file(keyPath, data, len, true);
-			if( 0 != ret)
-			{
+			if( 0 != ret) {
 				char* errStr = strerror(ret);
-				log_error("%s::%s(%d) : Unable to write key at %s: %s", 
-					LOG_INF, keyPath, errStr);
+				log_error("%s::%s(%d) : Unable to write key at %s: %s", 	LOG_INF, keyPath, errStr);
 				goto cleanup;
 			}
 		} /* end separate keystore */
-	}
-	else
-	{
-		log_error("%s::%s(%d) Cert not found in PEM store %s", 
-			LOG_INF, storePath);
+	} else	{
+		log_error("%s::%s(%d) Cert not found in PEM store %s", 	LOG_INF, storePath);
 		goto cleanup;
 	}
 
 cleanup:
-	if ( pemList )
-	{
+	if ( pemList ) {
 		PemInventoryList_free(pemList);
 		pemList = NULL;
 	}
-	if ( pemX509Array )
-	{
+	if ( pemX509Array )	{
 		PEMx509List_free(pemX509Array);
 		pemX509Array = NULL;
 	}
-	if ( keyArray )
-	{
+	if ( keyArray )	{
 		PrivKeyList_free(keyArray);
 		keyArray = NULL;
 	}
-	if ( bio )
-	{
+	if ( bio ) 	{
 		BIO_free(bio);
 		bio = NULL;
 	}
-	if ( 0 == ret )
-	{
+	if ( 0 == ret )	{
 		bResult = true;
 	}
 	return bResult;

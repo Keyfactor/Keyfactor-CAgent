@@ -298,8 +298,7 @@ static bool register_add_capabilities(struct SessionRegisterReq* sessionReq)
 {
 	bool bResult = false;
 	sessionReq->Capabilities_count = 4;
-	sessionReq->Capabilities = calloc(sessionReq->Capabilities_count, 
-		sizeof(char*));
+	sessionReq->Capabilities = calloc(sessionReq->Capabilities_count, sizeof(char*));
 	if ( sessionReq->Capabilities )
 	{
 		sessionReq->Capabilities[0] = strdup(CAP_PEM_INVENTORY);

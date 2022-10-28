@@ -83,6 +83,7 @@ extern struct ScheduledJob* currentJob; /* Defined in schedule.c */
 /*           get added to every hit of /Session/Register                      */
 /* 2.9.1.0 = Fixed issue where CSRs max length was too small for RSA/4096     */
 /* 2.9.2.0 = Fixed but in getting date time for agent's name                  */
-#define AGENT_VERSION 0x0002000900020000
+/* 2.10.0.0 = Fixed issue with openSSL management remove job                  */
+#define AGENT_VERSION 0x0002000A00000000
 
 #endif /* AGENT_H_ */
