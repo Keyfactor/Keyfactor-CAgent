@@ -59,7 +59,7 @@ wolftest: ${OBJS}
 	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${WOLFLIBS}
 
 # The base wolfSSL build to create a shared library
-wolflib: DEFINES += -D__WOLF_SSL__
+wolflib: DEFINES += -D__WOLF_SSL__ -D__MAKE_LIBRARY__
 wolflib: ${OBJS}
 	${CC} -shared ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o libagent.so $^ ${WOLFLIBS}
 
@@ -79,7 +79,7 @@ opentest: ${OOBJ}
 	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${OPENLIBS}
 
 # The base openSSL build to create a shared library
-openlib: DEFINES += -D__OPEN_SSL__
+openlib: DEFINES += -D__OPEN_SSL__ -D__MAKE_LIBRARY__
 openlib: ${OOBJ}
 	${CC} -shared ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o libagent.so $^ ${OPENLIBS}
 

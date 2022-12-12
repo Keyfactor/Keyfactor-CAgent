@@ -621,7 +621,11 @@ static void main_loop( void )
 /*	@return  success : EXIT_SUCCESS                                           */
 /*           failure : EXIT_FAILURE                                           */
 /*                                                                            */
+#ifdef __MAKE_LIBRARY__
+int KF_main( int argc, char* argv[])
+#else
 int main( int argc, char* argv[] )
+#endif
 {
 	time_t now = 0;
 	/**************************************************************************/
