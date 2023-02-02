@@ -165,6 +165,10 @@ Coming soon
 
 	./agent -h overrides the agent name with $HOSTNAME_$DATETIME
 
+    ./agent -a adds the client certificate presented for mTLS into a header field named X-ARR-ClientCert
+               Use this (along with client certificate authentication) in Keyfactor if the platform
+               is configured to look for this certificate header.
+
 	./agent -e <engine> the crypto engine to use (e.g., tpm2tss) NOTE:
 		 				must compile the TPM version of the agent
 
