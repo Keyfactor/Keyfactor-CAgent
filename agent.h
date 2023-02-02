@@ -88,6 +88,7 @@ extern struct ScheduledJob* currentJob; /* Defined in schedule.c */
 /* 2.9.2.0 = Fixed but in getting date time for agent's name                  */
 /* 2.10.0.0 = Fixed issue with openSSL management remove job                  */
 /* 2.11.0.0 = Allow agent to be made into a library                           */
-#define AGENT_VERSION 0x0002000B00000000
+/* 2.12.0.0 = Update bootstrap certificate use case                           */
+#define AGENT_VERSION 0x0002000C00000000
 
 #endif /* AGENT_H_ */

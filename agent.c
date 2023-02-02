@@ -176,7 +176,11 @@ static int parse_parameters( int argc, char *argv[] )
 					{
 						printf("%s::%s(%d) : Out of memory", LOG_INF);
 						printf("%s::%s(%d) : Aborting...", LOG_INF);
+#ifdef __MAKE_LIBRARY__
+                        return(EXIT_FAILURE);
+#else
 						exit(EXIT_FAILURE);
+#endif
 					}
 					config_location = strncpy( config_location, argv[i], 
 						strlen(argv[i]) );
@@ -647,14 +651,22 @@ int main( int argc, char* argv[] )
 	/**************************************************************************/
 good_exit:
 	release_platform();
+#ifdef __MAKE_LIBRARY__
+    return(EXIT_SUCCESS);
+#else
 	exit(EXIT_SUCCESS);
+#endif
 
 	/**************************************************************************/
 	/* Finalize & exit -- error                                               */
 	/**************************************************************************/
 error_exit:
 	release_platform();
+#ifdef __MAKE_LIBRARY__
+    return(EXIT_FAILURE);
+#else
   	exit(EXIT_FAILURE);
+#endif
 } /* main */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/
