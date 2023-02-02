@@ -30,10 +30,15 @@
   #include <tpm2-tss-engine.h>
 #endif
 
+/******************************************************************************/
+/***************************** GLOBAL VARIABLES *******************************/
+/******************************************************************************/
+bool add_client_cert_to_header = false;
 
 /******************************************************************************/
 /***************************** LOCAL DEFINES  *********************************/
 /******************************************************************************/
+static const size_t MAX_CERT_SIZE = 4096;
 
 /******************************************************************************/
 /************************ LOCAL GLOBAL STRUCTURES *****************************/
@@ -115,6 +120,25 @@ static bool check_file_exists( const char *fileName )
   }
 } /* file_exists */
 
+static void stripCR(char string[])
+{
+    static const char CR = '\n';
+    size_t x, y;
+    x = 0;
+    y = 0;
+    while (('\0' != string[x]) && (MAX_CERT_SIZE > x)) {
+        if (CR != string[x]) {
+            string[y] = string[x];
+            x++;
+            y++;
+        } else {
+            x++;
+        }
+    } /* while */
+    string[y] = '\0';
+    return;
+}
+
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
@@ -152,6 +176,9 @@ int http_post_json(const char* url, const char* username,
                    char** pRespData, int retryCount, int retryInterval) 
 {
     log_info("%s::%s(%d) : Preparing to POST to Platform at %s", LOG_INF, url);
+    bool client_cert_present = false;
+    unsigned char* client_cert_compressed = NULL;
+    size_t dummySize = 0;
 	int toReturn = -1;
     log_trace("%s::%s(%d) : Initializing cURL", LOG_INF);
 	CURL* curl = curl_easy_init();
@@ -297,6 +324,11 @@ int http_post_json(const char* url, const char* username,
                 if( 1 == file_exists(ConfigData->BootstrapCert) ) {
                     log_trace("%s::%s(%d) : Setting clientCert to %s", LOG_INF, ConfigData->BootstrapCert);
                     (void)curl_easy_setopt(curl, CURLOPT_SSLCERT, ConfigData->BootstrapCert);
+                    read_file_bytes(ConfigData->BootstrapCert, &client_cert_compressed, &dummySize);
+                    if (NULL == client_cert_compressed) {
+                        log_error("%s::%s(%d) : Out of memory copying client certificate", LOG_INF);
+                        goto exit;
+                    }
                 }
                 if( 1 == file_exists(ConfigData->BootstrapKey) ) {
                     log_trace("%s::%s(%d) : Setting clientKey to %s", LOG_INF, ConfigData->BootstrapKey);
@@ -314,6 +346,11 @@ int http_post_json(const char* url, const char* username,
           if( 1 == file_exists(clientCert) ) {
             log_trace("%s::%s(%d) : Setting clientCert to %s", LOG_INF, clientCert);
             (void)curl_easy_setopt(curl, CURLOPT_SSLCERT, clientCert);
+            read_file_bytes(clientCert, &client_cert_compressed, &dummySize);
+            if (NULL == client_cert_compressed) {
+              log_error("%s::%s(%d) : Out of memory copying client certificate", LOG_INF);
+              goto exit;
+            }
           }
           if( 1 == file_exists(clientKey) ) {
             log_trace("%s::%s(%d) : Setting clientKey to %s", LOG_INF, clientKey);
@@ -354,6 +391,13 @@ int http_post_json(const char* url, const char* username,
         char clBuf[30];
         (void)snprintf(clBuf, 30, "Content-Length: %d", (int)strlen(postData));
         list = curl_slist_append(list, clBuf);
+        if ((add_client_cert_to_header) && (NULL != client_cert_compressed)) {
+            log_debug("%s::%s(%d) : Adding client certificate to %s header", LOG_INF, CLIENT_CERT_HEADER);
+            char certBuf[MAX_CERT_SIZE];
+            stripCR(client_cert_compressed);
+            (void)snprintf(certBuf, MAX_CERT_SIZE, "%s: %s",CLIENT_CERT_HEADER, client_cert_compressed);
+            list = curl_slist_append(list, certBuf);
+        }
 
         /**************************************************************************/
         /*  Now add the header & data to the HTTP POST request.                   */
@@ -420,6 +464,7 @@ int http_post_json(const char* url, const char* username,
             }
         }
 
+exit:
         /* Cleanup, de-allocate, etc. */
         if (list) {
             curl_slist_free_all(list);

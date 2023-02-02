@@ -95,85 +95,55 @@ static int parse_parameters( int argc, char *argv[] )
 		int foundEngine = 0;
 		const char* default_engine = "dynamic"; /* default engine to choose */
 	#endif
-	for(int i = 1; i < argc; ++i) 
-	{
-		if(0 == strcmp(argv[i], "-v")) 
-		{
+	for(int i = 1; i < argc; ++i) {
+		if(0 == strcmp(argv[i], "-v")) {
 			log_set_verbosity(true);
-		}
-		else if (0 == strcmp(argv[i], "-l")) 
-		{
-			if ( argc <= i ) 
-			{
-				fprintf(stderr,
-					 "You must supply a switch variable with the -l command\n");
+		} else if (0 == strcmp(argv[i], "-l")) {
+			if ( argc <= i ) {
+				fprintf(stderr,"You must supply a switch variable with the -l command\n");
 				return 0;
-			} /* if argc */
-			else 
-			{
-				if (0 == strcmp(argv[i+1], "v")) 
-				{
+			} else	{
+				if (0 == strcmp(argv[i+1], "v")) {
 					log_set_verbosity(true);
 					i++;
-				}
-				else if (0 == strcmp(argv[i+1], "i")) 
-				{
+				} else if (0 == strcmp(argv[i+1], "i"))	{
 					log_set_info(true);
 					i++;
-				}
-				else if (0 == strcmp(argv[i+1], "e")) 
-				{
+				} else if (0 == strcmp(argv[i+1], "e"))	{
 					log_set_error(true);
 					i++;
-				}
-				else if (0 == strcmp(argv[i+1], "o")) 
-				{
+				} else if (0 == strcmp(argv[i+1], "o"))	{
 					log_set_off(true);
 					i++;
-				}
-				else if (0 == strcmp(argv[i+1], "d")) 
-				{
+				} else if (0 == strcmp(argv[i+1], "d"))	{
 					log_set_debug(true);
 					i++;
-				}
-				else if (0 == strcmp(argv[i+1], "t")) 
-				{
+				} else if (0 == strcmp(argv[i+1], "t")) {
 					log_set_trace(true);
 					i++;
-				}
-				else if (0 == strcmp(argv[i+1], "w")) 
-				{
+				} else if (0 == strcmp(argv[i+1], "w")) {
 					log_set_warn(true);
                     i++;
-				}
-				else 
-				{
+				} else {
 				   fprintf(stderr,"Unknown -l switch variable %s\n", argv[i+1]);
 					return 0;
 				}
 			} /* else argc */
 		} /* else -l */
 #ifdef __TPM__
-		else if (0 == strcmp(argv[i], "-e"))
-		{
-			if ( argc > i )
-			{
+		else if (0 == strcmp(argv[i], "-e")) {
+			if ( argc > i ) {
 				char* eng = &engine_id[0];
 				eng = strncpy( eng, argv[++i], 20 );
 				foundEngine = 1;
 			}
 		}
 #endif
-		else if (0 == strcmp(argv[i], "-c"))
-		{
-			if ( argc > i )
-			{
-				if ( 0 < strlen(argv[++i]) )
-				{
-					config_location = calloc(strlen(argv[i])+1, 
-						sizeof(*config_location));
-					if ( NULL == config_location )
-					{
+		else if (0 == strcmp(argv[i], "-c")) {
+			if ( argc > i ) {
+				if ( 0 < strlen(argv[++i]) ) {
+					config_location = calloc(strlen(argv[i])+1,sizeof(*config_location));
+					if ( NULL == config_location ) {
 						printf("%s::%s(%d) : Out of memory", LOG_INF);
 						printf("%s::%s(%d) : Aborting...", LOG_INF);
 #ifdef __MAKE_LIBRARY__
@@ -182,21 +152,21 @@ static int parse_parameters( int argc, char *argv[] )
 						exit(EXIT_FAILURE);
 #endif
 					}
-					config_location = strncpy( config_location, argv[i], 
-						strlen(argv[i]) );
+					config_location = strncpy( config_location, argv[i], strlen(argv[i]) );
 					foundConfig = true;
 				}
 			}
-		}
-		else if (0 == strcmp(argv[i], "-h"))
-		{
+		} else if (0 == strcmp(argv[i], "-h")) {
 			/* Tell the system to use the host as the agent name if */
 			/* Enroll on startup = true */
 			use_host_as_agent_name = true;
-		}
-		else {
-			log_verbose( "%s::%s(%d) : Unknown switch: %s", \
-				LOG_INF, argv[i] );
+            log_debug("%s::%s(%d) : Turning on use hostname as client name flag", LOG_INF);
+		} else if (0 == strcmp(argv[i], "-a")) {
+            /* Tell the system to add the client certificate in the header */
+            add_client_cert_to_header = true;
+            log_debug("%s::%s(%d) : Turning on client cert is added to header flag", LOG_INF);
+        } else {
+			log_verbose( "%s::%s(%d) : Unknown switch: %s", LOG_INF, argv[i] );
 		}
 	}
 #ifdef __TPM__
