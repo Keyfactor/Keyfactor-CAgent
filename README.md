@@ -17,8 +17,9 @@ The Keyfactor-CAgent can be built for three (3) different modes:
 	sudo apt install -y build-essential git libcurl4-gnutls-dev curl libssl-dev
 
 #### RHEL based (RHEL, CentOS, Rocky, etc.)
-	sudo yum update
-	sudo yum install -y build-essential git curl-devel curl openssl-devel
+	sudo dnf update -y
+	sudo dnf groupinstall -y "Development Tools"
+	sudo dnf install -y curl-devel curl openssl-devel
 
 ## Clone the git repository
 	cd ~
