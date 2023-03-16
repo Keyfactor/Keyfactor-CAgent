@@ -329,13 +329,20 @@ int http_post_json(const char* url, const char* username,
                         log_error("%s::%s(%d) : Out of memory copying client certificate", LOG_INF);
                         goto exit;
                     }
+                } else {
+                    log_warn("%s::%s(%d) : The BOOTSTRAP cert was not found at %s", LOG_INF,
+                             ConfigData->BootstrapCert);
                 }
                 if( 1 == file_exists(ConfigData->BootstrapKey) ) {
                     log_trace("%s::%s(%d) : Setting clientKey to %s", LOG_INF, ConfigData->BootstrapKey);
                     (void)curl_easy_setopt(curl, CURLOPT_SSLKEY, ConfigData->BootstrapKey);
+                } else {
+                    log_warn("%s::%s(%d) : The BOOTSTRAP key was not found at %s", LOG_INF,
+                                ConfigData->BootstrapKey);
                 }
                 if( (1 == file_exists(ConfigData->BootstrapKey)) && ConfigData->BootstrapKeyPassword ) {
-                    log_trace("%s::%s(%d) : Setting clientPassword to %s", LOG_INF, ConfigData->BootstrapKeyPassword);
+                    log_trace("%s::%s(%d) : Setting clientPassword to %s", LOG_INF,
+                              ConfigData->BootstrapKeyPassword);
                     (void) curl_easy_setopt(curl, CURLOPT_KEYPASSWD, ConfigData->BootstrapKeyPassword);
                 }
             } else {
@@ -351,10 +358,14 @@ int http_post_json(const char* url, const char* username,
               log_error("%s::%s(%d) : Out of memory copying client certificate", LOG_INF);
               goto exit;
             }
+          } else {
+              log_warn("%s::%s(%d) : The clientCert does not exist at %s", LOG_INF, clientCert);
           }
           if( 1 == file_exists(clientKey) ) {
             log_trace("%s::%s(%d) : Setting clientKey to %s", LOG_INF, clientKey);
             (void)curl_easy_setopt(curl, CURLOPT_SSLKEY, clientKey);
+          } else {
+              log_warn("%s::%s(%d) : The clientKey does not exist at %s", LOG_INF, clientKey);
           }
           if( (1 == file_exists(clientKey)) && clientKeyPass ) {
             log_trace("%s::%s(%d) : Setting clientPassword to %s", LOG_INF,clientKeyPass);
@@ -397,6 +408,8 @@ int http_post_json(const char* url, const char* username,
             stripCR(client_cert_compressed);
             (void)snprintf(certBuf, MAX_CERT_SIZE, "%s: %s",CLIENT_CERT_HEADER, client_cert_compressed);
             list = curl_slist_append(list, certBuf);
+        } else {
+            log_debug("%s::%s(%d) : Skipping adding header = %s", LOG_INF, CLIENT_CERT_HEADER);
         }
 
         /**************************************************************************/
