@@ -92,6 +92,7 @@ extern struct ScheduledJob* currentJob; /* Defined in schedule.c */
 /* 2.14.0.0 = Add command line switch to send X-ARR-ClientCert header to KF   */
 /* 2.14.1.0 = Updated logging associated with v2.14.0.0                       */
 /* 2.14.2.0 = Updated parameter processing & usage printing                   */
-#define AGENT_VERSION 0x0002000E00020000
+/* 2.14.2.1 = Set up long options & cleaned usage output                      */
+#define AGENT_VERSION 0x0002000E00020001
 
 #endif /* AGENT_H_ */

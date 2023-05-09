@@ -14,6 +14,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <getopt.h>
 
 #include <curl/curl.h>
 #include "constants.h"
@@ -85,42 +86,43 @@ static bool inventory_ran = false;
 /*                                                                            */
 static void usage(char *program)
 {
-    /* #define AGENT_VERSION 0x0002000E00010000 */
     uint16_t major = (uint16_t)((AGENT_VERSION) >> (16*3));
     uint16_t minor = (uint16_t)((AGENT_VERSION & 0x0000FFFFF00000000) >> (16*2));
     uint16_t build = (uint16_t)((AGENT_VERSION & 0x00000000FFFFF0000) >> 16);
     uint16_t revision = (uint16_t)(AGENT_VERSION & 0x000000000000FFFF);
     fprintf( stderr,
-             "Keyfactor reference Linux-Agent v%hu.%hu.%hu.%hu",
+             "\nKeyfactor reference Linux-Agent v%hu.%hu.%hu.%hu",
              major, minor, build, revision
             );
-    fprintf(stderr, "\n"
-                    "Usage: %s [-a] [-c config_file] [-e engine_name] [-h] [-v] [-l loglevel]\n"
-                    "\t\t-a\t\t\tAdd the agent certificate to the HTTP header X-ARR-ClientCert\n"
-                    "\t\t-c config_file\t\tUse config_file instead of config.json for agent configuration\n"
-                    "\t                     \t\twhere config_file is the path and filename of a properly formatted\n"
-                    "\t                     \t\tJSON configuration file for a Keyfactor Linux-Agent\n"
-                    "\t\t-e engine_name\t\tUse the TPM engine engine_name for openSSL commands\n"
-                    "\t                      \t\twhere engine_name is the name of a compatible tpm2tss engine\n"
-                    "\t                      \t\tbuild for use with the tpm2tss stack\n"
-                    "\t\t-h\t\t\tUse the $HOSTNAME_$DATETIME for the agent's name and CN in the agent's certificate\n"
-                    "\t\t-v\t\t\tTurn on verbose logging [for agent v1.x.x.x compatibility]\n"
-                    "\t\t-l loglevel\t\tSet the logging level as follows:\n"
-                    "\t                       \t\to = turn off logging\n"
-                    "\t                       \t\te = error messages only\n"
-                    "\t                       \t\ti = information and error messages\n"
-                    "\t                       \t\tw = warning, information, and error messages\n"
-                    "\t                       \t\tv = verbose, warning, information, and error messages\n"
-                    "\t                       \t\td = debug, verbose, warning, information, and error messages\n"
-                    "\t                       \t\tt = trace, debug, verbose, warning, information, and error messages\n"
+    fprintf(stderr, "\n\n"
+                    "Usage: %s [-a] [-c config_file] [-e engine_name] [-h] [-v] [-l loglevel]\n\n"
+                    "\t-a, --addheader\t\t\tAdd the agent certificate to the HTTP header X-ARR-ClientCert\n"
+                    "\t-c, --config\tconfig_file\tUse config_file instead of config.json for agent configuration\n"
+                    "\t                         \t  where config_file is the path and filename of a properly formatted\n"
+                    "\t                         \t  JSON configuration file for a Keyfactor Linux-Agent\n"
+                    "\t-e, --engine\tengine_name\tUse the TPM engine engine_name for openSSL commands\n"
+                    "\t                         \t  where engine_name is the name of a compatible tpm2tss engine\n"
+                    "\t                         \t  build for use with the tpm2tss stack\n"
+                    "\t-h, --hostname           \tUse the $HOSTNAME_$DATETIME for the agent's name and CN in the agent's certificate\n"
+                    "\t-v, --verbose            \tTurn on verbose logging [for agent v1.x.x.x compatibility]\n"
+                    "\t-l, --loglevel\tloglevel \tSet the logging level as follows:\n"
+                    "\t                         \t  o = turn off logging\n"
+                    "\t                         \t  e = error messages only\n"
+                    "\t                         \t  i = information and error messages\n"
+                    "\t                         \t  w = warning, information, and error messages\n"
+                    "\t                         \t  v = verbose, warning, information, and error messages\n"
+                    "\t                         \t  d = debug, verbose, warning, information, and error messages\n"
+                    "\t                         \t  t = trace, debug, verbose, warning, information, and error messages\n"
                     , program
              );
     fprintf(stderr,
             "Examples:\n"
-            "%s -ahl e\n"
-            "%s -l t\n"
-            "%s -hl o\n",
-            program, program, program
+            "\t%s -ahl e \t Add the agent certificate to the header, set agent-name to $HOSTNAME, set error logging level\n"
+            "\t%s -l t \t Set trace logging level\n"
+            "\t%s -hl o \t Set agent-name to $HOSTNAME, turn off logging\n"
+            "\t%s --help \t print out usage information\n"
+            "\t%s -? \t print out usage information\n\n\n"
+            ,program, program, program, program, program
             );
 } /* usage */
 
@@ -135,14 +137,27 @@ static void usage(char *program)
 /*                                                                            */
 static int parse_parameters( int argc, char *argv[] )
 {
+    struct option long_options[] = {
+            {"addheader", no_argument, 0, 'a'},
+            {"config", required_argument, 0, 'c'},
+            {"engine", required_argument, 0, 'e'},
+            {"loglevel", required_argument, 0, 'l'},
+            {"verbose", no_argument, 0, 'v'},
+            {"help", no_argument, 0, '?'},
+            {"hostname", no_argument, 0, 'h'},
+            {0,0,0,0}
+    };
+    int option_index = 0;
+
 	bool foundConfig = false;
     int opt;
+
 	#ifdef __TPM__
 		int foundEngine = 0;
 		const char* default_engine = "dynamic"; /* default engine to choose */
     #endif
 
-    while (-1 != (opt = getopt(argc, argv, "ac:e:hvl:"))) {
+    while (-1 != (opt = getopt_long(argc, argv, "ac:e:hvl:?", long_options, &option_index))) {
         switch (opt) {
             case 'a':
                 /* Tell the system to add the client certificate in the header */
@@ -186,7 +201,7 @@ static int parse_parameters( int argc, char *argv[] )
                 log_set_verbosity(true);
                 break;
             case 'l':
-                printf("%s::%s(%d) : Setting logging level of ", LOG_INF);
+                printf("%s::%s(%d) : Setting logging level to ", LOG_INF);
                 switch (optarg[0]) {
                     case 'v':
                         printf("verbose\n");
@@ -635,6 +650,7 @@ int main( int argc, char* argv[] )
 	/**************************************************************************/
 good_exit:
 	release_platform();
+    printf("\n\n");
 #ifdef __MAKE_LIBRARY__
     return(EXIT_SUCCESS);
 #else
@@ -646,6 +662,7 @@ good_exit:
 	/**************************************************************************/
 error_exit:
 	release_platform();
+    printf("\n\n");
 #ifdef __MAKE_LIBRARY__
     return(EXIT_FAILURE);
 #else
