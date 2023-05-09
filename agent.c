@@ -123,6 +123,10 @@ static void usage(char *program)
             "\t%s --help \t print out usage information\n"
             "\t%s -? \t print out usage information\n\n\n"
             ,program, program, program, program, program
+            "%s -ahl e\n"
+            "%s -l t\n"
+            "%s -hl o\n",
+            program, program, program
             );
 } /* usage */
 
@@ -151,7 +155,6 @@ static int parse_parameters( int argc, char *argv[] )
 
 	bool foundConfig = false;
     int opt;
-
 	#ifdef __TPM__
 		int foundEngine = 0;
 		const char* default_engine = "dynamic"; /* default engine to choose */
