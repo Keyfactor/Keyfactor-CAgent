@@ -122,11 +122,7 @@ static void usage(char *program)
             "\t%s -hl o \t Set agent-name to $HOSTNAME, turn off logging\n"
             "\t%s --help \t print out usage information\n"
             "\t%s -? \t print out usage information\n\n\n"
-            ,program, program, program, program, program
-            "%s -ahl e\n"
-            "%s -l t\n"
-            "%s -hl o\n",
-            program, program, program
+            , program, program, program, program, program
             );
 } /* usage */
 
