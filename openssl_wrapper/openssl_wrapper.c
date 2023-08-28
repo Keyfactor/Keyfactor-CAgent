@@ -989,8 +989,13 @@ static void populate_subject(X509_NAME* nm, char* key, char* value)
 	{
 		log_trace("%s::%s(%d) : Setting Common Name to %s", LOG_INF, value);
 		X509_NAME_add_entry_by_txt(nm, "CN", MBSTRING_UTF8, value, -1, -1, 0);
-	} 
-	else 
+	}
+    else if ( 0 == (strcasecmp(key,"ST")) )
+    {
+        log_trace("%s::%s(%d) : Setting State to %s", LOG_INF, value);
+        X509_NAME_add_entry_by_txt(nm, "ST", MBSTRING_UTF8, value, -1, -1, 0);
+    }
+    else
 	{
 		log_info("%s::%s(%d) : key = %s is unknown, skipping", LOG_INF, key);
 	}

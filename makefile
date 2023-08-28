@@ -18,6 +18,7 @@ CFLAGS += -Wno-unused-but-set-variable
 CFLAGS += -Wno-unused-label
 CFLAGS += -Wno-unused-function
 CFLAGS += -Wno-pointer-sign
+CFLAGS += -Wno-deprecated-declarations
 
 CFLAGS += -fno-strict-aliasing
 CFLAGS += -Wno-ignored-qualifiers
@@ -42,7 +43,7 @@ RPI_TSSLIBS = -L/usr/lib/arm-linux-gnueabihf/engines-1.1/ -ltpm2tss
 # The following TSSLIBS definition is for a linux machine
 TSSLIBS = -ltpm2tss -L/usr/lib/x86_64-linux-gnu/engines-1.1/
 
-vpath %.c ./ ./lib ./wolfssl_wrapper ./DRCode
+vpath %.c ./ ./lib ./wolfssl_wrapper
 SRC := $(wildcard *.c) \
        $(wildcard lib/*.c) \
        $(wildcard wolfssl_wrapper/*.c) 
