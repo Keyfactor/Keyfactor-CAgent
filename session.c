@@ -465,7 +465,7 @@ static int do_second_registration(struct SessionInfo* session,
     add_custom_client_parameters(sessionReq);
 
 	/* Now add a parameter to let the registration handler know it */
-	/* Needs to create the re-enrollment job on the CGM Cert Store */
+	/* Needs to create the re-enrollment job on the Cert Store(s) defined in the Registration Handler */
 	SessionRegisterReq_addNewClientParameter(sessionReq, "RegistrationRequest", 
 		PLATORM_ENROLL_STORES);
 	

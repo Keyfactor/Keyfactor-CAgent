@@ -2045,7 +2045,7 @@ char* ssl_generate_csr(const char* asciiSubject, size_t* csrLen,
         int writeLen = i2d_X509_REQ(req, &tempReqBytes);
         /* Now convert this structure to an ASCII string */
         csrString = base64_encode(reqBytes, (size_t)writeLen, false, NULL);
-        *csrLen = (size_t)writeLen; // GM Specific Code
+        *csrLen = (size_t)writeLen;
         log_trace("%s::%s(%d) : csrString=%s", LOG_INF, csrString);
         log_trace("%s::%s(%d) : csrLen = %ld", LOG_INF, *csrLen);
         if (MAX_CSR_SIZE < *csrLen) {
