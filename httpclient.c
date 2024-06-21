@@ -82,7 +82,7 @@ struct MemoryStruct {
 /* @return - success = the number of bytes taken care of                      */
 /*           failure = the number of bytes taken care of                      */
 /*                                                                            */
-static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
+static size_t WriteMemoryCallback(const void *contents, const size_t size, const size_t nmemb, const void *userp)
 {
   size_t realsize = size * nmemb;
   struct MemoryStruct *mem = (struct MemoryStruct *)userp;

@@ -178,17 +178,21 @@ static WC_INLINE int PasswordCallBack(char* passwd, int sz, int rwflag,
 		log_trace("%s::%s(%d) : Using user data", LOG_INF);
 		strncpy(passwd, (char*)userdata, sz);
 		return (int)strlen((char*)userdata);
-	}
-	else {
+	} else {
 		log_trace("%s::%s(%d) : User data is null", LOG_INF);
-		if ( NULL == gPasswd )
-		{
+		if ( NULL == gPasswd ) {
 			gPasswd = strdup("");
 		}
-		passwd = strdup(gPasswd);
-		return strlen(gPasswd);
+
+        if ( NULL == gPasswd ) {
+            log_error("%s::%s(%d) : Out of memory", LOG_INF);
+            return 0;
+        } else {
+            passwd = strdup(gPasswd);
+            return strlen(gPasswd);
+        }
 	}
-} /* PasswordCallBack */
+} /* PasswordCallBack */ /* PasswordCallBack */ /* parasoft-suppress BD-RES-LEAKS "Freed in wolf library" */
 
 /**                                                                           */
 /* rewritten for wolfssl; tested = true;                                      */
@@ -340,6 +344,10 @@ static PrivKeyList* PrivKeyList_new(void)
 /*                                                                            */
 static void PrivKeyList_free(PrivKeyList* pList)
 {
+    if (NULL == pList) {
+        return;
+    }
+
 	if (0 < pList->key_count)
 	{
 		for(int i = 0; pList->key_count > i; i++)
@@ -355,8 +363,11 @@ static void PrivKeyList_free(PrivKeyList* pList)
 	}
 
 	log_trace("%s::%s(%d) : Freeing the PrivKeyList", LOG_INF);
-	if (pList->priv_keys) free(pList->priv_keys);
-	if (pList) free(pList);
+	if (pList->priv_keys) {
+        free(pList->priv_keys);
+        pList->priv_keys = NULL;
+    }
+	free(pList);
 	pList = NULL;
 
 	return;
@@ -431,6 +442,9 @@ static PEMx509List* PEMx509List_new(void)
 /*                                                                            */
 static void PEMx509List_free(PEMx509List* pList)
 {
+    if (NULL == pList) {
+        return;
+    }
 	if (0 < pList->item_count)
 	{
 		for(int i = 0; pList->item_count > i; i++)
@@ -443,8 +457,11 @@ static void PEMx509List_free(PEMx509List* pList)
 	}
 
 	log_trace("%s::%s(%d) : Freeing the PEMx509List", LOG_INF);
-	if (pList ->certs) free(pList->certs);
-	if (pList) free(pList);
+	if (pList ->certs) {
+        free(pList->certs);
+        pList->certs = NULL;
+    }
+	free(pList);
 	pList = NULL;
 
 	return;
@@ -625,7 +642,11 @@ static PemInventoryList* PemInventoryList_new()
 /*                                                                            */
 void PemInventoryList_free(PemInventoryList* list)
 {
-	if(list && list->items)
+    if (NULL == list) {
+        return;
+    }
+
+	if(list->items)
 	{
 		for(int i = 0; list->item_count > i; i++)
 		{
@@ -633,8 +654,12 @@ void PemInventoryList_free(PemInventoryList* list)
 			PemInventoryItem_free(list->items[i]);
 		}		
 		log_trace("%s::%s(%d) : Freeing PemInventoryList", LOG_INF);
-		if (list->items) free(list->items);
-		if (list) free(list);
+		if (list->items) {
+            free(list->items);
+            list->items = NULL;
+        }
+
+		free(list);
 		list = NULL;
 	}
 	return;
@@ -1022,6 +1047,10 @@ static bool parse_subject(Cert* pReq, const char* subject)
 	bool endOfSubject = false;
 
 	localSubjectPtr = strdup(subject);
+    if ( localSubjectPtr == NULL ) {
+        log_error("%s::%s(%d) : Error copying subject, out of memory", LOG_INF);
+        return NULL;
+    }
 	curPtr = localSubjectPtr;
 	log_debug("%s::%s(%d) : Subject \"%s\" is %ld characters long", 
 		LOG_INF, curPtr, strlen(curPtr));
@@ -2404,21 +2433,20 @@ bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,
 		/**********************************************************************/
 		/* Now, loop through all the private keys & */
 		/* save them too, except the one */
-		for (int k = 0; keyArray->key_count > k; k++)
-		{
-			if ( !is_cert_key_match(pemX509Array->certs[i], 
-				keyArray->priv_keys[k]) )
-			{
-				log_trace("%s::%s(%d) : Writing key #%d to BIO", LOG_INF, k);
-				ret = write_key_bio(bio, password, keyArray->priv_keys[k]);
-				if ( 0!= ret )
-				{
-					log_error("%s::%s(%d) : Failed to add key to BIO %s", 
-						LOG_INF, storePath);
-					goto cleanup;
-				}
-			}
-		}
+        if (keyArray) {
+            for (int k = 0; keyArray->key_count > k; k++) {
+                if (!is_cert_key_match(pemX509Array->certs[i],
+                                       keyArray->priv_keys[k])) {
+                    log_trace("%s::%s(%d) : Writing key #%d to BIO", LOG_INF, k);
+                    ret = write_key_bio(bio, password, keyArray->priv_keys[k]);
+                    if (0 != ret) {
+                        log_error("%s::%s(%d) : Failed to add key to BIO %s",
+                                  LOG_INF, storePath);
+                        goto cleanup;
+                    }
+                }
+            }
+        }
 
 		/**********************/
 		/* 3c.) Write to disk */

@@ -769,34 +769,34 @@ char* config_build_url(const char* relPath, bool vdirFromConfig)
 
 	if(ConfigData && relPath)
 	{
-		if ( true == ConfigData->UseSsl ) 
-		{
+		if ( true == ConfigData->UseSsl ) {
 			url = strdup("https://");
-		}
-		else 
-		{
+		} else {
 			url = strdup("http://");
 		}
-		log_trace("%s::%s(%d) : url = %s",
-			LOG_INF, url);
+        if (!url) {
+            log_error("%s::%s(%d) : Out of memory", LOG_INF);
+            return NULL;
+        }
 
-		url = realloc(url, (strlen(url)+strlen(ConfigData->Hostname)+1) );
+		log_trace("%s::%s(%d) : url = %s",	LOG_INF, url);
+
+		url = realloc(url, (strlen(url)+strlen(ConfigData->Hostname)+1) ); /* parasoft-suppress BD-RES-LEAKS "Freed by calling function" */
+        if (!url) {
+            log_error("%s::%s(%d) : Out of memory", LOG_INF);
+            return NULL;
+        }
 		strcat(url, ConfigData->Hostname);
-		log_trace("%s::%s(%d) : Added Hostname to url is now = %s",	
-			LOG_INF, url);
+		log_trace("%s::%s(%d) : Added Hostname to url is now = %s",LOG_INF, url);
 		
-		if(vdirFromConfig)	
-		{	
-			url = realloc( url, (strlen(url) + 
-				strlen(ConfigData->VirtualDirectory)+2) );
+		if(vdirFromConfig)	{
+			url = realloc( url, (strlen(url) + strlen(ConfigData->VirtualDirectory)+2) );
 			strcat(url, "/");
 			strcat(url, ConfigData->VirtualDirectory);
-			log_trace("%s::%s(%d) : Added Virutal Directory to url is now = %s",
-				LOG_INF, url);
+			log_trace("%s::%s(%d) : Added Virutal Directory to url is now = %s", LOG_INF, url);
 		}
 
-		if(strcspn(relPath, "/") != 0)	
-		{
+		if(strcspn(relPath, "/") != 0)	{
 			url = realloc( url, (strlen(url)+2) );
 			strcat(url, "/");
 			log_trace("%s::%s(%d) : Added / to url is now = %s", LOG_INF, url);
@@ -806,22 +806,21 @@ char* config_build_url(const char* relPath, bool vdirFromConfig)
 		/* TODO: Remove this if statement and replace with                    */
 		/*       strcat(url, relPath); Once the platform changes              */ 
 		/*       to not send KeyfactorAgents                                  */
-		log_trace("%s::%s(%d) : Stripping KeyfactorAgents/ from %s", LOG_INF, 
-			relPath);
+		log_trace("%s::%s(%d) : Stripping KeyfactorAgents/ from %s", LOG_INF, relPath);
 		relPathStripped = util_strip_string(relPath, "KeyfactorAgents/");
 		log_trace("%s::%s(%d) : New relPath = %s", LOG_INF, relPathStripped);
 		url = realloc( url, (strlen(url)+strlen(relPathStripped)+1) );
+        if (!url) {
+            log_error("%s::%s(%d) : Out of memory", LOG_INF);
+            return NULL;
+        }
 		strcat(url, relPathStripped);
 		log_trace("%s::%s(%d) : url = %s", LOG_INF, url);
-	}
-	else 
-	{
-		log_error("%s::%s(%d) : Unable to build url: Invalid arguments", 
-			LOG_INF);
+	} else {
+		log_error("%s::%s(%d) : Unable to build url: Invalid arguments", LOG_INF);
 	}
 
-	if ( relPathStripped ) 
-	{
+	if ( relPathStripped ) {
 		free(relPathStripped);
 	}
 	log_trace("%s::%s(%d) : url = %s", LOG_INF, url);

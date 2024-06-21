@@ -65,16 +65,17 @@ static int get_enroll_config(const char* sessionToken, const char* jobId,
 {
 	char* url = NULL;
 
-	log_verbose("%s::%s(%d) : Sending enrollment config request: %s", 
-		LOG_INF, jobId);
+	log_verbose("%s::%s(%d) : Sending enrollment config request: %s", LOG_INF, jobId);
 	struct CommonConfigReq* req = CommonConfigReq_new();
+    if (!req) {
+        log_error("%s::%s(%d) : Error creating common config request structure", LOG_INF);
+        return 999;
+    }
+
 	req->JobId = strdup(jobId);
 	req->SessionToken = strdup(sessionToken);
-
 	char* jsonReq = CommonConfigReq_toJson(req);
-
 	char* jsonResp = NULL;
-
 	url = config_build_url(endpoint, true);
 	
 	int res = http_post_json(url, ConfigData->Username, ConfigData->Password, 
@@ -90,10 +91,10 @@ static int get_enroll_config(const char* sessionToken, const char* jobId,
 			LOG_INF, res);
 	}
 
-	free(jsonReq);
-	free(jsonResp);
-	free(url);
-	CommonConfigReq_free(req);
+	if (jsonReq) free(jsonReq);
+	if (jsonResp) free(jsonResp);
+	if (url) free(url);
+	if (req) CommonConfigReq_free(req);
 
 	return res;
 } /* get_enroll_config */
@@ -119,36 +120,33 @@ static int send_enrollment(const char* sessionToken, const char* jobId,
 
 	log_verbose("%s::%s(%d) : Sending enrollment request: %s", LOG_INF, jobId);
 	struct EnrollmentEnrollReq* enrReq = calloc(1, sizeof(*enrReq));
+    if (!enrReq) {
+        log_error("%s::%s(%d) : Error creating enrollment request", LOG_INF);
+        return 999;
+    }
+
 	enrReq->SessionToken = strdup(sessionToken);
 	enrReq->JobId = strdup(jobId);
 	enrReq->CSRText = strdup(csr);
-
 	char* jsonReq = EnrollmentEnrollReq_toJson(enrReq);
-
 	char* jsonResp = NULL;
-
-
-	url = config_build_url(endpoint, true);
+    url = config_build_url(endpoint, true);
 
 	int res = http_post_json(url, ConfigData->Username, ConfigData->Password, 
 		ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey, 
 		ConfigData->AgentKeyPassword, jsonReq, &jsonResp, 
 		ConfigData->httpRetries, ConfigData->retryInterval); 
 
-	if(res == 0)
-	{
+	if(res == 0) {
 		*pEnrResp = EnrollmentEnrollResp_fromJson(jsonResp);
-	}
-	else
-	{
-		log_error("%s::%s(%d) : Enrollment failed with error code %d", 
-			LOG_INF, res);
+	} else {
+		log_error("%s::%s(%d) : Enrollment failed with error code %d",	LOG_INF, res);
 	}
 
-	free(jsonReq);
-	free(jsonResp);
-	free(url);
-	EnrollmentEnrollReq_free(enrReq);
+	if (jsonReq) free(jsonReq);
+	if (jsonResp) free(jsonResp);
+	if (url) free(url);
+	if (enrReq) EnrollmentEnrollReq_free(enrReq);
 
 	return res;
 } /* send_enrollment */
@@ -179,16 +177,18 @@ static int send_enroll_job_complete(const char* sessionToken, const char* jobId,
 	log_verbose("%s::%s(%d) : Sending enrollment complete request: %ld for"
 		" session: %s", LOG_INF, auditId, sessionToken);
 	struct CommonCompleteReq* req = CommonCompleteReq_new();
+    if (!req) {
+        log_error("%s::%s(%d) : Error creating common complete request structure", LOG_INF);
+        return 999;
+    }
+
 	req->SessionToken = strdup(sessionToken);
 	req->JobId = strdup(jobId);
 	req->Status = jobStatus;
 	req->AuditId = auditId;
 	req->Message = strdup(message);
-
 	char* jsonReq = CommonCompleteReq_toJson(req);
-
 	char* jsonResp = NULL;
-
 	url = config_build_url(endpoint, true);
 
 	int res = http_post_json(url, ConfigData->Username, ConfigData->Password, 
@@ -196,20 +196,16 @@ static int send_enroll_job_complete(const char* sessionToken, const char* jobId,
 		ConfigData->AgentKeyPassword, jsonReq, &jsonResp, 
 		ConfigData->httpRetries,ConfigData->retryInterval); 
 
-	if(res == 0)
-	{
+	if(res == 0) {
 		*pEnrComp = EnrollmentCompleteResp_fromJson(jsonResp);
-	}
-	else
-	{
-		log_error("%s::%s(%d) : Job completion failed with error code %d",
-			LOG_INF, res);
+	} else {
+		log_error("%s::%s(%d) : Job completion failed with error code %d", LOG_INF, res);
 	}
 
-	free(jsonReq);
-	free(jsonResp);
-	free(url);
-	CommonCompleteReq_free(req);
+	if (jsonReq) free(jsonReq);
+	if (jsonResp) free(jsonResp);
+	if (url) free(url);
+	if (req) CommonCompleteReq_free(req);
 
 	return res;
 } /* send_enroll_job_complete */

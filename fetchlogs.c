@@ -40,12 +40,15 @@ static int get_fetchlogs_config(const char* sessionToken, const char* jobId,
     log_verbose("%s::%s(%d) : Sending config request: %s", LOG_INF, jobId);
     struct CommonConfigReq* req = NULL;
     req = CommonConfigReq_new();
+    if (!req) {
+        log_error("%s::%s(%d) : Error creating Common Config Request", LOG_INF);
+        return 999;
+    }
+
     req->JobId = strdup(jobId);
     req->SessionToken = strdup(sessionToken);
-
     char* jsonReq = CommonConfigReq_toJson(req);
     char* jsonResp = NULL;
-
     url = config_build_url(endpoint, true);
 
     int res = http_post_json(url, ConfigData->Username, ConfigData->Password, 
@@ -54,20 +57,16 @@ static int get_fetchlogs_config(const char* sessionToken, const char* jobId,
                             jsonReq, &jsonResp, ConfigData->httpRetries, 
                             ConfigData->retryInterval);
 
-    if(res == 0)
-    {
+    if(res == 0) {
         *pConf = FetchLogsConfigResp_fromJson(jsonResp);
-    }
-    else 
-    {
-        log_error("%s::%s(%d) : Config retrieval failed with error code %d", 
-            LOG_INF, res);
+    } else {
+        log_error("%s::%s(%d) : Config retrieval failed with error code %d", LOG_INF, res);
     }
 
-    free(jsonReq);
-    free(jsonResp);
-    CommonConfigReq_free(req);
-    free(url);
+    if (jsonReq) free(jsonReq);
+    if (jsonResp) free(jsonResp);
+    if (req) CommonConfigReq_free(req);
+    if (url) free(url);
 
     return res;
 }
@@ -77,56 +76,44 @@ static int get_logs(char* logFilePath, int maxCharactersToRead, char** log)
     FILE* pLog;
     char* logContent = NULL;
 
-    if((pLog = fopen(logFilePath, "r")) == NULL)
-    {
+    if((pLog = fopen(logFilePath, "r")) == NULL) {
         log_error("%s::%s(%d) : Failed to open log file.", LOG_INF);
         return 1;
     }
-    if(fseek(pLog, 0, SEEK_END) != 0)
-    {
+
+    if(fseek(pLog, 0, SEEK_END) != 0) {
         log_error("%s::%s(%d) : End of file not found.", LOG_INF);
         goto fail;
     }
+
     long int fileSize = ftell(pLog);
-    if(fseek(pLog, -1 * maxCharactersToRead, SEEK_END) != 0)
-    {
+    if(fseek(pLog, -1 * maxCharactersToRead, SEEK_END) != 0) {
         rewind(pLog);
     }
 
-    if(fileSize - ftell(pLog) == maxCharactersToRead)
-    {
-        while(true)
-        {
-            if ((char)fgetc(pLog) == '\n')
-            {
+    if(fileSize - ftell(pLog) == maxCharactersToRead) {
+        while(true) {
+            if ((char)fgetc(pLog) == '\n') {
                 (void)fseek(pLog, 1, SEEK_CUR);
                 break;
-            }
-            else if(fgetc(pLog) == EOF)
-            {
-                if(fseek(pLog, -1 * maxCharactersToRead, SEEK_END) != 0)
-                {
+            } else if(fgetc(pLog) == EOF) {
+                if(fseek(pLog, -1 * maxCharactersToRead, SEEK_END) != 0) {
                     (void)rewind(pLog);
                 }
                 break;
-            }
-            else 
-            {
+            } else {
                 (void)fseek(pLog, 1, SEEK_CUR);
             }
         }
     }
 
     logContent = calloc((size_t)maxCharactersToRead, sizeof(*logContent));
-    if (!logContent)
-    {
+    if (!logContent) {
         log_error("%s::%s(%d) : Out of memory", LOG_INF);
         goto fail;
     }
-    size_t readCount = fread(logContent, sizeof(char), 
-        (size_t)maxCharactersToRead, pLog);
-    if ((readCount < (size_t)maxCharactersToRead) && (0 != ferror(pLog))) 
-    {
+    size_t readCount = fread(logContent, sizeof(char),(size_t)maxCharactersToRead, pLog);
+    if ((readCount < (size_t)maxCharactersToRead) && (0 != ferror(pLog))) {
 
     }
 
@@ -145,49 +132,41 @@ static int send_fetchlogs_job_complete(const char* sessionToken,
 {
     char* url = NULL;
 
-    log_verbose("%s::%s(%d) : Sending complete request: %ld for session: %s", 
-        LOG_INF, auditId, sessionToken);
+    log_verbose("%s::%s(%d) : Sending complete request: %ld for session: %s", LOG_INF, auditId, sessionToken);
     struct FetchLogsCompleteReq* req = FetchLogsCompleteReq_new();
-    if (sessionToken)
-    {
-        req->SessionToken = strdup(sessionToken);
+    if (!req) {
+        log_error("%s::%s(%d) : Error creating Fetch Logs Complete Request Structure", LOG_INF);
+        return 999;
     }
-    else
-    {
+
+    if (sessionToken) {
+        req->SessionToken = strdup(sessionToken);
+    } else {
         req->SessionToken = strdup("Error no session token");
     }
-    if (jobId)
-    {
+
+    if (jobId) {
         req->JobId = strdup(jobId);
-    }
-    else
-    {
+    } else {
         req->JobId = strdup("Error no JobId");
     }
 	
 	req->Status = jobStatus;
 	req->AuditId = auditId;
-    if (message) 
-    {
+    if (message) {
         req->Message = strdup(message);
-    }
-    else
-    {
+    } else {
         req->Message = strdup("");
     }
 	
-    if (log)
-    {
+    if (log) {
         req->Log = strdup(log);
-    }
-    else
-    {
+    } else {
         req->Log = strdup("Log retrieval error!");
     }
 
 
     char* jsonReq = FetchLogsCompleteReq_toJson(req);
-
     char* jsonResp = NULL;
 
     url = config_build_url(endpoint, true);
@@ -197,20 +176,16 @@ static int send_fetchlogs_job_complete(const char* sessionToken,
         ConfigData->AgentKeyPassword, jsonReq, &jsonResp, 
         ConfigData->httpRetries, ConfigData->retryInterval);
 
-    if(res == 0)
-    {
+    if(res == 0) {
         *pComp = CommonCompleteResp_fromJson(jsonResp);
-    }
-    else
-    {
-        log_error("%s::%s(%d) : Job completion failed with error code %d", 
-            LOG_INF, res);
+    } else {
+        log_error("%s::%s(%d) : Job completion failed with error code %d", LOG_INF, res);
     }
 
-    free(jsonReq);
-    free(jsonResp);
-    free(url);
-    FetchLogsCompleteReq_free(req);
+    if (jsonReq) free(jsonReq);
+    if (jsonResp) free(jsonResp);
+    if (url) free(url);
+    if (req) FetchLogsCompleteReq_free(req);
     return res;
 }
 

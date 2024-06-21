@@ -127,7 +127,7 @@ static void update_config_from_session(struct SessionRegisterResp* sessionResp)
 	if ( !ConfigData || !sessionResp ) return;
 	if ( !ConfigData->EnrollOnStartup )	return;
 
-	if(sessionResp->Session.Certificate && ConfigData->EnrollOnStartup)	{
+	if(sessionResp->Session.Certificate)	{
 		log_info("%s::%s(%d) : Received Agent Certificate. Turning off EnrollOnStartup.", LOG_INF);
 		isChanged = true;
 		ConfigData->EnrollOnStartup = false;
@@ -354,7 +354,7 @@ static void reset_agent(void) {
     savedId = strdup(ConfigData->AgentId);
     /* save current name */
     /* Reset the agent id */
-    if ((ConfigData->AgentId) && (0 < strlen(ConfigData->AgentId))) {
+    if (0 < strlen(ConfigData->AgentId)) {
         free(ConfigData->AgentId);
         ConfigData->AgentId = NULL;
     }
@@ -449,8 +449,7 @@ static int do_second_registration(struct SessionInfo* session,
 	struct SessionRegisterReq* sessionReq;
 	sessionReq = SessionRegisterReq_new(ConfigData->ClientParameterPath);
 
-	log_info("%s::%s(%d): Register 2nd Session, ask for enrollment jobs", 
-		LOG_INF);
+	log_info("%s::%s(%d): Register 2nd Session, ask for enrollment jobs", LOG_INF);
 
 	if(ConfigData->AgentName) 
 		sessionReq->ClientMachine = strdup(ConfigData->AgentName);
@@ -478,15 +477,38 @@ static int do_second_registration(struct SessionInfo* session,
 			ConfigData->httpRetries, ConfigData->retryInterval); 
 
 	if (0 == httpRes) {
-		resp = SessionRegisterResp_fromJson(respString);
-		log_debug("%s::%s(%d): response decoded.  Now parsing response.", 
-			LOG_INF);
-		if(resp->Session.Token)	{
-			log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF, 
-				resp->Session.Token, resp->Session.Jobs_count);
+        if (!respString) {
+            log_error("%s::%s(%d) : Error, no session returned in response", LOG_INF);
+            goto exit;
+        }
 
-			strcpy(session->AgentId, resp->Session.AgentId);
-			strcpy(session->Token, resp->Session.Token);
+		resp = SessionRegisterResp_fromJson(respString);
+        if (resp) {
+            log_trace("%s::%s(%d): response decoded.  Now parsing response.", LOG_INF);
+        } else {
+            log_error("%s::%s(%d) : No Session was found in the response", LOG_INF);
+            goto exit;
+        }
+
+		if(resp->Session.Token)	{
+			log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF, resp->Session.Token, resp->Session.Jobs_count);
+
+            size_t l = strlen(resp->Session.Token);
+            if (0 < l) {
+                strcpy(session->Token, resp->Session.Token);
+            } else {
+                log_warn("%s::%s(%d) : Session does not contain a token", LOG_INF);
+                session->Token[0] = '\0';
+            }
+
+            l = strlen(resp->Session.AgentId);
+            if (0 < l) {
+                strcpy(session->AgentId, resp->Session.AgentId);
+            } else {
+                log_warn("%s::%s(%d) : Session does not contain an AgentId", LOG_INF);
+                session->AgentId[0] = '\0';
+            }
+
 			session->UnreachableCount = 0;
 
 			sprintf(schedule, "I_%d", resp->Session.HeartbeatInterval);
@@ -498,10 +520,11 @@ static int do_second_registration(struct SessionInfo* session,
 		}
 	}
 
+exit:
 	if (resp) SessionRegisterResp_free(resp); /* Note: This doesn't free Jobs */
-	free(reqString);
-	free(respString);
-	free(url);
+    if (reqString) free(reqString);
+    if (respString) free(respString);
+    if (url) free(url);
 
 	return httpRes;
 } /* do_second_registration */
@@ -519,8 +542,7 @@ static int do_second_registration(struct SessionInfo* session,
 /* @return failure : 998 or a failed http code                                */
 /*         success : 200                                                      */
 /*                                                                            */
-static int re_register_agent(struct SessionInfo* session, 
-	struct ScheduledJob** pJobList, uint64_t agentVersion, 
+static int re_register_agent(struct SessionInfo* session, struct ScheduledJob** pJobList, uint64_t agentVersion,
 	bool needNewAgentName)
 {
 	char* url = NULL;
@@ -531,8 +553,11 @@ static int re_register_agent(struct SessionInfo* session,
 	char* status;
 	enum AgentApiResultStatus statusCode;
 	char schedule[10];
-	struct SessionRegisterReq* sessionReq = 
-		SessionRegisterReq_new(ConfigData->ClientParameterPath);
+	struct SessionRegisterReq* sessionReq = SessionRegisterReq_new(ConfigData->ClientParameterPath);
+    if (!sessionReq) {
+        log_error("%s::%s(%d) : Error getting a new session request buffer", LOG_INF);
+        goto exit;
+    }
 
 	log_info("%s::%s(%d): Re-registering the agent", LOG_INF);
 
@@ -541,17 +566,21 @@ static int re_register_agent(struct SessionInfo* session,
 	/* Set up the registration specific session information */
 	if ( !register_agent(sessionReq) ) {
 		log_error("%s::%s(%d) : Error re-registering agent", LOG_INF);
-		if ( sessionReq ) SessionRegisterReq_free( sessionReq );
-		return 998;
+		goto exit;
 	}
 
 	/* Send the request up to the platform */
 	reqString = SessionRegisterReq_toJson(sessionReq);
 	SessionRegisterReq_free(sessionReq);
+    sessionReq = NULL;
 
 	log_verbose("%s::%s(%d): Session Request:", LOG_INF);
 	log_verbose("%s",reqString);
 	url = config_build_url("/Session/Register", true);
+    if (!url) {
+        log_error("%s::%s(%d) : Error building URL", LOG_INF);
+        goto exit;
+    }
 
 	httpRes = http_post_json(url, ConfigData->Username, ConfigData->Password,
 			ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey,
@@ -559,10 +588,19 @@ static int re_register_agent(struct SessionInfo* session,
 			ConfigData->httpRetries,ConfigData->retryInterval); 
 
 	if ( 0 == httpRes ) {
+        if (!respString) {
+            log_error("%s::%s(%d) : Error, no session returned in response", LOG_INF);
+            goto exit;
+        }
+
 		log_trace("%s::%s(%d): decoding json response", LOG_INF);
 		resp = SessionRegisterResp_fromJson(respString);
-		log_trace("%s::%s(%d): response decoded.  Now parsing response.", 
-			LOG_INF);
+        if (resp) {
+            log_trace("%s::%s(%d): response decoded.  Now parsing response.", LOG_INF);
+        } else {
+            log_error("%s::%s(%d) : No Session was found in the response", LOG_INF);
+            goto exit;
+        }
 
 		if(resp->Session.Token) {
 			if(resp->Session.Certificate) {
@@ -581,33 +619,41 @@ static int re_register_agent(struct SessionInfo* session,
 				log_trace("%s::%s(%d): Certificate not found", LOG_INF);
 			}
 			/* download & shcedule jobs */
-			log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF, 
-				resp->Session.Token, resp->Session.Jobs_count);
+			log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF, resp->Session.Token, resp->Session.Jobs_count);
 
-			strcpy(session->AgentId, resp->Session.AgentId);
-			strcpy(session->Token, resp->Session.Token);
+            size_t l = strlen(resp->Session.AgentId);
+            if (0 < l) {
+                strcpy(session->AgentId, resp->Session.AgentId);
+            } else {
+                log_warn("%s::%s(%d) : No AgentId provided", LOG_INF);
+                session->AgentId[0] = '\0';
+            }
+
+            l = strlen(resp->Session.Token);
+            if (0 < l) {
+                strcpy(session->Token, resp->Session.Token);
+            } else {
+                log_warn("%s::%s(%d) : No Token provided", LOG_INF);
+                session->Token[0] = '\0';
+            }
+
 			session->UnreachableCount = 0;
-			sprintf(schedule, "I_%d", resp->Session.HeartbeatInterval);
-			session->NextExecution = next_execution(schedule, time(NULL));  
 			clear_job_schedules(pJobList);
 
 			/* Schedule the jobs based on priority */
 			prioritize_jobs(pJobList, resp);
 		} else {
-			log_error("%s::%s(%d): Agent re-registration did not succeed"
-				" with error %s", LOG_INF, resp->Result.Error.Message);
-			sprintf(schedule, "I_%d", session->Interval);
-			session->NextExecution = next_execution(schedule, 
-				session->NextExecution);
+			log_error("%s::%s(%d): Agent re-registration did not succeed with error %s", LOG_INF, resp->Result.Error.Message);
 		}
 	} else {
 		log_error("%s::%s(%d): Agent re-registration failed with error code %d", LOG_INF, httpRes);
 	}
 
+exit:
 	if (resp) SessionRegisterResp_free(resp); /* Note this doesn't free Jobs */
-	free(reqString);
-	free(respString);
-	free(url);
+	if (reqString) free(reqString);
+	if (respString) free(respString);
+	if (url) free(url);
 
 	return httpRes;
 } /* re_register_agent */
@@ -621,12 +667,15 @@ static int re_register_agent(struct SessionInfo* session,
 /* @param  [Output] : statusCode = the status code to pass to Keyfactor       */
 /* @return if a certificate is found = true                                   */
 /*         otherwise = false                                                  */
-static bool do_first_registration_response(struct SessionRegisterResp* resp, 
+static bool do_first_registration_response(struct SessionRegisterResp* resp,
 	char** status, enum AgentApiResultStatus* statusCode)
 {
+    if (NULL == resp) {
+        log_error("%s::%s(%d) : Error, response to parse is null", LOG_INF);
+        return false;
+    }
 	bool bResult = false;
-	log_trace("%s::%s(%d): Updating config from session", 
-		LOG_INF);
+	log_trace("%s::%s(%d): Updating config from session", LOG_INF);
 	update_agentid_from_session(resp);
 
 	if(resp->Session.Certificate) {
@@ -654,16 +703,31 @@ static bool do_first_registration_response(struct SessionRegisterResp* resp,
 static void do_normal_registration_response(struct SessionRegisterResp* resp, 
 	struct SessionInfo* session, struct ScheduledJob** pJobList, char* schedule)
 {
-	log_info("%s::%s(%d): New session %s contains %d jobs", 
-		LOG_INF, resp->Session.Token, resp->Session.Jobs_count);
+    if (!resp || !session || !pJobList || !schedule) {
+        log_error("%s::%s(%d) : Invalid function call there is a NULL pointer passed to this function", LOG_INF);
+        return;
+    }
 
-	strcpy(session->AgentId, resp->Session.AgentId);
-	strcpy(session->Token, resp->Session.Token);
+	log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF, resp->Session.Token, resp->Session.Jobs_count);
+
+    size_t l = strlen((resp->Session.AgentId));
+    if (l > 0) {
+        strcpy(session->AgentId, resp->Session.AgentId);
+    } else {
+        log_warn("%s::%s(%d) : No agent id in session", LOG_INF);
+        session->AgentId[0] = '\0';
+    }
+
+    l = strlen((resp->Session.Token));
+    if (l > 0) {
+        strcpy(session->Token, resp->Session.Token);
+    } else {
+        log_warn("%s::%s(%d) : No Token sent in session response", LOG_INF);
+        session->Token[0] = '\0';
+    }
+
 	session->UnreachableCount = 0;
-
-	sprintf(schedule, "I_%d", resp->Session.HeartbeatInterval);
-	session->NextExecution = next_execution(schedule, time(NULL));  
-	clear_job_schedules(pJobList);
+    clear_job_schedules(pJobList);
 
 	/* Schedule the jobs based on priority */
 	prioritize_jobs(pJobList, resp);
@@ -698,8 +762,11 @@ int register_session(struct SessionInfo* session,
 	char* status;
 	enum AgentApiResultStatus statusCode;
 	char schedule[10];
-	struct SessionRegisterReq* sessionReq = 
-		SessionRegisterReq_new(ConfigData->ClientParameterPath);
+	struct SessionRegisterReq* sessionReq = SessionRegisterReq_new(ConfigData->ClientParameterPath);
+    if (NULL == sessionReq) {
+        log_error("%s::%s(%d) : Error setting registration parameters", LOG_INF);
+        goto exit;
+    }
 	bool firstAgentRegistration = false;
 	bool gotCertificate = false;
 
@@ -711,7 +778,7 @@ int register_session(struct SessionInfo* session,
 		/* Generate a keypair and a CSR to send up with this request */
 		if ( !register_agent( sessionReq ) ) {
 			log_error("%s::%s(%d) : Error setting up agent registration", LOG_INF);
-			if ( sessionReq ) SessionRegisterReq_free( sessionReq );
+			SessionRegisterReq_free( sessionReq );
 			return 998;
 		}
 		firstAgentRegistration = true;

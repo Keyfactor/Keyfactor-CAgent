@@ -69,9 +69,12 @@ static inline void get_log_format(char* buf, const char* msgFormat,
 {
 	time_t t = time(NULL);
 	struct tm* tm = gmtime(&t);
-	(void)strftime(timeBuf, LOG_HEAD_SIZE, "%Y-%m-%d %H:%M:%S", tm);
-	(void)snprintf(buf, MAX_LOG_SIZE, "[%s] - %s - %s\n", timeBuf, 
-		logLevel, msgFormat);
+    if (!tm) {
+        (void) snprintf(buf, MAX_LOG_SIZE, "[%s] - %s - %s\n", "0000-00-00 00:00:00", logLevel, msgFormat);
+    } else {
+        (void) strftime(timeBuf, LOG_HEAD_SIZE, "%Y-%m-%d %H:%M:%S", tm);
+        (void) snprintf(buf, MAX_LOG_SIZE, "[%s] - %s - %s\n", timeBuf, logLevel, msgFormat);
+    }
 } /* get_log_format */
 
 /**                                                                           */
@@ -105,60 +108,42 @@ static void write_heap_to_disk( void )
 		}
 
 		FILE* fp = NULL;
-		if (file_exists(ConfigData->LogFile))
-		{
+		if (file_exists(ConfigData->LogFile)) {
 			printf("%s::%s(%d) : Opening existing log file\n", LOG_INF);
 			fp = fopen(ConfigData->LogFile, "r+");
-		}
-		else
-		{
+		} else {
 			printf("%s::%s(%d) : Creating new log file\n", LOG_INF);
 			fp = fopen(ConfigData->LogFile, "w");
 		}
-		fseek(fp, 0ul, SEEK_END);
-		size_t actualLogSize = ftell(fp);
-		if (NULL != fp)
-		{
-			printf("%s::%s(%d) : Opened log file with size %lu\n", LOG_INF, 
-				actualLogSize);
+
+		if (NULL != fp)	{
+            fseek(fp, 0ul, SEEK_END);
+            size_t actualLogSize = ftell(fp);
+			printf("%s::%s(%d) : Opened log file with size %lu\n", LOG_INF, 	actualLogSize);
 			fseek(fp, ConfigData->LogFileIndex, SEEK_SET);
 			size_t writeLen = log_tail - log_head;
 			size_t logFileTest = (ConfigData->LogFileIndex + writeLen);
-			printf("%s::%s(%d) : writing %lu bytes to log at index of %lu\n", 
-				LOG_INF, writeLen, ConfigData->LogFileIndex);
-			printf("%s::%s(%d) : MAX_FILE_SIZE = %lu\n", 
-				LOG_INF, MAX_FILE_SIZE);
-			if ( MAX_FILE_SIZE > logFileTest )
-			{
-				printf("%s::%s(%d) : Writing %lu bytes to disk\n", 
-					LOG_INF, writeLen);
-				size_t chars_written = 
-					fwrite((void*)log_head, sizeof(*log_head), writeLen, fp);
+			printf("%s::%s(%d) : writing %lu bytes to log at index of %lu\n", LOG_INF, writeLen, ConfigData->LogFileIndex);
+			printf("%s::%s(%d) : MAX_FILE_SIZE = %lu\n", LOG_INF, MAX_FILE_SIZE);
+			if ( MAX_FILE_SIZE > logFileTest )	{
+				printf("%s::%s(%d) : Writing %lu bytes to disk\n", LOG_INF, writeLen);
+				size_t chars_written = fwrite((void*)log_head, sizeof(*log_head), writeLen, fp);
 				ConfigData->LogFileIndex += chars_written;
 				log_tail = log_head;
-			}
-			else
-			{
-				printf("%s::%s(%d) : Log file write of %lu creates wrap of "
-					"log file\n", LOG_INF, writeLen);
+			} else {
+				printf("%s::%s(%d) : Log file write of %lu creates wrap of log file\n", LOG_INF, writeLen);
 				size_t toEOF = MAX_FILE_SIZE - ConfigData->LogFileIndex;
-				size_t chars_written = 
-					fwrite((void*)log_head, sizeof(*log_head), toEOF, fp);
+				size_t chars_written = fwrite((void*)log_head, sizeof(*log_head), toEOF, fp);
 				fseek(fp, 0, SEEK_SET); /* reset to beginning of file */
-				size_t new_chars_written = 
-					fwrite((void*)(log_head+chars_written+1), sizeof(*log_head),
-						(writeLen-chars_written), fp);
+				size_t new_chars_written = fwrite((void*)(log_head+chars_written+1), sizeof(*log_head),(writeLen-chars_written), fp);
 				ConfigData->LogFileIndex = new_chars_written;
 				log_tail = log_head;
 			}
 
 			config_save();
 			fclose(fp);
-		} 
-		else 
-		{
-			printf("******* Error opening log file %s\n **************", 
-				ConfigData->LogFile);
+		} else {
+			printf("******* Error opening log file %s\n **************", ConfigData->LogFile);
 			break;
 		}
 
@@ -266,7 +251,7 @@ void log_error(const char* fmt, ...)
 		if (config_loaded) 
 		{
 			/* Write to the log buffer, too */	
-			size_t log_index = (log_tail - log_head);		
+			size_t log_index = (log_tail - log_head); /* parasoft-suppress MISRAC2012-DIR_4_1-i "same array" */
 			if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) 
 			{ 
 				write_heap_to_disk();		
@@ -302,7 +287,7 @@ void log_warn(const char* fmt, ...)
 		if (config_loaded) 
 		{
 			/* Write to the log buffer, too */	
-			size_t log_index = (log_tail - log_head);			
+			size_t log_index = (log_tail - log_head);	/* parasoft-suppress MISRAC2012-DIR_4_1-i "same array" */
 			if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) 
 			{ 
 				write_heap_to_disk();		
@@ -338,7 +323,7 @@ void log_info(const char* fmt, ...)
 		if (config_loaded) 
 		{
 			/* Write to the log buffer, too */	
-			size_t log_index = (log_tail - log_head);			
+			size_t log_index = (log_tail - log_head);  /* parasoft-suppress MISRAC2012-DIR_4_1-i "same array" */
 			if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) 
 			{ 
 				write_heap_to_disk();		
@@ -374,7 +359,7 @@ void log_verbose(const char* fmt, ...)
 		if (config_loaded) 
 		{
 			/* Write to the log buffer, too */	
-			size_t log_index = (log_tail - log_head);			
+			size_t log_index = (log_tail - log_head); /* parasoft-suppress MISRAC2012-DIR_4_1-i "same array" */
 			if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) 
 			{ 
 				write_heap_to_disk();		
@@ -410,7 +395,7 @@ void log_debug(const char* fmt, ...)
 		if (config_loaded) 
 		{
 			/* Write to the log buffer, too */	
-			size_t log_index = (log_tail - log_head);			
+			size_t log_index = (log_tail - log_head); /* parasoft-suppress MISRAC2012-DIR_4_1-i "same array" */
 			if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) 
 			{ 
 				write_heap_to_disk();		
@@ -446,7 +431,7 @@ void log_trace(const char* fmt, ...)
 		if (config_loaded) 
 		{
 			/* Write to the log buffer, too */	
-			size_t log_index = (log_tail - log_head);			
+			size_t log_index = (log_tail - log_head);	/* parasoft-suppress MISRAC2012-DIR_4_1-i "same array" */
 			if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) 
 			{ 
 				write_heap_to_disk();		

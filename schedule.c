@@ -134,7 +134,7 @@ static time_t next_weekly(char* weeklySch, time_t prev)
 		gmtime_r(&prev, &prevStruct);
 
 		if(
-			hrs <= prevStruct.tm_hour || \
+			hrs < prevStruct.tm_hour || \
 			(hrs == prevStruct.tm_hour && mins <= prevStruct.tm_min) )
 		{
 			/* This gets us to the first time after prev with the right hrs */ 

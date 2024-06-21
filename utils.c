@@ -274,21 +274,27 @@ int read_file_bytes(const char* srcPath, unsigned char** pFileBytes,
 	} else if (fseek(fpRead, 0, SEEK_END) != 0) {		
 		err = ferror(fpRead);
 	} else {
-		*fileLen = ftell(fpRead);
-		*pFileBytes = (unsigned char*)calloc((*fileLen) + 1, 1);
-		if (!(*pFileBytes)) {
-			log_error("%s::%s(%d) : Out of memory", LOG_INF);
-			goto exit;
-		}
+		int len = ftell(fpRead);
+        if (len < 0) {
+            log_error("%s::%s(%d) : Error reading file", LOG_INF);
+            goto exit;
+        } else {
+            *fileLen = len;
+            *pFileBytes = (unsigned char *) calloc((*fileLen) + 1, 1);
+            if (!(*pFileBytes)) {
+                log_error("%s::%s(%d) : Out of memory", LOG_INF);
+                goto exit;
+            }
 
-		fseek(fpRead, 0, SEEK_SET);
+            fseek(fpRead, 0, SEEK_SET);
 
-		int rcnt = fread(*pFileBytes, 1, *fileLen, fpRead);
-		if( (size_t)rcnt != *fileLen ) {
-			err = ferror(fpRead);
-			free(*pFileBytes);
-			*fileLen = 0;
-		}
+            int rcnt = fread(*pFileBytes, 1, *fileLen, fpRead);
+            if ((size_t) rcnt != *fileLen) {
+                err = ferror(fpRead);
+                free(*pFileBytes);
+                *fileLen = 0;
+            }
+        }
 	}
 
 exit:
@@ -335,13 +341,7 @@ int backup_file(const char* file)
 			}
 		}
 	} else {
-		if ( NULL == file ) { 
-			dummy = strdup("NULL");
-		} else {
-			dummy = strdup(file);
-		}
-		log_info("%s::%s(%d) : No file found at %s", LOG_INF, dummy);
-		free(dummy);
+		log_info("%s::%s(%d) : No file found", LOG_INF);
 		err = ENOENT;
 	}
 
@@ -600,7 +600,11 @@ char* get_prefix_substring(const char* string, const char find)
 		log_trace("%s::%s(%d) : Character found", LOG_INF);
 		size_t len = (size_t)(ptr-string);
 		subString = strdup(string);
-		subString = (char*)realloc(subString,(len+1));
+		subString = (char*)realloc(subString,(len+1)); /* parasoft-suppress BD-RES-LEAKS "Freed by calling function" */
+        if (NULL == subString) {
+            log_error("%s::%s(%d) : Out of memory", LOG_INF);
+            return NULL;
+        }
 		subString[len] = '\0';
 	}
 	else

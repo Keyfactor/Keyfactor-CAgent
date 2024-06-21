@@ -106,17 +106,18 @@ static int send_inventory_update(const char* sessionToken, const char* jobId,
 {
 	char* url = NULL;
 
-	log_verbose("%s::%s(%d) : Sending inventory update request: %s", 
-		LOG_INF, jobId);
+	log_verbose("%s::%s(%d) : Sending inventory update request: %s", LOG_INF, jobId);
 	struct InventoryUpdateReq* updReq = calloc(1, sizeof(*updReq));
+    if (!updReq) {
+        log_error("%s::%s(%d) : Error couldn't allocate update request structure", LOG_INF);
+        return 999;
+    }
+
 	updReq->SessionToken = strdup(sessionToken);
 	updReq->JobId = strdup(jobId);
 	updReq->Inventory = *newInv;
-
 	char* jsonReq = InventoryUpdateReq_toJson(updReq);
-	
-	char* jsonResp = NULL;
-
+    char* jsonResp = NULL;
 	url = config_build_url(endpoint, true);
 
 	int res = http_post_json(url, ConfigData->Username, ConfigData->Password, 
@@ -124,20 +125,16 @@ static int send_inventory_update(const char* sessionToken, const char* jobId,
 		ConfigData->AgentKeyPassword, jsonReq, &jsonResp 
 		,ConfigData->httpRetries,ConfigData->retryInterval); 
 
-	if(res == 0)
-	{
+	if(res == 0) {
 		*pUpdResp = InventoryUpdateResp_fromJson(jsonResp);
-	}
-	else
-	{
-		log_error("%s::%s(%d) : Update submission failed with error code %d", 
-			LOG_INF, res);
+	} else {
+		log_error("%s::%s(%d) : Update submission failed with error code %d", LOG_INF, res);
 	}
 	
-	free(jsonReq);
-	free(jsonResp);
-	free(url);
-	InventoryUpdateReq_free(updReq);
+	if (jsonReq) free(jsonReq);
+	if (jsonResp) free(jsonResp);
+	if (url) free(url);
+	if (updReq) InventoryUpdateReq_free(updReq);
 	
 	return res;
 } /* send_inventory_update */
@@ -152,16 +149,18 @@ static int send_inventory_job_complete(const char* sessionToken,
 		" session: %s",	LOG_INF, auditId, sessionToken);
 
 	struct CommonCompleteReq* req = CommonCompleteReq_new();
+    if (!req) {
+        log_error("%s::%s(%d) : Error allocating request structure", LOG_INF);
+        return 999;
+    }
+
 	req->SessionToken = strdup(sessionToken);
 	req->JobId = strdup(jobId);
 	req->Status = jobStatus;
 	req->AuditId = auditId;
 	req->Message = strdup(message);
-
 	char* jsonReq = CommonCompleteReq_toJson(req);
-	
 	char* jsonResp = NULL;
-
 	url = config_build_url(endpoint, true);
 
 	int res = http_post_json(url, ConfigData->Username, ConfigData->Password, 
@@ -169,20 +168,16 @@ static int send_inventory_job_complete(const char* sessionToken,
 		ConfigData->AgentKeyPassword, jsonReq, &jsonResp 
 		,ConfigData->httpRetries,ConfigData->retryInterval); 
 
-	if(res == 0)
-	{
+	if(res == 0) {
 		*pInvComp = CommonCompleteResp_fromJson(jsonResp);
-	}
-	else
-	{
-		log_error("%s::%s(%d) : Job completion failed with error code %d", 
-			LOG_INF, res);
+	} else {
+		log_error("%s::%s(%d) : Job completion failed with error code %d",	LOG_INF, res);
 	}
 	
-	free(jsonReq);
-	free(jsonResp);
-	free(url);
-	CommonCompleteReq_free(req);
+	if (jsonReq) free(jsonReq);
+	if (jsonResp) free(jsonResp);
+	if (url) free(url);
+	if (req) CommonCompleteReq_free(req);
 
 	return res;
 } /* send_inventory_job_complete */
@@ -288,75 +283,87 @@ static int compute_inventory_update(struct InventoryCurrentItem** cmsItems,
 		for(int j = 0; j < cmsItemCount; ++j)
 		{
 			/* if the thumbprints match, we don't have to do anything */
-			if(0 == 
-				strcasecmp(currentPem->thumbprint_string, cmsItems[j]->Alias))
-			{
-				log_verbose("%s::%s(%d) : Alias %s is UNCHANGED", LOG_INF, 
-					currentPem->thumbprint_string);
+			if(0 == strcasecmp(currentPem->thumbprint_string, cmsItems[j]->Alias)) {
+				log_verbose("%s::%s(%d) : Alias %s is UNCHANGED", LOG_INF, currentPem->thumbprint_string);
 				inCms = true;
 
-				struct InventoryUpdateItem* updateItem = 
-					calloc(1, sizeof(*updateItem));
-				updateItem->Alias = strdup(cmsItems[j]->Alias);
-				updateItem->ItemStatus = INV_STAT_UNCH;
-				updateItem->PrivateKeyEntry = cmsItems[j]->PrivateKeyEntry;
-				updateItem->UseChainLevel = false;
+				struct InventoryUpdateItem* updateItem = calloc(1, sizeof(*updateItem));
+                if (!updateItem) {
+                    log_error("%s::%s(%d) : Out of memory", LOG_INF);
+                    break;
+                } else {
+                    if (cmsItems[j]->Alias) {
+                        updateItem->Alias = strdup(cmsItems[j]->Alias);
+                    } else {
+                        updateItem->Alias = strdup("");
+                    }
+                    updateItem->ItemStatus = INV_STAT_UNCH;
+                    updateItem->PrivateKeyEntry = cmsItems[j]->PrivateKeyEntry;
+                    updateItem->UseChainLevel = false;
+                }
 
 				InventoryUpdateList_add(*updateList, updateItem);
 				break;
-			}
+			} /* parasoft-suppress BD-RES-LEAKS "Freed by calling function" */
 		}
 
-		if(!inCms)
-		{
-			log_verbose("%s::%s(%d) : Alias %s is ADDED", LOG_INF, 
-				currentPem->thumbprint_string);
+		if(!inCms) {
+			log_verbose("%s::%s(%d) : Alias %s is ADDED", LOG_INF, currentPem->thumbprint_string);
 
 			updateItem = calloc(1, sizeof(*updateItem));
-			updateItem->Alias = strdup(currentPem->thumbprint_string);
-			updateItem->ItemStatus = INV_STAT_ADD;
-			updateItem->PrivateKeyEntry = currentPem->has_private_key;
-			updateItem->UseChainLevel = false;
-			updateItem->Certificates = calloc(1,sizeof(char*));
-			updateItem->Certificates[0] = strdup(currentPem->cert);
-			updateItem->Certificates_count = 1;
+            if (!updateItem) {
+                log_error("%s::%s(%d) : Out of memory", LOG_INF);
+                break;
+            } else {
+                if (currentPem->thumbprint_string) {
+                    updateItem->Alias = strdup(currentPem->thumbprint_string);
+                } else {
+                    updateItem->Alias = strdup("");
+                }
+                updateItem->ItemStatus = INV_STAT_ADD;
+                updateItem->PrivateKeyEntry = currentPem->has_private_key;
+                updateItem->UseChainLevel = false;
+                updateItem->Certificates = calloc(1, sizeof(char *));
+                updateItem->Certificates[0] = strdup(currentPem->cert);
+                updateItem->Certificates_count = 1;
 
-			InventoryUpdateList_add(*updateList, updateItem);
+                InventoryUpdateList_add(*updateList, updateItem);
+            }
 		}
 	}
 
 	for(int m = 0; m < cmsItemCount; ++m)
 	{
 		inFile = false;
-		for(int n = 0; n < fileItemList->item_count; ++n)
-		{
+		for(int n = 0; n < fileItemList->item_count; ++n) {
 			currentPem = fileItemList->items[n];
 
-			if(0 == 
-				strcasecmp(currentPem->thumbprint_string, cmsItems[m]->Alias))
-			{
+			if(0 == strcasecmp(currentPem->thumbprint_string, cmsItems[m]->Alias)) {
 				inFile = true;
 				break;
 			}
 		}
 
-		if(!inFile)
-		{
-			log_verbose("%s::%s(%d) : Alias %s is DELETED", LOG_INF, 
-				cmsItems[m]->Alias);
+		if(!inFile) {
+			log_verbose("%s::%s(%d) : Alias %s is DELETED", LOG_INF, cmsItems[m]->Alias);
 
-			updateItem = calloc(1, sizeof(struct InventoryUpdateItem));
-			updateItem->Alias = strdup(cmsItems[m]->Alias);
-			updateItem->ItemStatus = INV_STAT_REM;
-			updateItem->PrivateKeyEntry = false;
-			updateItem->UseChainLevel = false;
+			updateItem = calloc(1, sizeof(struct InventoryUpdateItem)); /* parasoft-suppress BD-RES-LEAKS "Freed by calling function" */
+            if (!updateItem) {
+                log_error("%s::%s(%d) : Out of Memory", LOG_INF);
+                break;
+            } else {
+                updateItem->Alias = strdup(cmsItems[m]->Alias);
+                updateItem->ItemStatus = INV_STAT_REM;
+                updateItem->PrivateKeyEntry = false;
+                updateItem->UseChainLevel = false;
 
-			InventoryUpdateList_add(*updateList, updateItem);
+                InventoryUpdateList_add(*updateList, updateItem);
+            }
 		}
 	}
 
 	return 0;
-} /* compute_inventory_update */
+} /* compute_inventory_update */ /* parasoft-suppress BD-RES-LEAKS "Freed by calling function" */
 
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/

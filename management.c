@@ -63,9 +63,12 @@ static int get_management_config(const char* sessionToken, const char* jobId,
 {
 	char* url = NULL;
 
-	log_verbose("%s::%s(%d) : Sending management config request: %s", 
-		LOG_INF, jobId);
+	log_verbose("%s::%s(%d) : Sending management config request: %s", LOG_INF, jobId);
 	struct CommonConfigReq* req = CommonConfigReq_new();
+    if (!req) {
+        log_error("%s::%s(%d) : Error creating new request structure", LOG_INF);
+        return 999;
+    }
 	req->JobId = strdup(jobId);
 	req->SessionToken = strdup(sessionToken);
 
@@ -80,20 +83,16 @@ static int get_management_config(const char* sessionToken, const char* jobId,
 		ConfigData->AgentKeyPassword, jsonReq, &jsonResp, 
 		ConfigData->httpRetries,ConfigData->retryInterval); 
 	
-	if(res == 0)
-	{
+	if(res == 0) {
 		*pManConf = ManagementConfigResp_fromJson(jsonResp);
-	}
-	else
-	{
-		log_error("%s::%s(%d) : Config retrieval failed with error code %d", 
-			LOG_INF, res);
+	} else {
+		log_error("%s::%s(%d) : Config retrieval failed with error code %d", LOG_INF, res);
 	}
 
-	free(jsonReq);
-	free(jsonResp);
-	free(url);
-	CommonConfigReq_free(req);
+	if (jsonReq) free(jsonReq);
+	if (jsonResp) free(jsonResp);
+	if (url) free(url);
+	if (req) CommonConfigReq_free(req);
 
 	return res;
 } /* get_management_config */
@@ -115,6 +114,11 @@ static int send_management_job_complete(const char* sessionToken,
 	log_verbose("%s::%s(%d) : Sending management complete request: %ld "
 		"for session: %s", LOG_INF, auditId, sessionToken);
 	struct CommonCompleteReq* req = CommonCompleteReq_new();
+    if (!req) {
+        log_error("%s::%s(%d) : Error creating new request structure", LOG_INF);
+        return 999;
+    }
+
 	req->SessionToken = strdup(sessionToken);
 	req->JobId = strdup(jobId);
 	req->Status = jobStatus;
@@ -142,10 +146,10 @@ static int send_management_job_complete(const char* sessionToken,
 			LOG_INF, res);
 	}
 
-	free(jsonReq);
-	free(jsonResp);
-	free(url);
-	CommonCompleteReq_free(req);
+    if (jsonReq) free(jsonReq);
+    if (jsonResp) free(jsonResp);
+    if (url) free(url);
+    if (req) CommonCompleteReq_free(req);
 
 	return res;
 } /* send_management_job_complete */

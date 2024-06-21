@@ -72,7 +72,12 @@ static struct AgentApiResult AgentApiResult_fromJsonNode(JsonNode* jsonResult)
 			result.Error.CodeString = tempString;
 		}
 		result.Error.Message = json_get_member_string(jsonError, "Message");
-	}
+	} else {
+        result.Status = STAT_ERR;
+        result.Error.Code = 999;
+        result.Error.Message = strdup("Unknown Error");
+        result.Error.CodeString = strdup("Unknown Error");
+    }
 
 	return result;
 }
@@ -128,6 +133,10 @@ static struct ClientParameter* ClientParameter_new(const char* key,
 	const char* value)
 {
 	struct ClientParameter* cp = calloc(1, sizeof(struct ClientParameter));
+    if (!cp) {
+        log_error("%s::%s(%d) : Out of memory", LOG_INF);
+        return NULL;
+    }
 	cp->Key = strdup(key);
 	cp->Value = strdup(value);
 
@@ -207,11 +216,13 @@ struct SessionRegisterReq* SessionRegisterReq_new(char* clientParamPath)
 	#undef FUNCTION
 	#define FUNCTION "SessionHeartbeatReq_new-"
 	struct SessionRegisterReq* req = calloc( 1, sizeof(*req) );
+    if (!req) {
+        log_error("%s::%s(%d) : Out of memory", LOG_INF);
+        return NULL;
+    }
 
 	req->Capabilities_count = 0;
-
 	req->TenantId = strdup("00000000-0000-0000-0000-000000000000");
-
 	req->ClientParameters_count = 0;
 
 	if(clientParamPath)
