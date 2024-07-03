@@ -95,6 +95,7 @@ extern struct ScheduledJob* currentJob; /* Defined in schedule.c */
 /* 2.14.2.1 = Set up long options & cleaned usage output                      */
 /* 2.14.3.0 = Upgraded for EJBCA DN State Key & openssl v3.0 compatibility    */
 /* 2.15.0.0 = Minor bug improvements                                          */
-#define AGENT_VERSION 0x0002000F00000000
+/* 2.15.1.0 = Updated for v12 API modifications                               */
+#define AGENT_VERSION 0x0002000F00010000
 
 #endif /* AGENT_H_ */
