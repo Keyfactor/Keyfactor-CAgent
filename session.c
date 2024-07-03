@@ -829,7 +829,7 @@ int register_session(struct SessionInfo* session,
  				} else {
  					do_normal_registration_response(resp, session, pJobList, schedule);
  				}
-			} else if(resp->Result.Status == STAT_ERR	&&
+			} else if((resp->Result.Status == STAT_ERR || resp->Result.Status == STAT_WARN) &&
 					resp->Result.Error.CodeString &&
                     ((0 == strcasecmp("A0100007", resp->Result.Error.CodeString)) ||
                      (0 == strcasecmp("A0100008", resp->Result.Error.CodeString))) ) {
@@ -841,7 +841,7 @@ int register_session(struct SessionInfo* session,
 			}
 		} else { /* We have a response, but no token */
 			AgentApiResult_log(resp->Result, NULL, NULL);
-			if (resp->Result.Status == STAT_ERR	&& 
+			if ((resp->Result.Status == STAT_ERR || resp->Result.Status == STAT_WARN) &&
 				resp->Result.Error.CodeString && 
 				((0 == strcasecmp("A0100007", resp->Result.Error.CodeString)) ||
                  (0 == strcasecmp("A0100008", resp->Result.Error.CodeString))) ) {
