@@ -126,7 +126,11 @@ bool AgentApiResult_log(struct AgentApiResult result,
 
 	if ( NULL != introBuf ) { free(introBuf); }
 
-	return (result.Status != STAT_ERR);
+    if ((result.Status == STAT_ERR) || (result.Status == STAT_WARN)) {
+        return false;
+    } else {
+        return true;
+    }
 }
 
 static struct ClientParameter* ClientParameter_new(const char* key, 
