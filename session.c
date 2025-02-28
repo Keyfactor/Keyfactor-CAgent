@@ -483,11 +483,18 @@ static int do_second_registration(struct SessionInfo* session,
         }
 
 		resp = SessionRegisterResp_fromJson(respString);
-        if (resp) {
-            log_trace("%s::%s(%d): response decoded.  Now parsing response.", LOG_INF);
-        } else {
-            log_error("%s::%s(%d) : No Session was found in the response", LOG_INF);
+        if ( NULL == resp ) {
+            log_error("%s::%s(%d) : Could not decode response", LOG_INF);
+            httpRes = 997;
             goto exit;
+        }
+        log_debug("%s::%s(%d): response decoded.  Now parsing response.",
+                  LOG_INF);
+        if( !AgentApiResult_log(resp->Result, NULL, NULL) ) {
+            if(resp->Result.Status == STAT_ERR) {
+                log_error("%s::%s(%d): Command reported an error during the second registration call", LOG_INF);
+                httpRes = 997;
+            }
         }
 
 		if(resp->Session.Token)	{
