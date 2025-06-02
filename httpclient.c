@@ -61,12 +61,13 @@ struct MemoryStruct {
 /************************ LOCAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
 
-/**
+/**                                                                           */
 /* This handles curl_easy_setopt returned error code logging                  */
 /* @param  - [Input] curl = a pointer to our CURL handle                      */
 /* @param  - [I/O]   errNum = the curl error number                           */
 /*                                                                            */
 static int handle_curl_error(CURL *curl, int errNum) {
+    char errBuff[CURL_ERROR_SIZE];
     /* When tracing, dump the error buffer to stderr */
     if ( is_log_trace() ) {
         size_t len = strlen( errBuff );
