@@ -60,6 +60,30 @@ struct MemoryStruct {
 /******************************************************************************/
 /************************ LOCAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
+
+/**
+/* This handles curl_easy_setopt returned error code logging                  */
+/* @param  - [Input] curl = a pointer to our CURL handle                      */
+/* @param  - [I/O]   errNum = the curl error number                           */
+/*                                                                            */
+static int handle_curl_error(CURL *curl, int errNum) {
+    /* When tracing, dump the error buffer to stderr */
+    if ( is_log_trace() ) {
+        size_t len = strlen( errBuff );
+        log_error( "%s::%s-libcurl: (%d) ", LOG_INF, errNum );
+        if ( len ) {
+            log_error( "%s::%s(%d) : %s%s", LOG_INF, errBuff,
+              ((errBuff[len-1] != '\n') ? "\n" : ""));
+        } else {
+            log_error("%s::%s(%d) : %s", LOG_INF, curl_easy_strerror(errNum) );
+        }
+    }
+    log_error("%s::%s(%d) : %s", LOG_INF, curl_easy_strerror(errNum));
+
+    curl_easy_cleanup(curl);
+    return errNum;
+}
+
 /**                                                                           */
 /* The memory callback function curl uses -- the default is fwrite, so we     */
 /* want to change that behaviour.                                             */
@@ -209,78 +233,30 @@ int http_post_json(const char* url, const char* username,
         log_verbose("%s::%s(%d) : Setting cURL to use TPM as SSL Engine %s",
           LOG_INF, engine_id);
         int errNum = curl_easy_setopt(curl, CURLOPT_SSLENGINE, engine_id);
-        if ( CURLE_OK != errNum )
-        {
-          /* When tracing, dump the error buffer to stderr */
-          if ( is_log_trace() )
-          {
-            size_t len = strlen( errBuff );
-            log_error( "%s::%s-libcurl: (%d) ", LOG_INF, errNum );
-            if ( len )
-            {
-              log_error( "%s::%s(%d) : %s%s", LOG_INF, errBuff,
-                ((errBuff[len-1] != '\n') ? "\n" : ""));
-            }
-            else
-            {
-              log_error("%s::%s(%d) : %s", LOG_INF, curl_easy_strerror(errNum) );
-            }
-          }
-          log_error("%s::%s(%d) : %s", LOG_INF, curl_easy_strerror(errNum));
-
-          curl_easy_cleanup(curl);
-          return errNum;
+        if ( CURLE_OK != errNum ) {
+          return handle_curl_error(curl, errNum);
         }
 
         log_verbose("%s::%s(%d) : Setting cURL to use TPM as the default "
           "SSL Engine %s", LOG_INF, engine_id);
         errNum = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
-        if ( CURLE_OK != errNum )
-        {
-          /* When tracing, dump the error buffer to stderr */
-          if ( is_log_trace() )
-          {
-            size_t len = strlen( errBuff );
-            log_error( "%s::%s-libcurl: (%d) ", LOG_INF, errNum );
-            if ( len )
-            {
-              log_error( "%s::%s(%d) : %s%s", LOG_INF, errBuff,
-                ((errBuff[len-1] != '\n') ? "\n" : ""));
-            }
-            else
-            {
-              log_error("%s::%s(%d) : %s", LOG_INF, curl_easy_strerror(errNum) );
-            }
-          }
-          log_error("%s::%s(%d) : %s", LOG_INF, curl_easy_strerror(errNum));
-
-          curl_easy_cleanup(curl);
-          return errNum;
-        }
+	    if ( CURLE_OK != errNum ) {
+	        return handle_curl_error(curl, errNum);
+	    }
 
         log_verbose("%s::%s(%d) : Setting cURL to have keytype as engine", LOG_INF);
         errNum = curl_easy_setopt(curl, CURLOPT_SSLKEYTYPE, "ENG");
-        if ( CURLE_OK != errNum ) {
-          /* When tracing, dump the error buffer to stderr */
-          if ( is_log_trace() )
-          {
-            size_t len = strlen( errBuff );
-            log_error( "%s::%s-libcurl: (%d) ", LOG_INF, errNum );
-            if ( len )
-            {
-              log_error( "%s::%s(%d) : %s%s", LOG_INF, errBuff,
-                ((errBuff[len-1] != '\n') ? "\n" : ""));
-            }
-            else
-            {
-              log_error("%s::%s(%d) : %s", LOG_INF, curl_easy_strerror(errNum) );
-            }
-          }
-          log_error("%s::%s(%d) : %s", LOG_INF, curl_easy_strerror(errNum));
+	    if ( CURLE_OK != errNum ) {
+	        return handle_curl_error(curl, errNum);
+	    }
 
-          curl_easy_cleanup(curl);
-          return errNum;
-        }
+        log_verbose("%s::%s(%d) : Setting cURL to use default TPM keyphrase", LOG_INF);
+        errNum = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, "");
+	    if ( CURLE_OK != errNum ) {
+	        return handle_curl_error(curl, errNum);
+	    }
+	}
+
     skipTPM:
     #endif
 
@@ -289,21 +265,39 @@ int http_post_json(const char* url, const char* username,
         /*  passed to the function                                                */
         /**************************************************************************/
         log_trace("%s::%s(%d) : Configuring cURL options", LOG_INF);
-        (void)curl_easy_setopt(curl, CURLOPT_URL, url);
-        (void)curl_easy_setopt(curl, CURLOPT_POST, 1L);
+        errNum = curl_easy_setopt(curl, CURLOPT_URL, url);
+        if ( CURLE_OK != errNum ) {
+            return handle_curl_error(curl, errNum);
+        }
+        errNum = curl_easy_setopt(curl, CURLOPT_POST, 1L);
+        if ( CURLE_OK != errNum ) {
+            return handle_curl_error(curl, errNum);
+        }
         if (username && password) {
           log_trace("%s::%s(%d) Configuring username and password", LOG_INF);
-            (void)curl_easy_setopt(curl, CURLOPT_USERNAME, username);
-            (void)curl_easy_setopt(curl, CURLOPT_PASSWORD, password);
+          errNum = curl_easy_setopt(curl, CURLOPT_USERNAME, username);
+          if ( CURLE_OK != errNum ) {
+            return handle_curl_error(curl, errNum);
+          }
+          errNum = curl_easy_setopt(curl, CURLOPT_PASSWORD, password);
+          if ( CURLE_OK != errNum ) {
+            return handle_curl_error(curl, errNum);
+          }
         } else {
           log_trace("%s::%s(%d) : Username and password not supplied - skipping",
             LOG_INF);
         }
-        (void)curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT);
+        errNum = curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT);
+        if ( CURLE_OK != errNum ) {
+            return handle_curl_error(curl, errNum);
+        }
     #ifdef __HTTP_1_1__
         /* Some versions of openSSL default to v2.0.  If the platform is set for */
         /* v1.1, curl will not failover to v1.1.  So, force V1.1 */
-        (void)curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+        errNum = curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+        if ( CURLE_OK != errNum ) {
+            return handle_curl_error(curl, errNum);
+        }
     #endif
 
         /**************************************************************************/
@@ -312,7 +306,10 @@ int http_post_json(const char* url, const char* username,
         /**************************************************************************/
         if( 1 == file_exists(trustStore) ) {
             log_trace("%s::%s(%d) : Setting trustStore to %s", LOG_INF, trustStore);
-            (void) curl_easy_setopt(curl, CURLOPT_CAINFO, trustStore);
+            errNum = curl_easy_setopt(curl, CURLOPT_CAINFO, trustStore);
+            if ( CURLE_OK != errNum ) {
+                return handle_curl_error(curl, errNum);
+            }
         } else {
           log_trace("%s::%s(%d) : Trust store does not exist", LOG_INF);
         }
@@ -323,7 +320,10 @@ int http_post_json(const char* url, const char* username,
                 log_trace("%s::%s(%d) : Attempting to use the BOOTSTRAP cert and key", LOG_INF);
                 if( 1 == file_exists(ConfigData->BootstrapCert) ) {
                     log_trace("%s::%s(%d) : Setting clientCert to %s", LOG_INF, ConfigData->BootstrapCert);
-                    (void)curl_easy_setopt(curl, CURLOPT_SSLCERT, ConfigData->BootstrapCert);
+                    errNum = curl_easy_setopt(curl, CURLOPT_SSLCERT, ConfigData->BootstrapCert);
+                    if ( CURLE_OK != errNum ) {
+                        return handle_curl_error(curl, errNum);
+                    }
                     read_file_bytes(ConfigData->BootstrapCert, &client_cert_compressed, &dummySize);
                     if (NULL == client_cert_compressed) {
                         log_error("%s::%s(%d) : Out of memory copying client certificate", LOG_INF);
@@ -335,7 +335,10 @@ int http_post_json(const char* url, const char* username,
                 }
                 if( 1 == file_exists(ConfigData->BootstrapKey) ) {
                     log_trace("%s::%s(%d) : Setting clientKey to %s", LOG_INF, ConfigData->BootstrapKey);
-                    (void)curl_easy_setopt(curl, CURLOPT_SSLKEY, ConfigData->BootstrapKey);
+                    errNum = curl_easy_setopt(curl, CURLOPT_SSLKEY, ConfigData->BootstrapKey);
+                    if ( CURLE_OK != errNum ) {
+                        return handle_curl_error(curl, errNum);
+                    }
                 } else {
                     log_warn("%s::%s(%d) : The BOOTSTRAP key was not found at %s", LOG_INF,
                                 ConfigData->BootstrapKey);
@@ -343,7 +346,10 @@ int http_post_json(const char* url, const char* username,
                 if( (1 == file_exists(ConfigData->BootstrapKey)) && ConfigData->BootstrapKeyPassword ) {
                     log_trace("%s::%s(%d) : Setting clientPassword to %s", LOG_INF,
                               ConfigData->BootstrapKeyPassword);
-                    (void) curl_easy_setopt(curl, CURLOPT_KEYPASSWD, ConfigData->BootstrapKeyPassword);
+                    errNum = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, ConfigData->BootstrapKeyPassword);
+                    if ( CURLE_OK != errNum ) {
+                        return handle_curl_error(curl, errNum);
+                    }
                 }
             } else {
                 log_info("%s::%s(%d) : Bypassing client certificates on initial startup", LOG_INF);
@@ -352,7 +358,10 @@ int http_post_json(const char* url, const char* username,
           log_trace("%s::%s(%d) : Use the Agent cert and key", LOG_INF);
           if( 1 == file_exists(clientCert) ) {
             log_trace("%s::%s(%d) : Setting clientCert to %s", LOG_INF, clientCert);
-            (void)curl_easy_setopt(curl, CURLOPT_SSLCERT, clientCert);
+            errNum = curl_easy_setopt(curl, CURLOPT_SSLCERT, clientCert);
+            if ( CURLE_OK != errNum ) {
+              return handle_curl_error(curl, errNum);
+            }
             read_file_bytes(clientCert, &client_cert_compressed, &dummySize);
             if (NULL == client_cert_compressed) {
               log_error("%s::%s(%d) : Out of memory copying client certificate", LOG_INF);
@@ -363,28 +372,46 @@ int http_post_json(const char* url, const char* username,
           }
           if( 1 == file_exists(clientKey) ) {
             log_trace("%s::%s(%d) : Setting clientKey to %s", LOG_INF, clientKey);
-            (void)curl_easy_setopt(curl, CURLOPT_SSLKEY, clientKey);
+            errNum = curl_easy_setopt(curl, CURLOPT_SSLKEY, clientKey);
+            if ( CURLE_OK != errNum ) {
+                return handle_curl_error(curl, errNum);
+            }
           } else {
               log_warn("%s::%s(%d) : The clientKey does not exist at %s", LOG_INF, clientKey);
           }
           if( (1 == file_exists(clientKey)) && clientKeyPass ) {
             log_trace("%s::%s(%d) : Setting clientPassword to %s", LOG_INF,clientKeyPass);
-            (void)curl_easy_setopt(curl, CURLOPT_KEYPASSWD, clientKeyPass);
+            errNum = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, clientKeyPass);
+            if ( CURLE_OK != errNum ) {
+                return handle_curl_error(curl, errNum);
+            }
           }
         }
 
         /* Turn on verbose output for tracing */
         if ( is_log_trace() ) {
           log_trace("%s::%s(%d) : Turning on cURL verbose output", LOG_INF);
-          (void)curl_easy_setopt( curl, CURLOPT_VERBOSE, 1 );
-          (void)curl_easy_setopt( curl, CURLOPT_ERRORBUFFER, errBuff );
+          errNum = curl_easy_setopt( curl, CURLOPT_VERBOSE, 1 );
+          if ( CURLE_OK != errNum ) {
+              return handle_curl_error(curl, errNum);
+          }
+          errNum = curl_easy_setopt( curl, CURLOPT_ERRORBUFFER, errBuff );
+          if ( CURLE_OK != errNum ) {
+              return handle_curl_error(curl, errNum);
+          }
           errBuff[0] = 0; /* empty the error buffer */
         }
 
         /* send all data to this function  */
-        (void)curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+        errNum = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+        if ( CURLE_OK != errNum ) {
+            return handle_curl_error(curl, errNum);
+        }
         /* we pass our 'chunk' struct to the callback function */
-        (void)curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+        errNum = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+        if ( CURLE_OK != errNum ) {
+            return handle_curl_error(curl, errNum);
+        }
 
         log_trace("%s::%s(%d) : cURL options set correctly", LOG_INF);
 
@@ -415,9 +442,18 @@ int http_post_json(const char* url, const char* username,
         /**************************************************************************/
         /*  Now add the header & data to the HTTP POST request.                   */
         /**************************************************************************/
-        (void)curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
-        (void)curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData);
-        (void)curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (int)strlen(postData));
+        errNum = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
+        if ( CURLE_OK != errNum ) {
+            return handle_curl_error(curl, errNum);
+        }
+        errNum = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData);
+        if ( CURLE_OK != errNum ) {
+            return handle_curl_error(curl, errNum);
+        }
+        errNum = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (int)strlen(postData));
+        if ( CURLE_OK != errNum ) {
+            return handle_curl_error(curl, errNum);
+        }
         log_trace("%s::%s(%d): postData = %s", LOG_INF, postData);
 
 
