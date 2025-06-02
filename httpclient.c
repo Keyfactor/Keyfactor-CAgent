@@ -205,6 +205,7 @@ int http_post_json(const char* url, const char* username,
     unsigned char* client_cert_compressed = NULL;
     size_t dummySize = 0;
 	int toReturn = -1;
+    int errNum = 0;
     log_trace("%s::%s(%d) : Initializing cURL", LOG_INF);
 	CURL* curl = curl_easy_init();
 	char errBuff[CURL_ERROR_SIZE];
@@ -219,9 +220,8 @@ int http_post_json(const char* url, const char* username,
           return CURLE_FAILED_INIT;
         }
 
-    #if  defined(__TPM__)
-        if (ConfigData->EnrollOnStartup)
-        {
+        #if  defined(__TPM__)
+        if (ConfigData->EnrollOnStartup) {
           log_info("%s::%s(%d) : Skipping TPM - enroll on startup is turned on.",
             LOG_INF);
           goto skipTPM;
@@ -233,7 +233,7 @@ int http_post_json(const char* url, const char* username,
         /**************************************************************************/
         log_verbose("%s::%s(%d) : Setting cURL to use TPM as SSL Engine %s",
           LOG_INF, engine_id);
-        int errNum = curl_easy_setopt(curl, CURLOPT_SSLENGINE, engine_id);
+        errNum = curl_easy_setopt(curl, CURLOPT_SSLENGINE, engine_id);
         if ( CURLE_OK != errNum ) {
           return handle_curl_error(curl, errNum);
         }
@@ -256,7 +256,6 @@ int http_post_json(const char* url, const char* username,
 	    if ( CURLE_OK != errNum ) {
 	        return handle_curl_error(curl, errNum);
 	    }
-	}
 
     skipTPM:
     #endif
