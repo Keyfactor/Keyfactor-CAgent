@@ -98,6 +98,6 @@ extern struct ScheduledJob* currentJob; /* Defined in schedule.c */
 /* 2.15.1.0 = Updated for v12 API modifications                               */
 /* 2.15.2.0 = Updated DTO for Warning to allow agent rotation                 */
 /* 2.16.0.0 = Updated TPM for default passkey                                 */
-#define AGENT_VERSION 0x0002001000020000
+#define AGENT_VERSION 0x0002001000000000
 
 #endif /* AGENT_H_ */
