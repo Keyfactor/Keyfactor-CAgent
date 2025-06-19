@@ -39,9 +39,9 @@ OPENLIBS = -lcrypto -lcurl
 
 # TPM specific variables for the tpm2tss stack
 # The following TSSLIBS definition is for the Raspberry Pi
-RPI_TSSLIBS = -L/usr/lib/arm-linux-gnueabihf/engines-1.1/ -ltpm2tss
+RPI_TSSLIBS = -L/usr/lib/arm-linux-gnueabihf/engines-1.1/ -L/usr/lib/arm-linux-gnueabihf/engines-3/ -ltpm2tss
 # The following TSSLIBS definition is for a linux machine
-TSSLIBS = -ltpm2tss -L/usr/lib/x86_64-linux-gnu/engines-1.1/
+TSSLIBS = -ltpm2tss -L/usr/lib/x86_64-linux-gnu/engines-1.1/ -L/usr/lib/arm-linux-gnueabihf/engines-3/
 
 vpath %.c ./ ./lib ./wolfssl_wrapper
 SRC := $(wildcard *.c) \
