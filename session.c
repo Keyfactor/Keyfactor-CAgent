@@ -272,10 +272,10 @@ static bool register_add_capabilities(struct SessionRegisterReq* sessionReq)
 	sessionReq->Capabilities_count = 4;
 	sessionReq->Capabilities = calloc(sessionReq->Capabilities_count, sizeof(char*));
 	if ( sessionReq->Capabilities )	{
-		sessionReq->Capabilities[0] = strdup(CAP_PEM_INVENTORY);
-		sessionReq->Capabilities[1] = strdup(CAP_PEM_MANAGEMENT);
-		sessionReq->Capabilities[2] = strdup(CAP_PEM_REENROLLMENT);
-		sessionReq->Capabilities[3] = strdup(CAP_FETCH_LOGS);
+		sessionReq->Capabilities[0] = strdup(cap_pem_inventory);
+		sessionReq->Capabilities[1] = strdup(cap_pem_management);
+		sessionReq->Capabilities[2] = strdup(cap_pem_reenrollment);
+		sessionReq->Capabilities[3] = strdup(cap_fetch_logs);
 		bResult = true;
 	} else {
 		log_error("%s::%s(%d) : Out of memory",	LOG_INF);

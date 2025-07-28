@@ -61,6 +61,12 @@
 struct SessionInfo SessionData;
 struct ScheduledJob* JobList;
 
+/* KF v9 Adds in text capabilities */
+const char* cap_pem_inventory = "CertStores.PEM.Inventory";
+const char* cap_pem_management = "CertStores.PEM.Management";
+const char* cap_pem_reenrollment = "CertStores.PEM.Reenrollment";
+const char* cap_fetch_logs = "Custom.FetchLogs";
+
 #if defined(__OPEN_SSL__)
 	char engine_id[21]; /* 20 Characters should be enough */
 #endif

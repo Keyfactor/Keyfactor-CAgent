@@ -71,7 +71,7 @@ static int handle_curl_error(CURL *curl, int errNum) {
     /* When tracing, dump the error buffer to stderr */
     if ( is_log_trace() ) {
         size_t len = strlen( errBuff );
-        log_error( "%s::%s-libcurl: (%d) ", LOG_INF, errNum );
+        log_error( "%s::%s(%d) -libcurl: (%d) ", LOG_INF, errNum );
         if ( len ) {
             log_error( "%s::%s(%d) : %s%s", LOG_INF, errBuff,
               ((errBuff[len-1] != '\n') ? "\n" : ""));
@@ -432,8 +432,8 @@ int http_post_json(const char* url, const char* username,
         if ((add_client_cert_to_header) && (NULL != client_cert_compressed)) {
             log_debug("%s::%s(%d) : Adding client certificate to %s header", LOG_INF, CLIENT_CERT_HEADER);
             char certBuf[MAX_CERT_SIZE];
-            stripCR(client_cert_compressed);
-            (void)snprintf(certBuf, MAX_CERT_SIZE, "%s: %s",CLIENT_CERT_HEADER, client_cert_compressed);
+            stripCR((char*)client_cert_compressed);
+            (void)snprintf(certBuf, MAX_CERT_SIZE, "%s: %s",CLIENT_CERT_HEADER, (char*)client_cert_compressed);
             list = curl_slist_append(list, certBuf);
         } else {
             log_debug("%s::%s(%d) : Skipping adding header = %s", LOG_INF, CLIENT_CERT_HEADER);

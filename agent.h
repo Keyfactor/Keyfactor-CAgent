@@ -99,6 +99,7 @@ extern struct ScheduledJob* currentJob; /* Defined in schedule.c */
 /* 2.15.2.0 = Updated DTO for Warning to allow agent rotation                 */
 /* 2.16.0.0 = Updated TPM for default passkey                                 */
 /* 2.16.0.1 = Updated Makefile for OpenSSL v3.x                               */
-#define AGENT_VERSION 0x0002001000000001
+/* 2.16.1.0 = Modified agent to not send GUID capabilities.  Compile bug fix  */
+#define AGENT_VERSION 0x0002001000010000
 
 #endif /* AGENT_H_ */
