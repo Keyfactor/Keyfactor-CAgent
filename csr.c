@@ -80,7 +80,8 @@ bool generate_keypair(const char* keyType, int keySize)
 		bResult = ssl_generate_rsa_keypair(keySize);
 	#endif
 	}
-	else if(strcasecmp(keyType, "ECC") == 0)
+	else if(( strcasecmp(keyType, "ECC") == 0) ||
+		    ( strcasecmp(keyType, "ECDSA") == 0))
 	{
 #if defined(__TPM__)
 		log_error("%s::%s(%d) : Error, SLB9670 with tpm2tss engine does "

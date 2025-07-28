@@ -100,6 +100,7 @@ extern struct ScheduledJob* currentJob; /* Defined in schedule.c */
 /* 2.16.0.0 = Updated TPM for default passkey                                 */
 /* 2.16.0.1 = Updated Makefile for OpenSSL v3.x                               */
 /* 2.16.1.0 = Modified agent to not send GUID capabilities.  Compile bug fix  */
-#define AGENT_VERSION 0x0002001000010000
+/* 2.17.0.0 = Modified agent to accept ECDSA as well as ECC for a keytype     */
+#define AGENT_VERSION 0x0002001001000000
 
 #endif /* AGENT_H_ */
