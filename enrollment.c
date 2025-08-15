@@ -263,19 +263,23 @@ int cms_job_enroll(struct SessionJob* jobInfo, char* sessionToken,
 				" and not a directory.");
 			failed = true;
 		}
-		/* Verify the target store isn't the Agent store */
-		if (enrConf->StorePath)
-		{
-			if (0 == strcasecmp(ConfigData->AgentCert, enrConf->StorePath))
+
+		if (ConfigData->UseAgentCert) {
+			/* Verify the target store isn't the Agent store */
+			if (enrConf->StorePath)
 			{
-				
-				log_warn("%s::%s(%d) : Attempting to re-enroll the agent "
-					"cert is not allowed.", LOG_INF);
-				append_linef(&statusMessage, "Attempting to re-enroll the "
-					"agent cert is not allowed.");
-				failed = true;
+				if (0 == strcasecmp(ConfigData->AgentCert, enrConf->StorePath))
+				{
+
+					log_warn("%s::%s(%d) : Attempting to re-enroll the agent "
+						"cert is not allowed.", LOG_INF);
+					append_linef(&statusMessage, "Attempting to re-enroll the "
+						"agent cert is not allowed.");
+					failed = true;
+				}
 			}
 		}
+
 		/* Send failure to platform */
 		if (failed)
 		{

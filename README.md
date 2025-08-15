@@ -219,9 +219,11 @@ __VirtualDirectory__ : <required> Set this to KeyfactorAgents if you are not usi
 
 __TrustStore__ : <required> The location of additional certificates that are trusted by the Agent.  This list is appended to the standard CA certificate store located in `/etc/ssl/certs/ca-certificates.crt` for Ubuntu.
 
-__AgentCert__ : <required> The (eventual) location of the Agent's certificate.  This is the certificate used by the Agent to call into the platform.
+__UseAgentCert__ : <optional> Defaults to true if not supplied.  True = use an agent managed cert for mTLS.  False = only use 1-way TLS for the agent. */
 
-__AgentKey__ : <required> The (eventual) location of the Agent's private key.  This is the key used by the Agent to call into the platform.
+__AgentCert__ : <optional/required> The (eventual) location of the Agent's certificate.  This is the certificate used by the Agent to call into the platform.
+
+__AgentKey__ : <optional/required> The (eventual) location of the Agent's private key.  This is the key used by the Agent to call into the platform.
 
 __AgentKeyPassword__ : <optional> An optional passphrase for decoding the Agent Key.  Note, if a TPM, Secure Element, or secure area is used, this **must be defined**.
 

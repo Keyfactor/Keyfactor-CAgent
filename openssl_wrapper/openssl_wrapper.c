@@ -1187,7 +1187,7 @@ static unsigned long write_cert_bio(BIO* bio, const char* b64cert)
 
     log_trace("%s::%s(%d) : Attempting to decode DER", LOG_INF);
 	certBytePtr = base64_decode(b64cert, -1, &outLen);
-    log_trace("%s::%s(%d) : Decoded certificate and got contents of \n%s", LOG_INF, certBytePtr);
+    log_trace("%s::%s(%d) : Decoded certificate into binary structure", LOG_INF);
 	const unsigned char** tempPtrPtr = (const unsigned char**)&(certBytePtr);
 
 	if (d2i_X509(&certStruct, tempPtrPtr, outLen)) 
@@ -1750,33 +1750,33 @@ bool ssl_generate_rsa_keypair(int keySize)
         return NULL;
     }
 
-#ifdef __TPM__
+    #ifdef __TPM__
 	/**************************************************************************/
 	/* Create RSA keypair using TPM                                           */
 	/**************************************************************************/
-    if (NULL == path) 
+    if (NULL == path)
     {
     	log_error("%s::%s(%d) : Defaulting Cert to /home/pi/temp.blob", LOG_INF);
     	ConfigData->AgentCert = strdup("/home/pi/temp.blob");
     }
 	TPM2_DATA *tpm2Data = calloc(1, sizeof(*tpm2Data));
-	if ( NULL == tpm2Data ) 
+	if ( NULL == tpm2Data )
 	{
 	     log_error("%s::%s(%d) : out of memory for tpm2Data", LOG_INF);
 	     return NULL;
 	}
 	keyPair = genkey_rsa_using_TPM( exp, newRsa, keySize, tpm2Data );
-	if ( NULL == keyPair ) 
+	if ( NULL == keyPair )
 	{
 		char errBuf[120];
 		unsigned long errNum = ERR_peek_last_error();
 		ERR_error_string(errNum, errBuf);
-		log_error("%s::%s(%d) : Unable to generate key pair: %s", 
+		log_error("%s::%s(%d) : Unable to generate key pair: %s",
 			LOG_INF, errBuf);
 		return NULL;
 	}
 
-	log_verbose("%s::%s(%d) : Write encrypted BLOB to disk - %s", 
+	log_verbose("%s::%s(%d) : Write encrypted BLOB to disk - %s",
 		LOG_INF, path);
 	if ( !tpm2tss_tpm2data_write(tpm2Data, path) )
 	{
@@ -1793,19 +1793,19 @@ bool ssl_generate_rsa_keypair(int keySize)
 	/* Create keypair using standard openSSL engine                           */
 	/**************************************************************************/
 	log_trace("%s::%s(%d) : Generating the RSA key", LOG_INF);
-	if(RSA_generate_key_ex(newRsa, keySize, exp, NULL))	
+	if(RSA_generate_key_ex(newRsa, keySize, exp, NULL))
 	{
 		log_trace("%s::%s(%d) : RSA Key generated, converting to EVP structure",
 			LOG_INF);
-		if ( keyPair ) 
+		if ( keyPair )
 		{
 			log_warn("%s::%s(%d) : EVP keyPair wasn't freed possible "
-				"memory leak", LOG_INF);			
+				"memory leak", LOG_INF);
 			keyPair = NULL;
 		}
-		
+
 		keyPair = EVP_PKEY_new();
-		if (!keyPair) 
+		if (!keyPair)
 		{
 			log_error("%s::%s(%d) : Out of memory allocating keypair", LOG_INF);
 			goto exit;
@@ -1819,7 +1819,7 @@ bool ssl_generate_rsa_keypair(int keySize)
 	{
 		errNum = ERR_peek_last_error();
 		ERR_error_string(errNum, errBuf);
-		log_error("%s::%s(%d) : Unable to generate key pair: %s", 
+		log_error("%s::%s(%d) : Unable to generate key pair: %s",
 			LOG_INF, errBuf);
 	}
 #endif
@@ -1847,12 +1847,6 @@ bool ssl_generate_ecc_keypair(int keySize)
 	int eccNid = -1;
 	unsigned long errNum = 0;
 	bool bResult = false;
-
-#if defined(__TPM__)
-	log_error("%s::%s(%d) : Infineon SLB9670 on a Raspberry Pi currently "
-		"does not support ECC key generation", LOG_INF);
-	return false;
-#endif
 
 	switch(keySize)
 		{
@@ -1969,12 +1963,19 @@ char* ssl_generate_csr(const char* asciiSubject, size_t* csrLen,
 		return NULL;
 	}
 
-	result = X509_REQ_set_version(req, 1);
+	result = X509_REQ_set_version(req, 0);
 	if ( SSL_SUCCESS != result )
 	{
 		log_error("%s::%s(%d) : Failed to set REQ version",	LOG_INF);
-		append_linef(pMessage, "%s::%s(%d) : Failed to set REQ version", 
-			LOG_INF);
+
+		unsigned long err;
+		while ((err = ERR_get_error()) != 0) {
+			char buf[256];
+			ERR_error_string_n(err, buf, sizeof(buf));
+			log_error("\tOpenSSL error: %s", buf);
+		}
+
+		append_linef(pMessage, "%s::%s(%d) : Failed to set REQ version", LOG_INF);
 		X509_REQ_free(req);
 		return NULL;
 	}
@@ -2115,20 +2116,20 @@ unsigned long ssl_save_cert_key(const char* storePath, const char* keyPath,
 	/* If there is a TPM, this got stored to a file during key creation */
 	if(!err)
 	{
-		if(keyPath)	
+		if(keyPath)
 		{
 			keyBIO = BIO_new(BIO_s_mem());
-			err = write_key_bio(keyBIO, password, NULL); 
+			err = write_key_bio(keyBIO, password, NULL);
 		}
-		else 
+		else
 		{
-			err = write_key_bio(certBIO, password, NULL); 
+			err = write_key_bio(certBIO, password, NULL);
 		}
 
-		if(err)	
+		if(err)
 		{
 			ERR_error_string(err, errBuf);
-			log_error("%s::%s(%d) : Unable to write key to BIO: %s", LOG_INF, 
+			log_error("%s::%s(%d) : Unable to write key to BIO: %s", LOG_INF,
 				errBuf);
 			append_linef(pMessage, "Unable to write key to BIO: %s", errBuf);
 		}
@@ -2161,9 +2162,9 @@ unsigned long ssl_save_cert_key(const char* storePath, const char* keyPath,
 		if(err)
 		{
 			char* errStr = strerror(err);
-			log_error("%s::%s(%d) : Unable to write key at %s: %s", LOG_INF, 
+			log_error("%s::%s(%d) : Unable to write key at %s: %s", LOG_INF,
 				keyPath, errStr);
-			append_linef(pMessage, "Unable to write key at %s: %s", keyPath, 
+			append_linef(pMessage, "Unable to write key at %s: %s", keyPath,
 				errStr);
 		}
 	}

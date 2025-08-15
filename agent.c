@@ -46,7 +46,6 @@
 #include "config.h"
 #include "session.h"
 #include "global.h"
-#include "serialize.h"
 #include "fetchlogs.h"
 #include "utils.h"
 
@@ -311,44 +310,6 @@ static ENGINE* initialize_engine( const char *engine_id )
 } /* initialize_engine */
 #endif /* __TPM__ */
 
-/**                                                                           */
-/* Serialize the AgentName and CSR Subject using a json file.  In practice    */
-/* this is a file that is held on a common data store (i.e. network drive)    */
-/*  @param  : none                                                            */
-/*	@return : success = 1                                                     */
-/*		    : failure = 0                                                     */
-/*                                                                            */
-static int do_serialization( void )
-{
-	struct SerializeData* serial = serialize_load(ConfigData->SerialFile);
-	if(!serial) {
-		log_error("%s::%s(%d) : Unable to load Serialization file: %s",	
-			LOG_INF,ConfigData->SerialFile);
-		return 0;
-	}
-	log_trace("%s::%s(%d) : Freeing AgentName & CSRSubject", LOG_INF);
-	free(ConfigData->AgentName);
-	free(ConfigData->CSRSubject);
-	ConfigData->AgentName = (char *)malloc(50);
-	ConfigData->CSRSubject = (char *)malloc(50);
-	if (!ConfigData->AgentName || !ConfigData->CSRSubject) {
-		log_error("%s::%s(%d) : Out of memory",	LOG_INF);
-		return 0;
-	}
-	sprintf(ConfigData->AgentName, "%s-%d", serial->ModelName,	serial->NextNumber);
-	log_trace("%s::%s(%d) : ConfigData->AgentName set to: %s", LOG_INF,ConfigData->AgentName);
-	sprintf(ConfigData->CSRSubject, "CN=%d", serial->NextNumber);
-	log_trace("%s::%s(%d) : ConfigData->CSRSubject set to: %s", LOG_INF,ConfigData->CSRSubject);
-	serial->NextNumber++;
-	ConfigData->Serialize = false;
-	config_save();
-	if ( !(serialize_save(serial, ConfigData->SerialFile)) ) {
-		log_error("%s::%s(%d) : Failed saving the serialization file", LOG_INF);
-		return 0;
-	}
-	return 1;
-} /* do_serialization */
-
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
@@ -465,19 +426,6 @@ int init_platform( int argc, char* argv[] )
 		return 0;
 	}
 	curlLoaded = true;
-
-	/**************************************************************************/
-	/* 7. If required, serialize the agent                                    */
-	/**************************************************************************/
-	if (ConfigData->Serialize) {
-		log_trace("%s::%s(%d) : Serialize -> true", LOG_INF);
-		int x = do_serialization();
-		if ( !x ) 
-		{
-			log_error("%s::%s(%d) : Serialization failed", LOG_INF);
-			return 0;
-		}
-	}
 
 	return 1;
 } /* init_platform */

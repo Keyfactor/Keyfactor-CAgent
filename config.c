@@ -68,6 +68,7 @@ static void print_config( struct ConfigData* ConfigData )
 	printf("          Username = %s\n", ConfigData->Username);
 	printf("          VirtualDirectory = %s\n", ConfigData->VirtualDirectory);
 	printf("          TrustStore = %s\n", ConfigData->TrustStore);
+	printf("          UseAgentCert = %s\n", ConfigData->UseAgentCert ? "true" : "false");
 	printf("          AgentCert = %s\n", ConfigData->AgentCert);
 	printf("          AgentKey = %s\n", ConfigData->AgentKey);
 	printf("          AgentKeyPassword = %s\n", ConfigData->AgentKeyPassword);
@@ -75,17 +76,10 @@ static void print_config( struct ConfigData* ConfigData )
 	printf("          CSRKeyType = %s\n", ConfigData->CSRKeyType);
 	printf("          CSRKeySize = %d\n", ConfigData->CSRKeySize);
 	printf("          CSRSubject = %s\n", ConfigData->CSRSubject);
-	printf("          EnrollOnStartup = %s\n", 
-		ConfigData->EnrollOnStartup ? "true" : "false");
-	printf("          UseBootstrapCert = %s\n", 
-		ConfigData->UseBootstrapCert ? "true" : "false");
+	printf("          EnrollOnStartup = %s\n", ConfigData->EnrollOnStartup ? "true" : "false");
+	printf("          UseBootstrapCert = %s\n", ConfigData->UseBootstrapCert ? "true" : "false");
 	printf("          BootstrapCert = %s\n", ConfigData->BootstrapCert);
 	printf("          BootstrapKey = %s\n", ConfigData->BootstrapKey);
-	printf("          BootstrapKeyPassword = %s\n", 
-		ConfigData->BootstrapKeyPassword);
-	printf("          Serialize = %s\n", 
-		ConfigData->Serialize ? "true" : "false");
-	printf("          SerialFile = %s\n", ConfigData->SerialFile);
 	printf("          LogFile = %s\n", ConfigData->LogFile);
 	printf("          LogFileIndex = %lu\n", ConfigData->LogFileIndex);
 	printf("          httpRetries = %d\n", ConfigData->httpRetries); 
@@ -105,82 +99,65 @@ static bool minimum_config_requirements( void )
 {
 	bool bResult = false;
 
-	do
-	{
-		if (!ConfigData->AgentName)
-		{
-			log_error("%s::%s(%d) : Agent name is required in config file", 
-				LOG_INF);
+	do {
+		if (!ConfigData->AgentName) {
+			log_error("%s::%s(%d) : Agent name is required in config file", LOG_INF);
 			break;
 		}
 
-		if (1 > strlen(ConfigData->AgentName))
-		{
-			log_error("%s::%s(%d) : Agent name must be at least one "
-				"character long", LOG_INF);
+		if (1 > strlen(ConfigData->AgentName)) {
+			log_error("%s::%s(%d) : Agent name must be at least one character long", LOG_INF);
 			break;
 		}
 
-		if (!ConfigData->CSRSubject)
-		{
-			log_error("%s::%s(%d) : Agent CSR subject must exist", LOG_INF);
-			break;
-		}
-
-		if (4 > strlen(ConfigData->CSRSubject))
-		{
-			log_error("%s::%s(%d) : Agent CSR subject must minimally be CN=x "
-				"where x is a single character", LOG_INF);
-			break;
-		}
-
-		if (!ConfigData->AgentId)
-		{
+		if (!ConfigData->AgentId) {
 			log_error("%s::%s(%d) : AgentId field must exist", LOG_INF);
 			break;
 		}
 
-		if (!ConfigData->AgentCert)
-		{
-			log_error("%s::%s(%d) : Agent Cert file must be in the "
-				"config.json file", LOG_INF);
-			break;
-		}
+        if (ConfigData->UseAgentCert) {
+        	if (!ConfigData->CSRSubject) {
+        		log_error("%s::%s(%d) : Agent CSR subject must exist", LOG_INF);
+        		break;
+        	}
 
-		if (!ConfigData->AgentKey)
-		{
-			log_error("%s::%s(%d) : Agent Key file must be in the "
-				"config.json file", LOG_INF);
-			break;
-		}
+        	if (4 > strlen(ConfigData->CSRSubject)) {
+        		log_error("%s::%s(%d) : Agent CSR subject must minimally be CN=x "
+					"where x is a single character", LOG_INF);
+        		break;
+        	}
 
-		if (!ConfigData->Hostname)
-		{
-			log_error("%s::%s(%d) : Hostname must be in the config.json "
-				"file", LOG_INF);
-			break;
-		}
-
-		if (7 > strlen(ConfigData->Hostname))
-		{
-			log_error("%s::%s(%d) : Minimal hostname is 7 characters "
-				"long x.x.x.x", LOG_INF);
-			break;
-		}
-
-		if (ConfigData->UseBootstrapCert)
-		{
-			if (!ConfigData->BootstrapCert)
-			{
-				log_error("%s::%s(%d) : BootstrapCert filename is required" 
-					"if UseBootstrapCert is true", LOG_INF);
+			if (!ConfigData->AgentCert) {
+				log_error("%s::%s(%d) : Agent Cert file must be in the "
+					"config.json file", LOG_INF);
 				break;
 			}
 
-			if (!ConfigData->BootstrapKey)
-			{
-				log_error("%s::%s(%d) : BootstrapKey filename is required" 
-					"if UseBootstrapCert is true", LOG_INF);
+			if (!ConfigData->AgentKey) {
+				log_error("%s::%s(%d) : Agent Key file must be in the "
+					"config.json file", LOG_INF);
+				break;
+			}
+        }
+
+		if (!ConfigData->Hostname) {
+			log_error("%s::%s(%d) : Hostname must be in the config.json file", LOG_INF);
+			break;
+		}
+
+		if (7 > strlen(ConfigData->Hostname)) {
+			log_error("%s::%s(%d) : Minimal hostname is 7 characters long x.x.x.x", LOG_INF);
+			break;
+		}
+
+		if (ConfigData->UseBootstrapCert) {
+			if (!ConfigData->BootstrapCert) {
+				log_error("%s::%s(%d) : BootstrapCert filename is required if UseBootstrapCert is true", LOG_INF);
+				break;
+			}
+
+			if (!ConfigData->BootstrapKey) {
+				log_error("%s::%s(%d) : BootstrapKey filename is required if UseBootstrapCert is true", LOG_INF);
 				break;
 			}
 		}
@@ -207,46 +184,38 @@ static bool agent_directory_exists( void )
 	bool bResult = false;
 	char* directoryPart = NULL;
 
-	do
-	{
-		if (is_directory(ConfigData->AgentCert))
-		{
-			log_error("%s::%s(%d) : %s is a directory. "
-				"It must be a <path>/<filename>.", LOG_INF, 
-				ConfigData->AgentCert);
-			break;
-		}
-
-		if (is_directory(ConfigData->AgentKey))
-		{
-			log_error("%s::%s(%d) : %s is a directory.  "
-				"It must be a <path>/<filename>.", LOG_INF, 
-				ConfigData->AgentKey);
-			break;
-		}
-
-		directoryPart = get_prefix_substring( ConfigData->AgentCert, '/' );
-		if (directoryPart)
-		{
-			if ( !is_directory(directoryPart) )
-			{
-				log_error("%s::%s(%d) : Directory %s does not exist", 
-					LOG_INF, directoryPart);
+	do {
+		if (ConfigData->UseAgentCert) {
+			if (is_directory(ConfigData->AgentCert)) {
+				log_error("%s::%s(%d) : %s is a directory. It must be a <path>/<filename>.", LOG_INF, ConfigData->AgentCert);
 				break;
 			}
-			free(directoryPart);
-		}
 
-		directoryPart = get_prefix_substring( ConfigData->AgentKey, '/');
-		if (directoryPart)
-		{
-			if ( !is_directory(directoryPart) )
-			{
-				log_error("%s::%s(%d) : Directory %s does not exist", 
-					LOG_INF, directoryPart);
+			if (is_directory(ConfigData->AgentKey)) {
+				log_error("%s::%s(%d) : %s is a directory. It must be a <path>/<filename>.", LOG_INF, ConfigData->AgentKey);
 				break;
 			}
-			free(directoryPart);
+
+			directoryPart = get_prefix_substring( ConfigData->AgentCert, '/' );
+			if (directoryPart) {
+				if ( !is_directory(directoryPart) ) {
+					log_error("%s::%s(%d) : Directory %s does not exist", LOG_INF, directoryPart);
+					break;
+				}
+				free(directoryPart);
+			}
+
+			directoryPart = get_prefix_substring( ConfigData->AgentKey, '/');
+			if (directoryPart) {
+				if ( !is_directory(directoryPart) ) {
+					log_error("%s::%s(%d) : Directory %s does not exist",
+						LOG_INF, directoryPart);
+					break;
+				}
+				free(directoryPart);
+			}
+		} else {
+			log_debug("%s::%s(%d) : Skipping agent directory check for certs and such", LOG_INF);
 		}
 
 		bResult = true;
@@ -267,10 +236,9 @@ static bool keypair_sanity_check( void )
 {
 	bool bResult = false;
 
-	if (0 == strcasecmp("ecc", ConfigData->CSRKeyType))
-	{
-		switch(ConfigData->CSRKeySize)
-		{
+	if (0 == strcasecmp("ecc", ConfigData->CSRKeyType)  ||
+	    0 == strcasecmp("ecdsa", ConfigData->CSRKeyType) )	{
+		switch(ConfigData->CSRKeySize) {
 			case 256:
 			case 384:
 			case 521:
@@ -278,20 +246,14 @@ static bool keypair_sanity_check( void )
 			 break;
 
 			default:
-			 log_error("%s::%s(%d) : %d is not an implemented ECC keysize", 
-			 	LOG_INF, ConfigData->CSRKeySize);
+			 log_error("%s::%s(%d) : %d is not an implemented ECC keysize", LOG_INF, ConfigData->CSRKeySize);
 			 goto exit;
 			 break; /* pedantry */
 		}
-	}
-	else if (0 == strcasecmp("rsa", ConfigData->CSRKeyType))
-	{
+	} else if (0 == strcasecmp("rsa", ConfigData->CSRKeyType)) {
 		bResult = true; /* Key sizes can be of any reasonable length */
-	}
-	else
-	{
-		log_error("%s::%s(%d) : Error %s is an unknown key type", 
-			LOG_INF, ConfigData->CSRKeyType);
+	} else {
+		log_error("%s::%s(%d) : Error %s is an unknown key type", LOG_INF, ConfigData->CSRKeyType);
 	}
 
 exit:
@@ -326,10 +288,8 @@ static void set_agent_name( struct ConfigData* config )
 
 	log_verbose("%s::%s(%d) : Retrieving hostname", LOG_INF);
 	hostname = gethostname(hostbuffer, sizeof(hostbuffer));
-	if (-1 == hostname)
-	{
-		log_error("%s::%s(%d) : Failed to retrieve hostname from host OS", 
-			LOG_INF);
+	if (-1 == hostname) {
+		log_error("%s::%s(%d) : Failed to retrieve hostname from host OS", LOG_INF);
 		goto cleanup;
 	}
 	log_info("%s::%s(%d) : Hostname found as %s", LOG_INF, hostbuffer);
@@ -348,33 +308,38 @@ static void set_agent_name( struct ConfigData* config )
 	agentNameSz++; /* And for the \0 */
 
 	newAgentName = calloc(agentNameSz, sizeof(*newAgentName));
-	newSubject = calloc(agentNameSz+3, sizeof(*newSubject));
-	if ( !newSubject || !newAgentName )
-	{
+	if ( !newAgentName ) {
 		log_error("%s::%s(%d) : Out of memory!", LOG_INF);
 		goto cleanup;
 	}
 	(void)snprintf(newAgentName, agentNameSz, "%s_%s", hostbuffer, tBuf);
-	(void)snprintf(newSubject, agentNameSz+3, "%s%s_%s", "CN=", hostbuffer, 
-		tBuf);
 
-	
-	if (config->AgentName)
-	{
+	if (config->UseAgentCert) {
+		newSubject = calloc(agentNameSz+3, sizeof(*newSubject));
+		if ( !newSubject )
+		{
+			log_error("%s::%s(%d) : Out of memory!", LOG_INF);
+			goto cleanup;
+		}
+		(void)snprintf(newSubject, agentNameSz+3, "%s%s_%s", "CN=", hostbuffer, tBuf);
+	}
+
+	if (config->AgentName) {
 		free(config->AgentName);
 		config->AgentName = NULL;
+		config->AgentName = newAgentName;
+		log_info("%s::%s(%d) : Agent name set to %s", LOG_INF, config->AgentName);
 	}
-	if (config->CSRSubject)
-	{
-		free(config->CSRSubject);
-		config->CSRSubject = NULL;
+
+    if (config->UseAgentCert) {
+		if (config->CSRSubject)	{
+			free(config->CSRSubject);
+			config->CSRSubject = NULL;
+			config->CSRSubject = newSubject;
+			log_info("%s::%s(%d) : Agent subject set to %s", LOG_INF, config->CSRSubject);
+		}
 	}
-	
-	config->AgentName = newAgentName;
-	log_info("%s::%s(%d) : Agent name set to %s", LOG_INF, config->AgentName);
-	config->CSRSubject = newSubject;
-	log_info("%s::%s(%d) : Agent subject set to %s", LOG_INF, 
-		config->CSRSubject);
+
 	bResult = true;
 
 cleanup:
@@ -407,20 +372,16 @@ struct ConfigData* config_decode(const char* buf)
 	struct ConfigData* config = NULL;
 	/* The entire configuration file is in buf, so now decode it */
 	JsonNode* jsonRoot = json_decode(buf);
-	if(jsonRoot)
-	{
+	if(jsonRoot) {
 		config = calloc(1, sizeof(struct ConfigData));
-		if ( NULL == config )
-		{
+		if ( NULL == config ) {
 			log_error("%s::%s(%d) : Out of memory! ", LOG_INF);
 			return NULL;
 		}
 
 		config->AgentId = json_get_member_string(jsonRoot, "AgentId");
-		if (config->AgentId)
-		{
-			if ( (UUID_LEN-1) > strlen(config->AgentId) )
-			{
+		if (config->AgentId) {
+			if ( (UUID_LEN-1) > strlen(config->AgentId) ) {
 				/* The GUID is malformed, reallocate the size */
 				log_trace("%s::%s(%d) : Resizing agent id to %lu bytes", 
 					LOG_INF, UUID_LEN * sizeof(*(config->AgentId)) );
@@ -429,64 +390,49 @@ struct ConfigData* config_decode(const char* buf)
 			}
 		}
 		config->AgentName = json_get_member_string(jsonRoot, "AgentName");
-		config->ClientParameterPath = json_get_member_string(jsonRoot, 
-			"ClientParameterPath");
+		config->ClientParameterPath = json_get_member_string(jsonRoot, "ClientParameterPath");
 		config->Hostname = json_get_member_string(jsonRoot, "Hostname");
 		config->Password = json_get_member_string(jsonRoot, "Password");
 		config->Username = json_get_member_string(jsonRoot, "Username");
-		config->VirtualDirectory = json_get_member_string(jsonRoot, 
-			"VirtualDirectory");
+		config->VirtualDirectory = json_get_member_string(jsonRoot, "VirtualDirectory");
 		config->TrustStore = json_get_member_string(jsonRoot, "TrustStore");
-		config->AgentCert = json_get_member_string(jsonRoot, "AgentCert");
-		config->AgentKey = json_get_member_string(jsonRoot, "AgentKey");
-		config->AgentKeyPassword = json_get_member_string(jsonRoot, 
-			"AgentKeyPassword");
+		config->UseAgentCert = json_get_member_bool(jsonRoot, "UseAgentCert", true);
+		if (config->UseAgentCert) {
+			config->AgentCert = json_get_member_string(jsonRoot, "AgentCert");
+			config->AgentKey = json_get_member_string(jsonRoot, "AgentKey");
+			config->AgentKeyPassword = json_get_member_string(jsonRoot, "AgentKeyPassword");
+			config->CSRKeyType = json_get_member_string(jsonRoot, "CSRKeyType");
+			config->CSRKeySize =json_get_member_number(jsonRoot,"CSRKeySize",0);
+			config->CSRSubject = json_get_member_string(jsonRoot, "CSRSubject");
+        }
 		config->UseSsl = json_get_member_bool(jsonRoot, "UseSsl", true);
-		config->CSRKeyType = json_get_member_string(jsonRoot, "CSRKeyType");
-		config->CSRKeySize =json_get_member_number(jsonRoot,"CSRKeySize",0);
-		config->CSRSubject = json_get_member_string(jsonRoot, "CSRSubject");
-		config->EnrollOnStartup = json_get_member_bool(jsonRoot, 
-			"EnrollOnStartup", false);
-		config->UseBootstrapCert = json_get_member_bool(jsonRoot,
-			"UseBootstrapCert", false);
-		config->BootstrapCert = json_get_member_string(jsonRoot, 
-			"BootstrapCert");
-		config->BootstrapKey = json_get_member_string(jsonRoot, 
-			"BootstrapKey");
-		config->BootstrapKeyPassword = json_get_member_string(jsonRoot, 
-			"BootstrapKeyPassword");
-		config->Serialize = json_get_member_bool(jsonRoot, "Serialize", false);
-		config->SerialFile = json_get_member_string(jsonRoot, "SerialFile");
+		config->EnrollOnStartup = json_get_member_bool(jsonRoot, "EnrollOnStartup", false);
+		config->UseBootstrapCert = json_get_member_bool(jsonRoot, "UseBootstrapCert", false);
+		config->BootstrapCert = json_get_member_string(jsonRoot, "BootstrapCert");
+		config->BootstrapKey = json_get_member_string(jsonRoot, "BootstrapKey");
+		config->BootstrapKeyPassword = json_get_member_string(jsonRoot,	"BootstrapKeyPassword");
 		config->LogFile = json_get_member_string(jsonRoot, "LogFile");
-		config->LogFileIndex = 
-			json_get_member_number(jsonRoot, "LogFileIndex", 0);
+		config->LogFileIndex = json_get_member_number(jsonRoot, "LogFileIndex", 0);
 		config->httpRetries = json_get_member_number(jsonRoot, "httpRetries",1); 
-		if(1 > config->httpRetries) /* verify minimum value */
-		{
+		if(1 > config->httpRetries) { /* verify minimum value */
 			config->httpRetries = 1;
 		}
-		config->retryInterval = json_get_member_number(jsonRoot, 
-			"retryInterval", 1); 
+		config->retryInterval = json_get_member_number(jsonRoot, "retryInterval", 1);
 
 		json_delete(jsonRoot);
 
-		if (use_host_as_agent_name && config->EnrollOnStartup)
-		{
+		if (use_host_as_agent_name && config->EnrollOnStartup) {
 			set_agent_name(config);
 		}
 
-		if ( is_log_verbose() )
-		{
+		if ( is_log_verbose() ) {
 			log_verbose("%s::%s(%d) : Config parameters follow:", LOG_INF);
 			print_config( config );
 		}
 
 		config_loaded = true;
-	}
-	else
-	{
-		log_error("%s::%s(%d) : Contents of %s are not valid JSON", 
-			LOG_INF, config_location);
+	} else {
+		log_error("%s::%s(%d) : Contents of %s are not valid JSON",	LOG_INF, config_location);
 	}
 
 	return config;
@@ -505,27 +451,19 @@ struct ConfigData* config_load( void )
 {
 	char buf[MAX_CONFIG_FILE_LEN]; 
 
-	if (file_exists(config_location))
-	{
+	if (file_exists(config_location)) {
 		FILE* fp = fopen(config_location, "r");
-		if(fp)
-		{	
+		if(fp) {
 			size_t len = fread(buf, 1, MAX_CONFIG_FILE_LEN-1, fp);
 			buf[len++] = '\0';
 			fclose(fp);
-		}
-		else
-		{
+		} else {
 			int err = errno;
-			log_error("%s::%s(%d) : Unable to open config file %s: %s", 
-				LOG_INF, config_location, strerror(err));
+			log_error("%s::%s(%d) : Unable to open config file %s: %s", LOG_INF, config_location, strerror(err));
 			return NULL;
 		}
-	}
-	else
-	{
-		log_error("%s::%s(%d) : Either %s does not exist or is a directory", 
-			LOG_INF, config_location);
+	} else {
+		log_error("%s::%s(%d) : Either %s does not exist or is a directory", LOG_INF, config_location);
 		return NULL;
 	}
 
@@ -546,124 +484,75 @@ struct ConfigData* config_load( void )
 char* config_to_json( void )
 {
 	JsonNode* jsonRoot = json_mkobject();
-	if(ConfigData->AgentId)	
-	{
-		json_append_member(jsonRoot, "AgentId", 
-			json_mkstring(ConfigData->AgentId));
+	if(ConfigData->AgentId)	{
+		json_append_member(jsonRoot, "AgentId", json_mkstring(ConfigData->AgentId));
 	}
-	if(ConfigData->AgentName) 
-	{
-		json_append_member(jsonRoot, "AgentName", 
-			json_mkstring(ConfigData->AgentName));
+	if(ConfigData->AgentName) {
+		json_append_member(jsonRoot, "AgentName", json_mkstring(ConfigData->AgentName));
 	}
-	if(ConfigData->ClientParameterPath)	
-	{
-		json_append_member(jsonRoot, "ClientParameterPath", 
-			json_mkstring(ConfigData->ClientParameterPath));
+	if(ConfigData->ClientParameterPath)	{
+		json_append_member(jsonRoot, "ClientParameterPath", json_mkstring(ConfigData->ClientParameterPath));
 	}
-	if(ConfigData->Hostname) 
-	{
-		json_append_member(jsonRoot, "Hostname", 
-			json_mkstring(ConfigData->Hostname));
+	if(ConfigData->Hostname) {
+		json_append_member(jsonRoot, "Hostname", json_mkstring(ConfigData->Hostname));
 	}
-	if(ConfigData->Password) 
-	{
-		json_append_member(jsonRoot, "Password", 
-			json_mkstring(ConfigData->Password));
+	if(ConfigData->Password) {
+		json_append_member(jsonRoot, "Password", json_mkstring(ConfigData->Password));
 	}
-	if(ConfigData->Username) 
-	{
-		json_append_member(jsonRoot, "Username", 
-			json_mkstring(ConfigData->Username));
+	if(ConfigData->Username) {
+		json_append_member(jsonRoot, "Username", json_mkstring(ConfigData->Username));
 	}
-	if(ConfigData->VirtualDirectory) 
-	{
-		json_append_member(jsonRoot, "VirtualDirectory", 
-			json_mkstring(ConfigData->VirtualDirectory));
+	if(ConfigData->VirtualDirectory) {
+		json_append_member(jsonRoot, "VirtualDirectory", json_mkstring(ConfigData->VirtualDirectory));
 	}
-	if(ConfigData->TrustStore) 
-	{
-		json_append_member(jsonRoot, "TrustStore", 
-			json_mkstring(ConfigData->TrustStore));
+	if(ConfigData->TrustStore) {
+		json_append_member(jsonRoot, "TrustStore", json_mkstring(ConfigData->TrustStore));
 	}
-	if(ConfigData->AgentCert) 
-	{
-		json_append_member(jsonRoot, "AgentCert", 
-			json_mkstring(ConfigData->AgentCert));
+	if(ConfigData->AgentCert) {
+		json_append_member(jsonRoot, "AgentCert", json_mkstring(ConfigData->AgentCert));
 	}
-	if(ConfigData->AgentKey) 
-	{
-		json_append_member(jsonRoot, "AgentKey", 
-			json_mkstring(ConfigData->AgentKey));
+	if(ConfigData->AgentKey) {
+		json_append_member(jsonRoot, "AgentKey", json_mkstring(ConfigData->AgentKey));
 	}
-	if(ConfigData->AgentKeyPassword) 
-	{
-		json_append_member(jsonRoot, "AgentKeyPassword", 
-			json_mkstring(ConfigData->AgentKeyPassword));
+	if(ConfigData->AgentKeyPassword) {
+		json_append_member(jsonRoot, "AgentKeyPassword", json_mkstring(ConfigData->AgentKeyPassword));
 	}
-	if(ConfigData->CSRKeyType) 
-	{
-		json_append_member(jsonRoot, "CSRKeyType", 
-			json_mkstring(ConfigData->CSRKeyType));
+	if(ConfigData->CSRKeyType) {
+		json_append_member(jsonRoot, "CSRKeyType", json_mkstring(ConfigData->CSRKeyType));
 	}
-	if(ConfigData->CSRKeySize) 
-	{
-		json_append_member(jsonRoot, "CSRKeySize", 
-			json_mknumber(ConfigData->CSRKeySize));
+	if(ConfigData->CSRKeySize) {
+		json_append_member(jsonRoot, "CSRKeySize", json_mknumber(ConfigData->CSRKeySize));
 	}
-	if(ConfigData->CSRSubject) 
-	{
-		json_append_member(jsonRoot, "CSRSubject", 
-			json_mkstring(ConfigData->CSRSubject));
+	if(ConfigData->CSRSubject) {
+		json_append_member(jsonRoot, "CSRSubject", json_mkstring(ConfigData->CSRSubject));
 	}
-	json_append_member(jsonRoot, "EnrollOnStartup", 
-		json_mkbool(ConfigData->EnrollOnStartup));
-	if(ConfigData->UseBootstrapCert)
-	{
-		json_append_member(jsonRoot, "UseBootstrapCert",
-			json_mkbool(ConfigData->UseBootstrapCert));
+	json_append_member(jsonRoot, "EnrollOnStartup", json_mkbool(ConfigData->EnrollOnStartup));
+	if(ConfigData->UseBootstrapCert) {
+		json_append_member(jsonRoot, "UseBootstrapCert", json_mkbool(ConfigData->UseBootstrapCert));
 	}
-	if(ConfigData->BootstrapCert)
-	{
-		json_append_member(jsonRoot, "BootstrapCert",
-			json_mkstring(ConfigData->BootstrapCert));
+	if(ConfigData->BootstrapCert) {
+		json_append_member(jsonRoot, "BootstrapCert", json_mkstring(ConfigData->BootstrapCert));
 	}
-	if(ConfigData->BootstrapKey)
-	{
-		json_append_member(jsonRoot,"BootstrapKey",
-			json_mkstring(ConfigData->BootstrapKey));
+	if(ConfigData->BootstrapKey) {
+		json_append_member(jsonRoot,"BootstrapKey",	json_mkstring(ConfigData->BootstrapKey));
 	}
-	if(ConfigData->BootstrapKeyPassword)
-	{
-		json_append_member(jsonRoot,"BootstrapKeyPassword",
-			json_mkstring(ConfigData->BootstrapKeyPassword));
+	if(ConfigData->BootstrapKeyPassword) {
+		json_append_member(jsonRoot,"BootstrapKeyPassword", json_mkstring(ConfigData->BootstrapKeyPassword));
 	}
-	json_append_member(jsonRoot, "UseSsl", 
-		json_mkbool(ConfigData->UseSsl));
-	json_append_member(jsonRoot, "Serialize", 
-		json_mkbool(ConfigData->Serialize));
-	if(ConfigData->SerialFile) 
-	{
-		json_append_member(jsonRoot, "SerialFile", 
-			json_mkstring(ConfigData->SerialFile));
+	json_append_member(jsonRoot, "UseSsl", json_mkbool(ConfigData->UseSsl));
+	if(ConfigData->LogFile)	{
+		json_append_member(jsonRoot, "LogFile", json_mkstring(ConfigData->LogFile));
 	}
-	if(ConfigData->LogFile)	
-	{
-		json_append_member(jsonRoot, "LogFile", 
-			json_mkstring(ConfigData->LogFile));
+	json_append_member(jsonRoot, "LogFileIndex", json_mknumber(ConfigData->LogFileIndex));
+	if(ConfigData->httpRetries)	{
+		json_append_member(jsonRoot, "httpRetries", json_mknumber(ConfigData->httpRetries));
 	}
-	json_append_member(jsonRoot, "LogFileIndex", 
-		json_mknumber(ConfigData->LogFileIndex));
-	if(ConfigData->httpRetries)	
-	{
-		json_append_member(jsonRoot, "httpRetries", 
-			json_mknumber(ConfigData->httpRetries));
+	if(ConfigData->retryInterval) {
+		json_append_member(jsonRoot, "retryInterval", json_mknumber(ConfigData->retryInterval));
 	}
-	if(ConfigData->retryInterval) 
-	{
-		json_append_member(jsonRoot, "retryInterval", 
-			json_mknumber(ConfigData->retryInterval));
-	}
+	if(ConfigData->UseAgentCert) {
+		json_append_member(jsonRoot, "UseAgentCert", json_mkbool(ConfigData->UseAgentCert));
+    }
 
 	char* confString = json_stringify(jsonRoot, "\t");
 	json_delete(jsonRoot);
@@ -684,19 +573,15 @@ bool config_save( void )
 	
 	char eol[1] = {'\n'};
 	FILE* fp = fopen(config_location, "w");
-	if(fp)
-	{
+	if(fp) {
 		fwrite(confString, 1, strlen(confString), fp);
 		fwrite(eol, 1, 1, fp);
 		free(confString);
 		fclose(fp);
 		bResult = true;
-	}
-	else
-	{
+	} else {
 		int err = errno;
-		log_error("%s::%s(%d) : Unable to open config file %s: %s", 
-			LOG_INF, config_location, strerror(err));
+		log_error("%s::%s(%d) : Unable to open config file %s: %s", LOG_INF, config_location, strerror(err));
 	}
 
 	return bResult;
@@ -717,30 +602,34 @@ bool validate_configuration( void )
 
 	do
 	{
-		if (!minimum_config_requirements())
-		{
-			log_error("%s::%s(%d) : Config missing minimum requirements", 
-				LOG_INF);
+		log_debug("%s::%s(%d) : Checking config minimimum requirements", LOG_INF);
+		if (!minimum_config_requirements()) {
+			log_error("%s::%s(%d) : Config missing minimum requirements", LOG_INF);
 			break;
 		}
+		log_debug("%s::%s(%d) : Config meets minimum requirements", LOG_INF);
 
-		if (!agent_directory_exists())
-		{
+		log_debug("%s::%s(%d) : Checking that the agent directory exists", LOG_INF);
+		if (!agent_directory_exists()) {
 			log_error("%s::%s(%d) : Agent configuration is bad", LOG_INF);
 			break;
 		}
+		log_debug("%s::%s(%d) : Agent directory exists", LOG_INF);
 
-		if (!file_exists(ConfigData->TrustStore))
-		{
-			log_error("%s::%s(%d) : Trust store location is bad or file "
-				"not found", LOG_INF);
+		log_debug("%s::%s(%d) : Checking that the trust store exists", LOG_INF);
+		if (!file_exists(ConfigData->TrustStore)) {
+			log_error("%s::%s(%d) : Trust store location is bad or file not found", LOG_INF);
 			break;
 		}
+		log_debug("%s::%s(%d) : The trust store exists", LOG_INF);
 
-		if (!keypair_sanity_check())
-		{
-			log_error("%s::%s(%d) : Keypair is not valid", LOG_INF);
-			break;
+		if (ConfigData->UseAgentCert) {
+			log_debug("%s::%s(%d) : Checking that the keypair looks ok", LOG_INF);
+			if (!keypair_sanity_check()) {
+				log_error("%s::%s(%d) : Keypair is not valid", LOG_INF);
+				break;
+			}
+			log_debug("%s::%s(%d) : The keypair looks ok", LOG_INF);
 		}
 
 		log_verbose("%s::%s(%d) : Config meets minimum requirements", LOG_INF);
@@ -767,8 +656,7 @@ char* config_build_url(const char* relPath, bool vdirFromConfig)
 	char* url = NULL;
 	char* relPathStripped = NULL;
 
-	if(ConfigData && relPath)
-	{
+	if(ConfigData && relPath) {
 		if ( true == ConfigData->UseSsl ) {
 			url = strdup("https://");
 		} else {
@@ -834,95 +722,72 @@ char* config_build_url(const char* relPath, bool vdirFromConfig)
 /*                                                                            */
 void ConfigData_free( void )
 {
-	if(ConfigData)
-	{
-		if(ConfigData->AgentId)	
-		{
+	if(ConfigData) {
+		if(ConfigData->AgentId) {
 			free(ConfigData->AgentId);
 			ConfigData->AgentId = NULL;
 		}
-		if(ConfigData->AgentName)
-		 {
+		if(ConfigData->AgentName) {
 			free(ConfigData->AgentName);
 			ConfigData->AgentName = NULL;
 		}
-		if(ConfigData->ClientParameterPath) 
-		{
+		if(ConfigData->ClientParameterPath) {
 			free(ConfigData->ClientParameterPath);
 			ConfigData->ClientParameterPath = NULL;
 		}
-		if(ConfigData->Hostname) 
-		{
+		if(ConfigData->Hostname) {
 			free(ConfigData->Hostname);
 			ConfigData->Hostname = NULL;
 		}
-		if(ConfigData->Password) 
-		{
+		if(ConfigData->Password) {
 			free(ConfigData->Password);
 			ConfigData->Password = NULL;
 		}
-		if(ConfigData->Username) 
-		{
+		if(ConfigData->Username) {
 			free(ConfigData->Username);
 			ConfigData->Username = NULL;
 		}
-		if(ConfigData->VirtualDirectory) 
-		{
+		if(ConfigData->VirtualDirectory) {
 			free(ConfigData->VirtualDirectory);
 			ConfigData->VirtualDirectory = NULL;
 		}
-		if(ConfigData->TrustStore) 
-		{
+		if(ConfigData->TrustStore) {
 			free(ConfigData->TrustStore);
 			ConfigData->TrustStore = NULL;
 		}
-		if(ConfigData->AgentCert) 	
-		{
+		if(ConfigData->AgentCert) {
 			free(ConfigData->AgentCert);
 			ConfigData->AgentCert = NULL;
 		}
-		if(ConfigData->AgentKey) 
-		{
+		if(ConfigData->AgentKey) {
 			free(ConfigData->AgentKey);
 			ConfigData->AgentKey = NULL;
 		}
-		if(ConfigData->AgentKeyPassword) 
-		{
+		if(ConfigData->AgentKeyPassword) {
 			free(ConfigData->AgentKeyPassword);
 			ConfigData->AgentKeyPassword = NULL;
 		}
-		if(ConfigData->CSRKeyType) 
-		{
+		if(ConfigData->CSRKeyType) {
 			free(ConfigData->CSRKeyType);
 			ConfigData->CSRKeyType = NULL;
 		}
-		if(ConfigData->CSRSubject) 
-		{
+		if(ConfigData->CSRSubject) {
 			free(ConfigData->CSRSubject);
 			ConfigData->CSRSubject = NULL;
 		}
-		if(ConfigData->SerialFile) 
-		{
-			free(ConfigData->SerialFile);
-			ConfigData->SerialFile = NULL;
-		}
-		if(ConfigData->LogFile) 
-		{
+		if(ConfigData->LogFile) {
 			free(ConfigData->LogFile);
 			ConfigData->LogFile = NULL;
 		}
-		if(ConfigData->BootstrapCert)
-		{
+		if(ConfigData->BootstrapCert) {
 			free(ConfigData->BootstrapCert);
 			ConfigData->BootstrapCert = NULL;
 		}
-		if(ConfigData->BootstrapKey)
-		{
+		if(ConfigData->BootstrapKey) {
 			free(ConfigData->BootstrapKey);
 			ConfigData->BootstrapKey = NULL;
 		}
-		if(ConfigData->BootstrapKeyPassword)
-		{
+		if(ConfigData->BootstrapKeyPassword) {
 			free(ConfigData->BootstrapKeyPassword);
 			ConfigData->BootstrapKeyPassword = NULL;
 		}

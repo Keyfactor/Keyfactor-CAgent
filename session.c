@@ -78,36 +78,41 @@ static void add_custom_client_parameters(struct SessionRegisterReq* sessionReq) 
 /* Examples of persistent variables are EnrollOnStartup and AgentId.          */
 /*                                                                            */
 /* @param  [Input] : sessionResp = the Platform's response                    */
-/* @returns none                                                              */
+/* @returns true if no error, false otherwise                                 */
 /*                                                                            */
-static void update_agentid_from_session(struct SessionRegisterResp* sessionResp)
+static bool update_agentid_from_session(struct SessionRegisterResp* sessionResp)
 {
-	bool isChanged = false;
-
 	if ( !ConfigData || !sessionResp ) {
-        log_warn("%s::%s(%d) : Missing ConfigData or sessionResponse, exiting", LOG_INF);
-		return;
+        log_error("%s::%s(%d) : Missing ConfigData or sessionResponse, exiting", LOG_INF);
+		return false;
 	}
 
-	if(	sessionResp->Session.AgentId && ConfigData->EnrollOnStartup ) {
-		if(ConfigData->AgentId) {
+	if( ConfigData->EnrollOnStartup ) {
+		if(
+            ConfigData->AgentId &&
+			sessionResp->Session.AgentId &&
+			(strlen(sessionResp->Session.AgentId) > 0)
+          )
+        {
 			if(strcmp(sessionResp->Session.AgentId, ConfigData->AgentId) != 0) {
-				log_info("%s::%s(%d) : Received new AgentId. "
-					"Updating AgentId in configuration", LOG_INF);
+				log_info("%s::%s(%d) : Received new AgentId. Updating AgentId in configuration", LOG_INF);
 				free(ConfigData->AgentId);
 				ConfigData->AgentId = strdup(sessionResp->Session.AgentId);
-				isChanged = true;
+				log_verbose("%s::%s(%d) : Saving configuration to file system",LOG_INF);
+				config_save();
+				return true;
 			}
 		} else {
-			log_trace("%s::%s(%d) : No AgentId assigned in config. Not modifying AgentId", LOG_INF);
+			log_error("%s::%s(%d) : No AgentId assigned in config or not recieved from platform.", LOG_INF);
+			return false;
 		}
-	}
-
-	if(isChanged) {
-		log_verbose("%s::%s(%d) : Saving configuration to file system",LOG_INF);
-		config_save();
-	}
-	return;
+	} else {
+		/* Not in enroll on startup */
+		log_debug("%s::%s(%d) : Not in EnrollOnStartup", LOG_INF);
+		return true;
+    }
+	log_error("%s::%s(%d) : We should never get here", LOG_INF);
+	return false;
 } /* update_agentid_from_session */
 
 /**                                                                           */
@@ -156,10 +161,10 @@ static bool register_agent(struct SessionRegisterReq* sessionReq)
 	enum AgentApiResultStatus status = STAT_SUCCESS;
 
 	log_info("%s::%s(%d) : Registering agent with the platform for the first time", LOG_INF);
-	
+
 	/* Generate the temporary keypair & store it in the ssl wrapper layer */
 #if defined(__TPM__)
-	if ( !generate_keypair(ConfigData->CSRKeyType, ConfigData->CSRKeySize, 
+	if ( !generate_keypair(ConfigData->CSRKeyType, ConfigData->CSRKeySize,
 		ConfigData->AgentKey) )
 #else
 	if ( !generate_keypair(ConfigData->CSRKeyType, ConfigData->CSRKeySize) )
@@ -175,8 +180,7 @@ static bool register_agent(struct SessionRegisterReq* sessionReq)
 	/*    3. Sign the request using the temporary private key in the 
 				ssl wrapper*/
 	/*    4. Convert the signed request into an ASCII string & return it */
-	sessionReq->CSR = generate_csr(ConfigData->CSRSubject, &csrLen,	
-		&message, &status);
+	sessionReq->CSR = generate_csr(ConfigData->CSRSubject, &csrLen,	&message, &status);
 	if ( message ) {
 		free(message); /* right now, we don't do anything with this structure */
 	}
@@ -465,8 +469,7 @@ static int do_second_registration(struct SessionInfo* session,
 
 	/* Now add a parameter to let the registration handler know it */
 	/* Needs to create the re-enrollment job on the Cert Store(s) defined in the Registration Handler */
-	SessionRegisterReq_addNewClientParameter(sessionReq, "RegistrationRequest", 
-		PLATORM_ENROLL_STORES);
+	SessionRegisterReq_addNewClientParameter(sessionReq, "RegistrationRequest", PLATORM_ENROLL_STORES);
 	
 	reqString = SessionRegisterReq_toJson(sessionReq);
 	SessionRegisterReq_free(sessionReq);
@@ -488,8 +491,7 @@ static int do_second_registration(struct SessionInfo* session,
             httpRes = 997;
             goto exit;
         }
-        log_debug("%s::%s(%d): response decoded.  Now parsing response.",
-                  LOG_INF);
+        log_debug("%s::%s(%d): response decoded.  Now parsing response.", LOG_INF);
         if( !AgentApiResult_log(resp->Result, NULL, NULL) ) {
             if(resp->Result.Status == STAT_ERR) {
                 log_error("%s::%s(%d): Command reported an error during the second registration call", LOG_INF);
@@ -668,34 +670,42 @@ exit:
 /**                                                                           */
 /* Process the first registration response, which should include the Agent's  */
 /* signed certificate (from the CA).                                          */
+/* OR if we are not using agent certs, then make sure we got an Agent Id      */
 /*                                                                            */
 /* @param  [Input] : resp = the session response to parse                     */
 /* @param  [Output] : status = any status message we need to pass to Keyfactor*/
 /* @param  [Output] : statusCode = the status code to pass to Keyfactor       */
-/* @return if a certificate is found = true                                   */
+/* @return if an Agent Id was sent & we either got a certificate OR we are    */
+/*         not using a agent cert then return = true                          */
 /*         otherwise = false                                                  */
-static bool do_first_registration_response(struct SessionRegisterResp* resp,
-	char** status, enum AgentApiResultStatus* statusCode)
+static bool do_first_registration_response(struct SessionRegisterResp* resp, char** status,
+	enum AgentApiResultStatus* statusCode)
 {
     if (NULL == resp) {
         log_error("%s::%s(%d) : Error, response to parse is null", LOG_INF);
         return false;
     }
 	bool bResult = false;
+	bool bIdOk = false;
 	log_trace("%s::%s(%d): Updating config from session", LOG_INF);
-	update_agentid_from_session(resp);
+	bIdOk = update_agentid_from_session(resp);
 
-	if(resp->Session.Certificate) {
-		bResult = true;
-		log_info("%s::%s(%d): Agent certificate recieved from"
-			" platform.  Saving Agent Specific Keypair and "
-			"Agent Specific Cert.", LOG_INF);
-		save_cert_key(ConfigData->AgentCert, 
-			ConfigData->AgentKey, ConfigData->AgentKeyPassword, 
-			resp->Session.Certificate, status, statusCode);
-		update_config_from_session(resp);
+	if (ConfigData->UseAgentCert && bIdOk) {
+		if(resp->Session.Certificate) {
+			bResult = true;
+			log_info("%s::%s(%d): Agent certificate recieved from platform.  Saving Agent Specific Keypair and "
+				"Agent Specific Cert.", LOG_INF);
+			save_cert_key(ConfigData->AgentCert,
+				ConfigData->AgentKey, ConfigData->AgentKeyPassword,
+				resp->Session.Certificate, status, statusCode);
+			update_config_from_session(resp);
+		} else {
+			/* The platform should have provided a certificate */
+			log_error("%s::%s(%d): Certificate not found", LOG_INF);
+		}
 	} else {
-		log_verbose("%s::%s(%d): Certificate not found", LOG_INF);
+		/* We don't need a certificate, but we do need an AgentId */
+		if (bIdOk) bResult = true;
 	}
 	return bResult;
 } /* do_first_registration_response */
@@ -758,8 +768,7 @@ static void do_normal_registration_response(struct SessionRegisterResp* resp,
 /* @return failure : 998 or a failed http code 								  */
 /*         success : 200 													  */
 /*                                                                            */
-int register_session(struct SessionInfo* session, 
-	struct ScheduledJob** pJobList, uint64_t agentVersion)
+int register_session(struct SessionInfo* session, struct ScheduledJob** pJobList, uint64_t agentVersion)
 {
 	char* url = NULL;
 	char* reqString = NULL;
@@ -775,29 +784,36 @@ int register_session(struct SessionInfo* session,
         goto exit;
     }
 	bool firstAgentRegistration = false;
-	bool gotCertificate = false;
+	bool bFirstRegistrationSuccess = false;
 
 	log_info("%s::%s(%d): Registering new session", LOG_INF);
 
 	set_registration_parameters(sessionReq);
 	
 	if(ConfigData->EnrollOnStartup)	{
-		/* Generate a keypair and a CSR to send up with this request */
-		if ( !register_agent( sessionReq ) ) {
-			log_error("%s::%s(%d) : Error setting up agent registration", LOG_INF);
-			SessionRegisterReq_free( sessionReq );
-			return 998;
+		firstAgentRegistration = true; /* flag this as the first registration */
+		if (ConfigData->UseAgentCert) {
+			if ( !register_agent( sessionReq ) ) {
+				log_error("%s::%s(%d) : Error setting up agent registration", LOG_INF);
+				SessionRegisterReq_free( sessionReq );
+				return 998;
+			} else {
+				log_trace("%s::%s(%d) : Successfully set up /Session/Register data.", LOG_INF);
+	        }
+		} else {
+			log_trace("%s::%s(%d) : Skipping agent cert from configurtion", LOG_INF);
 		}
-		firstAgentRegistration = true;
 	} else {
-        /* Check the validity of the Agent cert if we aren't in the enrollment phase */
-        if (is_cert_active(ConfigData->AgentCert)) {
-            log_trace("%s::%s:(%d) : Agent cert checks OK", LOG_INF);
-        } else {
-            log_error("%s::%s(%d) : Agent cert has expired - resetting Agent as a new device", LOG_INF);
-            reset_agent();
-            return 998;
-        }
+		if (ConfigData->UseAgentCert) {
+	        /* Check the validity of the Agent cert if we aren't in the enrollment phase */
+	        if (is_cert_active(ConfigData->AgentCert)) {
+	            log_trace("%s::%s:(%d) : Agent cert checks OK", LOG_INF);
+	        } else {
+	            log_error("%s::%s(%d) : Agent cert has expired - resetting Agent as a new device", LOG_INF);
+	            reset_agent();
+	            return 998;
+	        }
+		}
     }
 
 	/* Send the request up to the platform */
@@ -813,7 +829,8 @@ int register_session(struct SessionInfo* session,
 	free(url);
 	free(reqString);
 	return 0;
-#else /* Run HTTP POST if we aren't in __DEBUG__ */
+#else /* __DEBUG__ */
+	/* Run HTTP POST if we aren't in __DEBUG__ */
 	httpRes = http_post_json(url, ConfigData->Username, ConfigData->Password, 
 		ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey, 
 		ConfigData->AgentKeyPassword, reqString, &respString, 
@@ -832,7 +849,7 @@ int register_session(struct SessionInfo* session,
 			log_trace("%s::%s(%d) : Token found, parsing response.", LOG_INF);
 			if( AgentApiResult_log(resp->Result, NULL, NULL) ) {
 				if (firstAgentRegistration)	{
-					gotCertificate = do_first_registration_response(resp, &status, &statusCode);
+					bFirstRegistrationSuccess = do_first_registration_response(resp, &status, &statusCode);
  				} else {
  					do_normal_registration_response(resp, session, pJobList, schedule);
  				}
@@ -891,9 +908,13 @@ exit:
 	if (url) free(url);
 
 	/* If this was the first agent registration & we got a certificate */
+    /* OR we aren't using agent certs,                                 */
 	/* Then poke the platform a second time to force the re-enrollment */
 	/* jobs to be generated.                                           */
-	if (gotCertificate && firstAgentRegistration) {
+	if (
+		firstAgentRegistration &&  /* This is the first registration */
+		bFirstRegistrationSuccess  /* and it was successful */
+       ) {
 		log_trace("%s::%s(%d) Performing second registration.", LOG_INF);
 		httpRes = do_second_registration(session, pJobList, agentVersion);
 		if (0 == httpRes) {
@@ -902,90 +923,14 @@ exit:
 			/* Session failed, so we need to re-register the agent */
 			/* on the next trigger */
 			ConfigData->EnrollOnStartup = true;
-			log_trace("%s::%s(%d) : Re-registering agent", LOG_INF);
+			log_warn("%s::%s(%d) : Re-registering agent as second registration failed", LOG_INF);
 		}
 	}
 
 	return httpRes;
-#endif   /* If debug was defined, don't run HTTP POST */
+#endif /* __DEBUG__ not defined */
 } /* register_session */
 
-#if defined(__INFINITE_AGENT__)
-/**                                                                           */
-/* A heartbeat session periodically contacts the Platform to determine if     */
-/* any jobs have been scheduled, or if the session has expired, been          */
-/* abandoned, etc.                                                            */
-/*                                                                            */
-/* @param  [Output] : session (allocated before calling) a session data       */
-/*                    structure in which we populate the Token, AgentId,      */
-/*                    and other information associated with the session       */
-/* @param  [Output] : pJobList = a pointer to a job list structure (allocated */
-/*                    before calling this function)                           */
-/* @param  [Input] : agentVersion = the version of the Agent                  */
-/* @return failure : a failed http code                                       */
-/*         success : 200 http response                                        */
-/*                                                                            */
-int heartbeat_session(struct SessionInfo* session, 
-	struct ScheduledJob** pJobList, uint64_t agentVersion)
-{
-  char* url = NULL;
-  struct SessionHeartbeatReq* heartbeatReq = SessionHeartbeatReq_new();
-
-  log_info("%s::%s(%d)- Heartbeating current session", LOG_INF);
-
-  heartbeatReq->AgentPlatform = PLAT_NATIVE;
-  heartbeatReq->ClientMachine = strdup(ConfigData->AgentName);
-  heartbeatReq->SessionToken = strdup(session->Token);
-
-  char* reqString = SessionHeartbeatReq_toJson(heartbeatReq);
-  SessionHeartbeatReq_free(heartbeatReq);
-
-  url = config_build_url("/Session/Heartbeat", true);
-
-  char* respString = NULL;
-
-  int httpRes = http_post_json(url, ConfigData->Username, ConfigData->Password, 
-    ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey, 
-    ConfigData->AgentKeyPassword, reqString, &respString, 
-    ConfigData->httpRetries,ConfigData->retryInterval); 
-
-  if(httpRes == 0) {
-    struct SessionHeartbeatResp* resp =	SessionHeartbeatResp_fromJson(respString);
-
-    if(resp && AgentApiResult_log(resp->Result, NULL, NULL)) {
-      if(resp->SessionValid) {
-        char schedule[10];
-        sprintf(schedule, "I_%d", resp->HeartbeatInterval);
-        session->NextExecution = next_execution(schedule, session->NextExecution);
-        session->UnreachableCount = 0;
-      } else {
-        log_info("%s::%s(%d): session is invalid. Re-registering", LOG_INF);
-        strcpy(session->Token, "");
-        register_session(session, pJobList, agentVersion);
-      }
-    } else {
-      char schedule[10];
-      sprintf(schedule, "I_%d", session->Interval);
-      session->NextExecution = next_execution(schedule, session->NextExecution);
-    }
-
-    SessionHeartbeatResp_free(resp);
-  } else {
-    log_error("%s::%s(%d):  heartbeat failed with error code %d", LOG_INF, httpRes);
-    session->UnreachableCount++; 
-
-    char schedule[10];
-    sprintf(schedule, "I_%d", session->Interval);
-    session->NextExecution = next_execution(schedule, session->NextExecution);
-  }
-
-  free(reqString);
-  free(respString);
-  free(url);
-
-  return httpRes;
-} /* heartbeat_session */
-#endif
 /******************************************************************************/
 /******************************* END OF FILE **********************************/
 /******************************************************************************/

@@ -355,37 +355,38 @@ int http_post_json(const char* url, const char* username,
                 log_info("%s::%s(%d) : Bypassing client certificates on initial startup", LOG_INF);
             }
         } else {
-          log_trace("%s::%s(%d) : Use the Agent cert and key", LOG_INF);
-          if( 1 == file_exists(clientCert) ) {
-            log_trace("%s::%s(%d) : Setting clientCert to %s", LOG_INF, clientCert);
-            errNum = curl_easy_setopt(curl, CURLOPT_SSLCERT, clientCert);
-            if ( CURLE_OK != errNum ) {
-              return handle_curl_error(curl, errNum);
+            if (ConfigData->UseAgentCert) {
+                log_trace("%s::%s(%d) : Use the Agent cert and key", LOG_INF);
+                if( 1 == file_exists(clientCert) ) {
+                    log_trace("%s::%s(%d) : Setting clientCert to %s", LOG_INF, clientCert);
+                    errNum = curl_easy_setopt(curl, CURLOPT_SSLCERT, clientCert);
+                    if ( CURLE_OK != errNum )
+                        return handle_curl_error(curl, errNum);
+                    read_file_bytes(clientCert, &client_cert_compressed, &dummySize);
+                    if (NULL == client_cert_compressed) {
+                        log_error("%s::%s(%d) : Out of memory copying client certificate", LOG_INF);
+                        goto exit;
+                    }
+                } else {
+                    log_warn("%s::%s(%d) : The clientCert does not exist at %s", LOG_INF, clientCert);
+                }
+                if( 1 == file_exists(clientKey) ) {
+                    log_trace("%s::%s(%d) : Setting clientKey to %s", LOG_INF, clientKey);
+                    errNum = curl_easy_setopt(curl, CURLOPT_SSLKEY, clientKey);
+                    if ( CURLE_OK != errNum )
+                        return handle_curl_error(curl, errNum);
+                } else {
+                    log_warn("%s::%s(%d) : The clientKey does not exist at %s", LOG_INF, clientKey);
+                }
+                if( (1 == file_exists(clientKey)) && clientKeyPass ) {
+                    log_trace("%s::%s(%d) : Setting clientPassword to %s", LOG_INF,clientKeyPass);
+                    errNum = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, clientKeyPass);
+                    if ( CURLE_OK != errNum )
+                        return handle_curl_error(curl, errNum);
+                }
+            } else {
+                log_verbose("%s::%s(%d) : Configured to not use agent cert", LOG_INF);
             }
-            read_file_bytes(clientCert, &client_cert_compressed, &dummySize);
-            if (NULL == client_cert_compressed) {
-              log_error("%s::%s(%d) : Out of memory copying client certificate", LOG_INF);
-              goto exit;
-            }
-          } else {
-              log_warn("%s::%s(%d) : The clientCert does not exist at %s", LOG_INF, clientCert);
-          }
-          if( 1 == file_exists(clientKey) ) {
-            log_trace("%s::%s(%d) : Setting clientKey to %s", LOG_INF, clientKey);
-            errNum = curl_easy_setopt(curl, CURLOPT_SSLKEY, clientKey);
-            if ( CURLE_OK != errNum ) {
-                return handle_curl_error(curl, errNum);
-            }
-          } else {
-              log_warn("%s::%s(%d) : The clientKey does not exist at %s", LOG_INF, clientKey);
-          }
-          if( (1 == file_exists(clientKey)) && clientKeyPass ) {
-            log_trace("%s::%s(%d) : Setting clientPassword to %s", LOG_INF,clientKeyPass);
-            errNum = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, clientKeyPass);
-            if ( CURLE_OK != errNum ) {
-                return handle_curl_error(curl, errNum);
-            }
-          }
         }
 
         /* Turn on verbose output for tracing */

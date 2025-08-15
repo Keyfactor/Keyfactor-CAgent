@@ -412,16 +412,20 @@ int cms_job_inventory(struct SessionJob* jobInfo, char* sessionToken)
 					"and not a directory.");
 				failed = true;
 			}
-			/* Verify the target store isn't the Agent store */		
-			if (0 == strcasecmp(ConfigData->AgentCert, invConf->Job.StorePath))
-			{
-				
-				log_warn("%s::%s(%d) : Attempting to inventory the agent"
-					" cert store is not allowed.", LOG_INF);
-				append_linef(&statusMessage, "Attempting to inventory the "
-					"agent cert store is not allowed.");
-				failed = true;
+
+			if (ConfigData->UseAgentCert) {
+				/* Verify the target store isn't the Agent store */
+				if (0 == strcasecmp(ConfigData->AgentCert, invConf->Job.StorePath))
+				{
+
+					log_warn("%s::%s(%d) : Attempting to inventory the agent"
+						" cert store is not allowed.", LOG_INF);
+					append_linef(&statusMessage, "Attempting to inventory the "
+						"agent cert store is not allowed.");
+					failed = true;
+				}
 			}
+
 			/* Verify the target store exists */
 			if (!file_exists(invConf->Job.StorePath))
 			{
@@ -434,10 +438,8 @@ int cms_job_inventory(struct SessionJob* jobInfo, char* sessionToken)
 		}
 		else
 		{
-			log_error("%s::%s(%d) : Job doesn't contain a store to inventory.", 
-				LOG_INF);
-			append_linef(&statusMessage, "Job doesn't contain a store to"
-				" inventory.");
+			log_error("%s::%s(%d) : Job doesn't contain a store to inventory.", LOG_INF);
+			append_linef(&statusMessage, "Job doesn't contain a store to inventory.");
 			failed = true;
 		}
 		/* If we failed any test above, then let the platform know about it */			
