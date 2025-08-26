@@ -550,9 +550,7 @@ char* config_to_json( void )
 	if(ConfigData->retryInterval) {
 		json_append_member(jsonRoot, "retryInterval", json_mknumber(ConfigData->retryInterval));
 	}
-	if(ConfigData->UseAgentCert) {
-		json_append_member(jsonRoot, "UseAgentCert", json_mkbool(ConfigData->UseAgentCert));
-    }
+	json_append_member(jsonRoot, "UseAgentCert", json_mkbool(ConfigData->UseAgentCert));
 
 	char* confString = json_stringify(jsonRoot, "\t");
 	json_delete(jsonRoot);

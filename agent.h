@@ -102,8 +102,9 @@ extern struct ScheduledJob* currentJob; /* Defined in schedule.c */
 /* 2.16.1.0 = Modified agent to not send GUID capabilities.  Compile bug fix  */
 /* 2.17.0.0 = Modified agent to accept ECDSA as well as ECC for a keytype     */
 /* 2.18.0.0 = Modified agent to skip using agent certificate & openssl fix    */
+/* 2.19.0.0 = Modified agent to fix bug with writing agent certificate to file*/
 #define AGENT_MAJOR 2ULL
-#define AGENT_MINOR 18ULL
+#define AGENT_MINOR 19ULL
 #define AGENT_MICRO 0ULL
 #define AGENT_BUILD 0ULL
 
