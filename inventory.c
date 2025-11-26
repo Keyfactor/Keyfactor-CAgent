@@ -50,13 +50,13 @@
 /************************ LOCAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
 static int get_inventory_config(const char* sessionToken, const char* jobId, 
-	const char* endpoint, struct InventoryConfigResp** pInvConf)
+	const char* endpoint, InventoryConfigResp_t** pInvConf)
 {
 	char* url = NULL;
 
 	log_verbose("%s::%s(%d) : Sending inventory config request: %s", 
 		LOG_INF, jobId);
-	struct CommonConfigReq* req = CommonConfigReq_new();
+	CommonConfigReq_t* req = CommonConfigReq_new();
 	if ( NULL == req )
 	{
 		log_error("%s::%s(%d) : Out of memory in CommonConfigReq_new()", 
@@ -101,13 +101,13 @@ static int get_inventory_config(const char* sessionToken, const char* jobId,
 } /* get_inventory_config */
 
 static int send_inventory_update(const char* sessionToken, const char* jobId, 
-	const char* endpoint, struct InventoryUpdateList* newInv, 
-	struct InventoryUpdateResp** pUpdResp)
+	const char* endpoint, InventoryUpdateList_t* newInv, 
+	InventoryUpdateResp_t** pUpdResp)
 {
 	char* url = NULL;
 
 	log_verbose("%s::%s(%d) : Sending inventory update request: %s", LOG_INF, jobId);
-	struct InventoryUpdateReq* updReq = calloc(1, sizeof(*updReq));
+	InventoryUpdateReq_t* updReq = calloc(1, sizeof(*updReq));
     if (!updReq) {
         log_error("%s::%s(%d) : Error couldn't allocate update request structure", LOG_INF);
         return 999;
@@ -141,14 +141,14 @@ static int send_inventory_update(const char* sessionToken, const char* jobId,
 
 static int send_inventory_job_complete(const char* sessionToken, 
 	const char* jobId, const char* endpoint, int jobStatus, long auditId, 
-	const char* message, struct CommonCompleteResp** pInvComp)
+	const char* message, CommonCompleteResp_t** pInvComp)
 {
 	char* url = NULL;
 
 	log_verbose("%s::%s(%d) : Sending inventory complete request: %ld for"
 		" session: %s",	LOG_INF, auditId, sessionToken);
 
-	struct CommonCompleteReq* req = CommonCompleteReq_new();
+	CommonCompleteReq_t* req = CommonCompleteReq_new();
     if (!req) {
         log_error("%s::%s(%d) : Error allocating request structure", LOG_INF);
         return 999;
@@ -182,13 +182,13 @@ static int send_inventory_job_complete(const char* sessionToken,
 	return res;
 } /* send_inventory_job_complete */
 
-static void InventoryUpdateList_add(struct InventoryUpdateList* list, 
-	struct InventoryUpdateItem* item)
+static void InventoryUpdateList_add(InventoryUpdateList_t* list, 
+	InventoryUpdateItem_t* item)
 {
 	if(list && item)
 	{
 		list->items = realloc(list->items, 
-			(list->count + 1) * sizeof(struct InventoryUpdateItem*));
+			(list->count + 1) * sizeof(InventoryUpdateItem_t*));
 		if (list->items)
 		{
 			list->items[list->count] = item;
@@ -208,7 +208,7 @@ static void InventoryUpdateList_add(struct InventoryUpdateList* list,
 /* @param  - [Input] : list = the list to free                                */
 /* @return - none                                                             */
 /*                                                                            */
-static void InventoryUpdateList_free(struct InventoryUpdateList* list)
+static void InventoryUpdateList_free(InventoryUpdateList_t* list)
 {
 	if (list)
 	{
@@ -266,12 +266,12 @@ static void InventoryUpdateList_free(struct InventoryUpdateList* list)
 /*           failure : 0                                                      */
 /*                                                                            */
 /*                                                                            */
-static int compute_inventory_update(struct InventoryCurrentItem** cmsItems, 
+static int compute_inventory_update(InventoryCurrentItem_t** cmsItems, 
 	int cmsItemCount, struct PemInventoryList* fileItemList, 
-	struct InventoryUpdateList** updateList)
+	InventoryUpdateList_t** updateList)
 {
-	*updateList = calloc(1, sizeof(struct InventoryUpdateList));
-	struct InventoryUpdateItem* updateItem = NULL;
+	*updateList = calloc(1, sizeof(InventoryUpdateList_t));
+	InventoryUpdateItem_t* updateItem = NULL;
 	PemInventoryItem* currentPem = NULL;
 	bool inFile = false;
 	bool inCms = false;
@@ -287,7 +287,7 @@ static int compute_inventory_update(struct InventoryCurrentItem** cmsItems,
 				log_verbose("%s::%s(%d) : Alias %s is UNCHANGED", LOG_INF, currentPem->thumbprint_string);
 				inCms = true;
 
-				struct InventoryUpdateItem* updateItem = calloc(1, sizeof(*updateItem));
+				InventoryUpdateItem_t* updateItem = calloc(1, sizeof(*updateItem));
                 if (!updateItem) {
                     log_error("%s::%s(%d) : Out of memory", LOG_INF);
                     break;
@@ -347,7 +347,7 @@ static int compute_inventory_update(struct InventoryCurrentItem** cmsItems,
 		if(!inFile) {
 			log_verbose("%s::%s(%d) : Alias %s is DELETED", LOG_INF, cmsItems[m]->Alias);
 
-			updateItem = calloc(1, sizeof(struct InventoryUpdateItem)); /* parasoft-suppress BD-RES-LEAKS "Freed by calling function" */
+			updateItem = calloc(1, sizeof(InventoryUpdateItem_t)); /* parasoft-suppress BD-RES-LEAKS "Freed by calling function" */
             if (!updateItem) {
                 log_error("%s::%s(%d) : Out of Memory", LOG_INF);
                 break;
@@ -384,10 +384,10 @@ static int compute_inventory_update(struct InventoryCurrentItem** cmsItems,
 /* @return - job not canceled by platform : 0                                 */
 /*           job was canceled by platform : 1                                 */
 /*                                                                            */
-int cms_job_inventory(struct SessionJob* jobInfo, char* sessionToken)
+int cms_job_inventory(SessionJob_t* jobInfo, char* sessionToken)
 {
 	int res = 0;
-	struct InventoryConfigResp* invConf = NULL;
+	InventoryConfigResp_t* invConf = NULL;
 	char* statusMessage = strdup("");
 	enum AgentApiResultStatus status = STAT_UNK;
 	
@@ -445,7 +445,7 @@ int cms_job_inventory(struct SessionJob* jobInfo, char* sessionToken)
 		/* If we failed any test above, then let the platform know about it */			
 		if(failed)
 		{
-			struct CommonCompleteResp* invComp = NULL;
+			CommonCompleteResp_t* invComp = NULL;
 			send_inventory_job_complete(sessionToken, jobInfo->JobId, 
 				jobInfo->CompletionEndpoint, STAT_ERR, invConf->AuditId, 
 				statusMessage, &invComp);
@@ -482,11 +482,11 @@ int cms_job_inventory(struct SessionJob* jobInfo, char* sessionToken)
 
 			if(res == 0)
 			{
-				struct InventoryUpdateList* updateList = NULL;
+				InventoryUpdateList_t* updateList = NULL;
 				compute_inventory_update(invConf->Job.Inventory, 
 					invConf->Job.Inventory_count, pemList, &updateList);
 
-				struct InventoryUpdateResp* updResp = NULL;
+				InventoryUpdateResp_t* updResp = NULL;
 				res = send_inventory_update(sessionToken, jobInfo->JobId, 
 					invConf->InventoryEndpoint, updateList, &updResp);
 				if(res == 0 && updResp)
@@ -516,7 +516,7 @@ int cms_job_inventory(struct SessionJob* jobInfo, char* sessionToken)
 				PemInventoryList_free(pemList);
 			}
 
-			struct CommonCompleteResp* invComp = NULL;
+			CommonCompleteResp_t* invComp = NULL;
 			res = send_inventory_job_complete(sessionToken, jobInfo->JobId, 
 				jobInfo->CompletionEndpoint, (status + 1), auditId, 
 				statusMessage, &invComp);

@@ -33,12 +33,12 @@
 /************************ LOCAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
 static int get_fetchlogs_config(const char* sessionToken, const char* jobId, 
-    const char* endpoint, struct FetchLogsConfigResp** pConf)
+    const char* endpoint, FetchLogsConfigResp_t** pConf)
 {
     char* url = NULL;
 
     log_verbose("%s::%s(%d) : Sending config request: %s", LOG_INF, jobId);
-    struct CommonConfigReq* req = NULL;
+    CommonConfigReq_t* req = NULL;
     req = CommonConfigReq_new();
     if (!req) {
         log_error("%s::%s(%d) : Error creating Common Config Request", LOG_INF);
@@ -128,12 +128,12 @@ fail:
 
 static int send_fetchlogs_job_complete(const char* sessionToken, 
     const char* jobId, const char* endpoint, int jobStatus, long auditId, 
-    const char* message, const char* log, struct CommonCompleteResp** pComp)
+    const char* message, const char* log, CommonCompleteResp_t** pComp)
 {
     char* url = NULL;
 
     log_verbose("%s::%s(%d) : Sending complete request: %ld for session: %s", LOG_INF, auditId, sessionToken);
-    struct FetchLogsCompleteReq* req = FetchLogsCompleteReq_new();
+    FetchLogsCompleteReq_t* req = FetchLogsCompleteReq_new();
     if (!req) {
         log_error("%s::%s(%d) : Error creating Fetch Logs Complete Request Structure", LOG_INF);
         return 999;
@@ -192,11 +192,11 @@ static int send_fetchlogs_job_complete(const char* sessionToken,
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
-int cms_job_fetchLogs(struct SessionJob* jobInfo, char* sessionToken)
+int cms_job_fetchLogs(SessionJob_t* jobInfo, char* sessionToken)
 {
     int res = 0;
     int returnable = 0;
-    struct FetchLogsConfigResp* fetchLogsConf = NULL;
+    FetchLogsConfigResp_t* fetchLogsConf = NULL;
     char* statusMessage = strdup("");
 	enum AgentApiResultStatus status = STAT_UNK;
 
@@ -220,7 +220,7 @@ int cms_job_fetchLogs(struct SessionJob* jobInfo, char* sessionToken)
 			log_verbose("%s::%s(%d) : Audit Id: %ld", LOG_INF, 
                 fetchLogsConf->AuditId);
             char* log = NULL;
-            struct CommonCompleteResp* compResponse = NULL;
+            CommonCompleteResp_t* compResponse = NULL;
 
             /* pull the last 4000 characters from the log file. */
             /* (trim beginning to the first \n if necessary).   */

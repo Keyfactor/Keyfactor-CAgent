@@ -57,8 +57,8 @@
 /******************************************************************************/
 /***************************** GLOBAL VARIABLES *******************************/
 /******************************************************************************/
-struct SessionInfo SessionData;
-struct ScheduledJob* JobList;
+SessionInfo_t SessionData;
+ScheduledJob_t* JobList;
 
 /* KF v9 Adds in text capabilities */
 const char* cap_pem_inventory = "CertStores.PEM.Inventory";
@@ -321,10 +321,10 @@ static ENGINE* initialize_engine( const char *engine_id )
 /*                         job guid, where to ask for configuration, etc.     */
 /* @return job results as an integer                                          */
 /*                                                                            */ 
-int run_job(struct SessionJob* job)
+int run_job(SessionJob_t* job)
 {
 	char* chainJobId = NULL;
-	struct SessionJob* chainJob = NULL;
+	SessionJob_t* chainJob = NULL;
 	int status = 0;
 
 	if( 0 == strcasecmp(job->JobTypeId, CAP_PEM_INVENTORY) ) {
@@ -368,11 +368,11 @@ int run_job(struct SessionJob* job)
 int init_platform( int argc, char* argv[] )
 {
 	/**************************************************************************/
-	/* 1. Parse the command line parameters.                                  */
+	/* 1. Parse the command line ClientParameter_ts.                                  */
 	/**************************************************************************/
 	log_trace("%s::%s(%d) : Parsing Parameters", LOG_INF);
 	if ( 0 == parse_parameters( argc, &argv[0] ) )	{
-		printf("%s::%s(%d) : Failed to parse command line parameters\n",	LOG_INF);
+		printf("%s::%s(%d) : Failed to parse command line ClientParameter_ts\n",	LOG_INF);
 		return 0;
 	}
 
@@ -518,7 +518,7 @@ static void main_loop( void )
 		/* Get current time again to deal with immediate jobs */
 		now = time(NULL); 
 
-		struct SessionJob* job;
+		SessionJob_t* job;
 		while( NULL != (job = get_runnable_job(&JobList, now)) ) {
 			int status = run_job(job);
 			if(1 == status)	{

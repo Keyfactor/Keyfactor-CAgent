@@ -17,7 +17,7 @@
 #include "schedule.h"
 #include "config.h"
 
-int run_job(struct SessionJob* job);
+int run_job(SessionJob_t* job);
 int init_platform( int argc, char* argv[] );
 bool release_platform( void );
 #ifdef __MAKE_LIBRARY__
@@ -27,10 +27,10 @@ int KF_main( int argc, char* argv[]);
 /******************************************************************************/
 /************************* SYSTEM GLOBAL VARIABLES ****************************/
 /******************************************************************************/
-extern struct SessionInfo SessionData;
-extern struct ScheduledJob* JobList;
+extern SessionInfo_t SessionData;
+extern ScheduledJob_t* JobList;
 extern struct ConfigData* ConfigData;
-extern struct ScheduledJob* currentJob; /* Defined in schedule.c */
+extern ScheduledJob_t* currentJob; /* Defined in schedule.c */
 
 #if defined(__OPEN_SSL__)
 	extern char engine_id[21];

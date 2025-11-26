@@ -35,7 +35,7 @@
 /******************************************************************************/
 /************************ LOCAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
-static void AgentApiResult_free(struct AgentApiResult result)
+static void AgentApiResult_free(AgentApiResult_t result)
 {
 	if(result.Error.Message)
 	{
@@ -49,9 +49,9 @@ static void AgentApiResult_free(struct AgentApiResult result)
 	}
 }
 
-static struct AgentApiResult AgentApiResult_fromJsonNode(JsonNode* jsonResult)
+static AgentApiResult_t AgentApiResult_fromJsonNode(JsonNode* jsonResult)
 {
-	struct AgentApiResult result;
+	AgentApiResult_t result;
 	JsonNode* jsonError = NULL;
 	char* tempString = NULL;
 
@@ -82,7 +82,7 @@ static struct AgentApiResult AgentApiResult_fromJsonNode(JsonNode* jsonResult)
 	return result;
 }
 
-bool AgentApiResult_log(struct AgentApiResult result, 
+bool AgentApiResult_log(AgentApiResult_t result, 
 	char** pMessage, enum AgentApiResultStatus* pStatus)
 {
 	int messageLen = 20;
@@ -133,10 +133,10 @@ bool AgentApiResult_log(struct AgentApiResult result,
     }
 }
 
-static struct ClientParameter* ClientParameter_new(const char* key, 
+static ClientParameter_t* ClientParameter_new(const char* key, 
 	const char* value)
 {
-	struct ClientParameter* cp = calloc(1, sizeof(struct ClientParameter));
+	ClientParameter_t* cp = calloc(1, sizeof(ClientParameter_t));
     if (!cp) {
         log_error("%s::%s(%d) : Out of memory", LOG_INF);
         return NULL;
@@ -147,7 +147,7 @@ static struct ClientParameter* ClientParameter_new(const char* key,
 	return cp;
 }
 
-static void ClientParameter_free(struct ClientParameter* cliParam)
+static void ClientParameter_free(ClientParameter_t* cliParam)
 {
 	if(cliParam)
 	{
@@ -177,7 +177,7 @@ static void ClientParameter_free(struct ClientParameter* cliParam)
 /* @return - Success: true                                                    */
 /*           Failure: false                                                   */
 /*                                                                            */
-bool SessionRegisterReq_addNewClientParameter(struct SessionRegisterReq* req, 
+bool SessionRegisterReq_addNewClientParameter(SessionRegisterReq_t* req, 
 	const char* key, const char* value)
 {
 	bool bResult = false;
@@ -187,7 +187,7 @@ bool SessionRegisterReq_addNewClientParameter(struct SessionRegisterReq* req,
 	log_trace("%s::%s(%d) Increasing parameter count to %d",
 		LOG_INF, req->ClientParameters_count);
 	req->ClientParameters = realloc(req->ClientParameters, 
-		(req->ClientParameters_count * sizeof(struct ClientParameter*))); 
+		(req->ClientParameters_count * sizeof(ClientParameter_t*))); 
 	if ( NULL == req->ClientParameters )
 	{
 		log_error("%s::%s(%d) : Out of memory error", 
@@ -215,11 +215,11 @@ bool SessionRegisterReq_addNewClientParameter(struct SessionRegisterReq* req,
 	return bResult;
 } /* SessionRegisterReq_addNewClientParameter */
 
-struct SessionRegisterReq* SessionRegisterReq_new(char* clientParamPath)
+SessionRegisterReq_t* SessionRegisterReq_new(char* clientParamPath)
 {
 	#undef FUNCTION
 	#define FUNCTION "SessionHeartbeatReq_new-"
-	struct SessionRegisterReq* req = calloc( 1, sizeof(*req) );
+	SessionRegisterReq_t* req = calloc( 1, sizeof(*req) );
     if (!req) {
         log_error("%s::%s(%d) : Out of memory", LOG_INF);
         return NULL;
@@ -288,7 +288,7 @@ struct SessionRegisterReq* SessionRegisterReq_new(char* clientParamPath)
 	return req;
 }
 
-void SessionRegisterReq_free(struct SessionRegisterReq* req)
+void SessionRegisterReq_free(SessionRegisterReq_t* req)
 {
 	if(req)
 	{
@@ -342,7 +342,7 @@ void SessionRegisterReq_free(struct SessionRegisterReq* req)
 	}
 } /* SessionRegisterReq_free */
 
-char* SessionRegisterReq_toJson(struct SessionRegisterReq* req)
+char* SessionRegisterReq_toJson(SessionRegisterReq_t* req)
 {
 	char* jsonString = NULL;
 
@@ -432,7 +432,7 @@ char* SessionRegisterReq_toJson(struct SessionRegisterReq* req)
 }
 
 
-void SessionJob_free(struct SessionJob* job)
+void SessionJob_free(SessionJob_t* job)
 {
 	if(job)
 	{
@@ -470,7 +470,7 @@ void SessionJob_free(struct SessionJob* job)
 	}
 }
 
-void SessionRegisterResp_freeJobs(struct SessionRegisterResp* resp)
+void SessionRegisterResp_freeJobs(SessionRegisterResp_t* resp)
 {
 	int lp = 0;
 	while (lp < resp->Session.Jobs_count)
@@ -490,7 +490,7 @@ void SessionRegisterResp_freeJobs(struct SessionRegisterResp* resp)
 	return;
 }
 
-void SessionRegisterResp_free(struct SessionRegisterResp* resp)
+void SessionRegisterResp_free(SessionRegisterResp_t* resp)
 {
 	if(resp)
 	{
@@ -542,12 +542,12 @@ void SessionRegisterResp_free(struct SessionRegisterResp* resp)
 	}
 }
 
-static struct SessionJob* SessionJob_fromJsonNode(JsonNode* jsonJob)
+static SessionJob_t* SessionJob_fromJsonNode(JsonNode* jsonJob)
 {
-	struct SessionJob* job = NULL;
+	SessionJob_t* job = NULL;
 	if(jsonJob)
 	{
-		job = calloc(1, sizeof(struct SessionJob));
+		job = calloc(1, sizeof(SessionJob_t));
 		job->CompletionEndpoint = json_get_member_string(jsonJob, 
 			"CompletionEndpoint");
 		job->ConfigurationEndpoint = json_get_member_string(jsonJob, 
@@ -562,7 +562,7 @@ static struct SessionJob* SessionJob_fromJsonNode(JsonNode* jsonJob)
 	return job;
 }
 
-struct SessionRegisterResp* SessionRegisterResp_fromJson(char* jsonString)
+SessionRegisterResp_t* SessionRegisterResp_fromJson(char* jsonString)
 {
 	JsonNode* jsonRoot = NULL;
 	JsonNode* jsonSession = NULL;
@@ -572,9 +572,9 @@ struct SessionRegisterResp* SessionRegisterResp_fromJson(char* jsonString)
 	int current = 0;
 	JsonNode* jsonParams = NULL;
 	JsonNode* jsonResult = NULL;
-	struct SessionRegisterResp* resp = NULL;
+	SessionRegisterResp_t* resp = NULL;
 
-	resp = calloc(1,sizeof(struct SessionRegisterResp));
+	resp = calloc(1,sizeof(SessionRegisterResp_t));
 	if ( NULL == resp )
 	{
 		log_error("%s::%s(%d) : Out of memory allocating Session Response", 
@@ -605,7 +605,7 @@ struct SessionRegisterResp* SessionRegisterResp_fromJson(char* jsonString)
 				jobCount = json_array_size(jsonJobs);
 				resp->Session.Jobs_count = jobCount;
 				resp->Session.Jobs = calloc(jobCount, 
-					sizeof(struct SessionJob*));
+					sizeof(SessionJob_t*));
 				if ( NULL == resp->Session.Jobs )
 				{
 					log_error("%s::%s(%d) : Out of memory allocating"
@@ -636,7 +636,7 @@ struct SessionRegisterResp* SessionRegisterResp_fromJson(char* jsonString)
 					}
 
 					resp->Session.ClientParameters = calloc(current, 
-						sizeof(struct ClientParameter*));
+						sizeof(ClientParameter_t*));
 					if ( NULL == resp->Session.ClientParameters )
 					{
 						log_error("%s::%s(%d) : Out of memory allocating"
@@ -679,132 +679,12 @@ struct SessionRegisterResp* SessionRegisterResp_fromJson(char* jsonString)
 	return resp;
 }
 
-#if defined(__INFINITE_AGENT__)
-struct SessionHeartbeatReq* SessionHeartbeatReq_new()
+CommonConfigReq_t* CommonConfigReq_new()
 {
-	struct SessionHeartbeatReq* req = calloc(1, 
-		sizeof(struct SessionHeartbeatReq));
-
-	req->TenantId = strdup("00000000-0000-0000-0000-000000000000");
-
-	return req;
+	return calloc(1, sizeof(CommonConfigReq_t));
 }
 
-void SessionHeartbeatReq_free(struct SessionHeartbeatReq* req)
-{
-	if(req)
-	{
-		if(req->TenantId)
-		{
-			free(req->TenantId);
-			req->TenantId = NULL;
-		}
-		if(req->ClientMachine)
-		{
-			free(req->ClientMachine);
-			req->ClientMachine = NULL;
-		}
-		if(req->SessionToken)
-		{
-			free(req->SessionToken);
-			req->SessionToken = NULL;
-		}
-		free(req);
-	}
-}
-
-char* SessionHeartbeatReq_toJson(struct SessionHeartbeatReq* req)
-{
-	char* jsonString = NULL;
-
-	if(req)
-	{
-		JsonNode* jsonRoot = json_mkobject();
-		json_append_member(jsonRoot, "AgentPlatform", 
-			json_mknumber(req->AgentPlatform));
-		if(req->TenantId)
-		{
-			json_append_member(jsonRoot, "TenantId", 
-				json_mkstring(req->TenantId));
-		}
-		else
-		{
-			json_append_member(jsonRoot, "TenantId", 
-				json_mknull());
-		}
-		if(req->ClientMachine)
-		{
-			json_append_member(jsonRoot, "ClientMachine", 
-				json_mkstring(req->ClientMachine));
-		}
-		else
-		{
-			json_append_member(jsonRoot, "ClientMachine", 
-				json_mknull());
-		}
-		if(req->SessionToken)
-		{
-			json_append_member(jsonRoot, "SessionToken", 
-				json_mkstring(req->SessionToken));
-		}
-		else
-		{
-			json_append_member(jsonRoot, "SessionToken", 
-				json_mknull());
-		}
-
-		jsonString = json_encode(jsonRoot);
-		json_delete(jsonRoot);
-	}
-
-	return jsonString;
-}
-
-void SessionHeartbeatResp_free(struct SessionHeartbeatResp* resp)
-{
-	if(resp)
-	{
-		AgentApiResult_free(resp->Result);
-		free(resp);
-	}
-}
-
-struct SessionHeartbeatResp* SessionHeartbeatResp_fromJson(char* jsonString)
-{
-	struct SessionHeartbeatResp* resp = NULL;
-	if(jsonString)
-	{
-		JsonNode* jsonRoot = json_decode(jsonString);
-		if(jsonRoot)
-		{
-			resp = calloc(1, sizeof(struct SessionHeartbeatResp));
-
-			resp->HeartbeatInterval = json_get_member_number(jsonRoot, 
-				"HeartbeatInterval", 5);
-			resp->SessionValid = json_get_member_bool(jsonRoot, 
-				"SessionValid", false);
-
-			JsonNode* jsonResult = json_find_member(jsonRoot, 
-				"Result");
-			if(jsonResult)
-			{
-				resp->Result = AgentApiResult_fromJsonNode(jsonResult);
-			}
-
-			json_delete(jsonRoot);
-		}
-	}
-
-	return resp;
-}
-#endif /* Infinite Agent is Defined */
-
-struct CommonConfigReq* CommonConfigReq_new()
-{
-	return calloc(1, sizeof(struct CommonConfigReq));
-}
-
-void CommonConfigReq_free(struct CommonConfigReq* req)
+void CommonConfigReq_free(CommonConfigReq_t* req)
 {
 	if(req)
 	{
@@ -822,7 +702,7 @@ void CommonConfigReq_free(struct CommonConfigReq* req)
 	}
 }
 
-char* CommonConfigReq_toJson(struct CommonConfigReq* req)
+char* CommonConfigReq_toJson(CommonConfigReq_t* req)
 {
 	char* jsonString = NULL;
 
@@ -854,12 +734,12 @@ char* CommonConfigReq_toJson(struct CommonConfigReq* req)
 	return jsonString;
 }
 
-struct CommonCompleteReq* CommonCompleteReq_new()
+CommonCompleteReq_t* CommonCompleteReq_new()
 {
-	return calloc(1, sizeof(struct CommonCompleteReq));
+	return calloc(1, sizeof(CommonCompleteReq_t));
 }
 
-void CommonCompleteReq_free(struct CommonCompleteReq* req)
+void CommonCompleteReq_free(CommonCompleteReq_t* req)
 {
 	if(req)
 	{
@@ -882,7 +762,7 @@ void CommonCompleteReq_free(struct CommonCompleteReq* req)
 	}
 }
 
-char* CommonCompleteReq_toJson(struct CommonCompleteReq* req)
+char* CommonCompleteReq_toJson(CommonCompleteReq_t* req)
 {
 	char* jsonString = NULL;
 
@@ -928,7 +808,7 @@ char* CommonCompleteReq_toJson(struct CommonCompleteReq* req)
 	return jsonString;
 }
 
-void CommonCompleteResp_free(struct CommonCompleteResp* resp)
+void CommonCompleteResp_free(CommonCompleteResp_t* resp)
 {
 	if(resp)
 	{
@@ -937,15 +817,15 @@ void CommonCompleteResp_free(struct CommonCompleteResp* resp)
 	}
 }
 
-struct CommonCompleteResp* CommonCompleteResp_fromJson(char* jsonString)
+CommonCompleteResp_t* CommonCompleteResp_fromJson(char* jsonString)
 {
-	struct CommonCompleteResp* resp = NULL;
+	CommonCompleteResp_t* resp = NULL;
 	if(jsonString)
 	{
 		JsonNode* jsonRoot = json_decode(jsonString);
 		if(jsonRoot)
 		{
-			resp = calloc(1, sizeof(struct CommonCompleteResp));
+			resp = calloc(1, sizeof(CommonCompleteResp_t));
 
 			JsonNode* jsonResult = json_find_member(jsonRoot, "Result");
 			if(jsonResult)
@@ -960,7 +840,7 @@ struct CommonCompleteResp* CommonCompleteResp_fromJson(char* jsonString)
 	return resp;
 }
 
-void ManagementConfigResp_free(struct ManagementConfigResp* resp)
+void ManagementConfigResp_free(ManagementConfigResp_t* resp)
 {
 	if(resp)
 	{
@@ -1014,15 +894,15 @@ void ManagementConfigResp_free(struct ManagementConfigResp* resp)
 	}
 }
 
-struct ManagementConfigResp* ManagementConfigResp_fromJson(char* jsonString)
+ManagementConfigResp_t* ManagementConfigResp_fromJson(char* jsonString)
 {
-	struct ManagementConfigResp* resp = NULL;
+	ManagementConfigResp_t* resp = NULL;
 	if(jsonString)
 	{
 		JsonNode* jsonRoot = json_decode(jsonString);
 		if(jsonRoot)
 		{
-			resp = calloc(1, sizeof(struct ManagementConfigResp));
+			resp = calloc(1, sizeof(ManagementConfigResp_t));
 
 			resp->AuditId = json_get_member_number(jsonRoot, "AuditId", 0);
 			resp->JobCancelled = 
@@ -1082,7 +962,7 @@ struct ManagementConfigResp* ManagementConfigResp_fromJson(char* jsonString)
 	return resp;
 }
 
-void ManagementCompleteResp_free(struct ManagementCompleteResp* resp)
+void ManagementCompleteResp_free(ManagementCompleteResp_t* resp)
 {
 	if(resp)
 	{
@@ -1098,15 +978,15 @@ void ManagementCompleteResp_free(struct ManagementCompleteResp* resp)
 	}
 }
 
-struct ManagementCompleteResp* ManagementCompleteResp_fromJson(char* jsonString)
+ManagementCompleteResp_t* ManagementCompleteResp_fromJson(char* jsonString)
 {
-	struct ManagementCompleteResp* resp = NULL;
+	ManagementCompleteResp_t* resp = NULL;
 	if(jsonString)
 	{
 		JsonNode* jsonRoot = json_decode(jsonString);
 		if(jsonRoot)
 		{
-			resp = calloc(1, sizeof(struct ManagementCompleteResp));
+			resp = calloc(1, sizeof(ManagementCompleteResp_t));
 
 			JsonNode* jsonResult = json_find_member(jsonRoot, "Result");
 			if(jsonResult)
@@ -1124,7 +1004,7 @@ struct ManagementCompleteResp* ManagementCompleteResp_fromJson(char* jsonString)
 	return resp;
 }
 
-static void InventoryCurrentItem_free(struct InventoryCurrentItem* item)
+static void InventoryCurrentItem_free(InventoryCurrentItem_t* item)
 {
 	if(item)
 	{
@@ -1147,14 +1027,14 @@ static void InventoryCurrentItem_free(struct InventoryCurrentItem* item)
 	}
 }
 
-static struct InventoryCurrentItem* 
+static InventoryCurrentItem_t* 
 	InventoryCurrentItem_fromJsonNode(JsonNode* node)
 {
-	struct InventoryCurrentItem* result = NULL;
+	InventoryCurrentItem_t* result = NULL;
 
 	if(node)
 	{
-		result = calloc(1, sizeof(struct InventoryCurrentItem));
+		result = calloc(1, sizeof(InventoryCurrentItem_t));
 
 		result->Alias = json_get_member_string(node, "Alias");
 		result->PrivateKeyEntry = 
@@ -1179,7 +1059,7 @@ static struct InventoryCurrentItem*
 	return result;
 }
 
-void InventoryConfigResp_free(struct InventoryConfigResp* resp)
+void InventoryConfigResp_free(InventoryConfigResp_t* resp)
 {
 	if(resp)
 	{
@@ -1218,15 +1098,15 @@ void InventoryConfigResp_free(struct InventoryConfigResp* resp)
 	}
 }
 
-struct InventoryConfigResp* InventoryConfigResp_fromJson(char* jsonString)
+InventoryConfigResp_t* InventoryConfigResp_fromJson(char* jsonString)
 {
-	struct InventoryConfigResp* resp = NULL;
+	InventoryConfigResp_t* resp = NULL;
 	if(jsonString)
 	{
 		JsonNode* jsonRoot = json_decode(jsonString);
 		if(jsonRoot)
 		{
-			resp = calloc(1, sizeof(struct InventoryConfigResp));
+			resp = calloc(1, sizeof(InventoryConfigResp_t));
 
 			resp->AuditId = json_get_member_number(jsonRoot, "AuditId", 0);
 			resp->JobCancelled = 
@@ -1257,7 +1137,7 @@ struct InventoryConfigResp* InventoryConfigResp_fromJson(char* jsonString)
 					int invCount = json_array_size(jsonInv);
 					resp->Job.Inventory_count = invCount;
 					resp->Job.Inventory = calloc(invCount, 
-							sizeof(struct InventoryCurrentItem*));
+							sizeof(InventoryCurrentItem_t*));
 
 					JsonNode* jsonTmp;
 					int current = 0;
@@ -1276,7 +1156,7 @@ struct InventoryConfigResp* InventoryConfigResp_fromJson(char* jsonString)
 	return resp;
 }
 
-static void InventoryUpdateItem_free(struct InventoryUpdateItem* item)
+static void InventoryUpdateItem_free(InventoryUpdateItem_t* item)
 {
 	if(item)
 	{
@@ -1300,7 +1180,7 @@ static void InventoryUpdateItem_free(struct InventoryUpdateItem* item)
 }
 
 static JsonNode* 
-	InventoryUpdateItem_toJsonNode(struct InventoryUpdateItem* updateItem)
+	InventoryUpdateItem_toJsonNode(InventoryUpdateItem_t* updateItem)
 {
 	JsonNode* result = NULL;
 
@@ -1338,7 +1218,7 @@ static JsonNode*
 	return result;
 }
 
-void InventoryUpdateReq_free(struct InventoryUpdateReq* req)
+void InventoryUpdateReq_free(InventoryUpdateReq_t* req)
 {
 	if(req)
 	{
@@ -1362,7 +1242,7 @@ void InventoryUpdateReq_free(struct InventoryUpdateReq* req)
 	}
 }
 
-char* InventoryUpdateReq_toJson(struct InventoryUpdateReq* req)
+char* InventoryUpdateReq_toJson(InventoryUpdateReq_t* req)
 {
 	char* jsonString = NULL;
 
@@ -1403,7 +1283,7 @@ char* InventoryUpdateReq_toJson(struct InventoryUpdateReq* req)
 	return jsonString;
 }
 
-void InventoryUpdateResp_free(struct InventoryUpdateResp* resp)
+void InventoryUpdateResp_free(InventoryUpdateResp_t* resp)
 {
 	if(resp)
 	{
@@ -1412,15 +1292,15 @@ void InventoryUpdateResp_free(struct InventoryUpdateResp* resp)
 	}
 }
 
-struct InventoryUpdateResp* InventoryUpdateResp_fromJson(char* jsonString)
+InventoryUpdateResp_t* InventoryUpdateResp_fromJson(char* jsonString)
 {
-	struct InventoryUpdateResp* resp = NULL;
+	InventoryUpdateResp_t* resp = NULL;
 	if(jsonString)
 	{
 		JsonNode* jsonRoot = json_decode(jsonString);
 		if(jsonRoot)
 		{
-			resp = calloc(1, sizeof(struct InventoryUpdateResp));
+			resp = calloc(1, sizeof(InventoryUpdateResp_t));
 
 			JsonNode* jsonResult = json_find_member(jsonRoot, "Result");
 			if(jsonResult)
@@ -1435,7 +1315,7 @@ struct InventoryUpdateResp* InventoryUpdateResp_fromJson(char* jsonString)
 	return resp;
 }
 
-void EnrollmentConfigResp_free(struct EnrollmentConfigResp* resp)
+void EnrollmentConfigResp_free(EnrollmentConfigResp_t* resp)
 {
 	if(resp)
 	{
@@ -1490,15 +1370,15 @@ void EnrollmentConfigResp_free(struct EnrollmentConfigResp* resp)
 	}
 }
 
-struct EnrollmentConfigResp* EnrollmentConfigResp_fromJson(char* jsonString)
+EnrollmentConfigResp_t* EnrollmentConfigResp_fromJson(char* jsonString)
 {
-	struct EnrollmentConfigResp* resp = NULL;
+	EnrollmentConfigResp_t* resp = NULL;
 	if(jsonString)
 	{
 		JsonNode* jsonRoot = json_decode(jsonString);
 		if(jsonRoot)
 		{
-			resp = calloc(1, sizeof(struct EnrollmentConfigResp));
+			resp = calloc(1, sizeof(EnrollmentConfigResp_t));
 
 			JsonNode* jsonResult = json_find_member(jsonRoot, "Result");
 			if(jsonResult)
@@ -1582,7 +1462,7 @@ struct EnrollmentConfigResp* EnrollmentConfigResp_fromJson(char* jsonString)
 	return resp;
 }
 
-void EnrollmentEnrollReq_free(struct EnrollmentEnrollReq* req)
+void EnrollmentEnrollReq_free(EnrollmentEnrollReq_t* req)
 {
 	if(req)
 	{
@@ -1608,7 +1488,7 @@ void EnrollmentEnrollReq_free(struct EnrollmentEnrollReq* req)
 	}
 }
 
-char* EnrollmentEnrollReq_toJson(struct EnrollmentEnrollReq* req)
+char* EnrollmentEnrollReq_toJson(EnrollmentEnrollReq_t* req)
 {
 	char* jsonString = NULL;
 
@@ -1650,7 +1530,7 @@ char* EnrollmentEnrollReq_toJson(struct EnrollmentEnrollReq* req)
 	return jsonString;
 }
 
-void EnrollmentEnrollResp_free(struct EnrollmentEnrollResp* resp)
+void EnrollmentEnrollResp_free(EnrollmentEnrollResp_t* resp)
 {
 	if(resp)
 	{
@@ -1666,15 +1546,15 @@ void EnrollmentEnrollResp_free(struct EnrollmentEnrollResp* resp)
 	}
 }
 
-struct EnrollmentEnrollResp* EnrollmentEnrollResp_fromJson(char* jsonString)
+EnrollmentEnrollResp_t* EnrollmentEnrollResp_fromJson(char* jsonString)
 {
-	struct EnrollmentEnrollResp* resp = NULL;
+	EnrollmentEnrollResp_t* resp = NULL;
 	if(jsonString)
 	{
 		JsonNode* jsonRoot = json_decode(jsonString);
 		if(jsonRoot)
 		{
-			resp = calloc(1, sizeof(struct EnrollmentEnrollResp));
+			resp = calloc(1, sizeof(EnrollmentEnrollResp_t));
 
 			JsonNode* jsonResult = json_find_member(jsonRoot, "Result");
 			if(jsonResult)
@@ -1691,7 +1571,7 @@ struct EnrollmentEnrollResp* EnrollmentEnrollResp_fromJson(char* jsonString)
 	return resp;
 }
 
-void EnrollmentCompleteResp_free(struct EnrollmentCompleteResp* resp)
+void EnrollmentCompleteResp_free(EnrollmentCompleteResp_t* resp)
 {
 	if(resp)
 	{
@@ -1707,15 +1587,15 @@ void EnrollmentCompleteResp_free(struct EnrollmentCompleteResp* resp)
 	}
 }
 
-struct EnrollmentCompleteResp* EnrollmentCompleteResp_fromJson(char* jsonString)
+EnrollmentCompleteResp_t* EnrollmentCompleteResp_fromJson(char* jsonString)
 {
-	struct EnrollmentCompleteResp* resp = NULL;
+	EnrollmentCompleteResp_t* resp = NULL;
 	if(jsonString)
 	{
 		JsonNode* jsonRoot = json_decode(jsonString);
 		if(jsonRoot)
 		{
-			resp = calloc(1, sizeof(struct EnrollmentCompleteResp));
+			resp = calloc(1, sizeof(EnrollmentCompleteResp_t));
 
 			JsonNode* jsonResult = json_find_member(jsonRoot, "Result");
 			if(jsonResult)
@@ -1733,7 +1613,7 @@ struct EnrollmentCompleteResp* EnrollmentCompleteResp_fromJson(char* jsonString)
 	return resp;
 }
 
-void FetchLogsConfigResp_free(struct FetchLogsConfigResp* resp)
+void FetchLogsConfigResp_free(FetchLogsConfigResp_t* resp)
 {
     if(resp){
         AgentApiResult_free(resp->Result);
@@ -1742,18 +1622,18 @@ void FetchLogsConfigResp_free(struct FetchLogsConfigResp* resp)
     }
 }
 
-struct FetchLogsConfigResp* FetchLogsConfigResp_fromJson(char* jsonString)
+FetchLogsConfigResp_t* FetchLogsConfigResp_fromJson(char* jsonString)
 {
     log_verbose("%s::%s(%d) : jsonString: %s", 
     	LOG_INF, jsonString);
-    struct FetchLogsConfigResp* resp = NULL;
+    FetchLogsConfigResp_t* resp = NULL;
 
     if(jsonString)
     {
         JsonNode* jsonRoot = json_decode(jsonString);
         if(jsonRoot)
         {
-            resp = calloc(1, sizeof(struct FetchLogsConfigResp));
+            resp = calloc(1, sizeof(FetchLogsConfigResp_t));
 
             JsonNode* jsonResult = json_find_member(jsonRoot, "Result");
             if(jsonResult)
@@ -1773,7 +1653,7 @@ struct FetchLogsConfigResp* FetchLogsConfigResp_fromJson(char* jsonString)
     return resp;
 }
 
-void FetchLogsCompleteReq_free(struct FetchLogsCompleteReq* req)
+void FetchLogsCompleteReq_free(FetchLogsCompleteReq_t* req)
 {
     if(req)
     {
@@ -1801,7 +1681,7 @@ void FetchLogsCompleteReq_free(struct FetchLogsCompleteReq* req)
     }
 }
 
-char* FetchLogsCompleteReq_toJson(struct FetchLogsCompleteReq* req)
+char* FetchLogsCompleteReq_toJson(FetchLogsCompleteReq_t* req)
 {
     char* jsonString = NULL;
 
@@ -1856,9 +1736,9 @@ char* FetchLogsCompleteReq_toJson(struct FetchLogsCompleteReq* req)
     return jsonString;
 }
 
-struct FetchLogsCompleteReq* FetchLogsCompleteReq_new()
+FetchLogsCompleteReq_t* FetchLogsCompleteReq_new()
 {
-	return calloc(1, sizeof(struct FetchLogsCompleteReq));
+	return calloc(1, sizeof(FetchLogsCompleteReq_t));
 }
 /******************************************************************************/
 /******************************* END OF FILE **********************************/

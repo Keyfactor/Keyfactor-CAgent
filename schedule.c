@@ -24,7 +24,7 @@
 /******************************************************************************/
 /************************ LOCAL GLOBAL STRUCTURES *****************************/
 /******************************************************************************/
-struct ScheduledJob* currentJob; /* Defined in schedule.c */
+ScheduledJob_t* currentJob; /* Defined in schedule.c */
 
 /******************************************************************************/
 /************************* LOCAL GLOBAL VARIABLES *****************************/
@@ -367,9 +367,9 @@ time_t next_execution(char* sch, time_t prev)
 /* @return - NULL if no jobs are runnable                                     */
 /*         - The SessionJob* to the job to execute                            */
 /*                                                                            */
-struct SessionJob* get_runnable_job(struct ScheduledJob** pList, time_t now)
+SessionJob_t* get_runnable_job(ScheduledJob_t** pList, time_t now)
 {
-	struct ScheduledJob* current = *pList;
+	ScheduledJob_t* current = *pList;
 
 	while(current)
 	{
@@ -395,9 +395,9 @@ struct SessionJob* get_runnable_job(struct ScheduledJob** pList, time_t now)
 /* @return - success : a pointer to the found job                             */
 /*           failure : NULL                                                   */
 /*                                                                            */
-struct SessionJob* get_job_by_id(struct ScheduledJob** pList, const char* jobId)
+SessionJob_t* get_job_by_id(ScheduledJob_t** pList, const char* jobId)
 {
-	struct ScheduledJob* current = *pList;
+	ScheduledJob_t* current = *pList;
 
 	while(current)
 	{
@@ -419,13 +419,13 @@ struct SessionJob* get_job_by_id(struct ScheduledJob** pList, const char* jobId)
 /* @param  - [Input/Ouput] pList = A list of scheduled jobs                   */
 /* @return - none                                                             */
 /*                                                                            */
-void clear_job_schedules(struct ScheduledJob** pList)
+void clear_job_schedules(ScheduledJob_t** pList)
 {
-	struct ScheduledJob* current = *pList;
+	ScheduledJob_t* current = *pList;
 
 	while(current)
 	{
-		struct ScheduledJob* temp = current->NextJob;
+		ScheduledJob_t* temp = current->NextJob;
 
 		if ( current->Job ) 
 		{
@@ -449,10 +449,10 @@ void clear_job_schedules(struct ScheduledJob** pList)
 /* @param  - [Input] prev = the timestamp of the previous job run             */
 /* @return - none                                                             */
 /*                                                                            */
-void schedule_job(struct ScheduledJob** pList, struct SessionJob* job, 
+void schedule_job(ScheduledJob_t** pList, SessionJob_t* job, 
 	time_t prev)
 {
-	struct ScheduledJob* newSchJob = calloc(1, sizeof(struct ScheduledJob));
+	ScheduledJob_t* newSchJob = calloc(1, sizeof(ScheduledJob_t));
 	if ( !newSchJob )
 	{
 		log_error("%s::%s(%d) : Out of memory", LOG_INF);
@@ -468,8 +468,8 @@ void schedule_job(struct ScheduledJob** pList, struct SessionJob* job,
 	}
 	else
 	{
-		struct ScheduledJob* prev = NULL;
-		struct ScheduledJob* current = *pList;
+		ScheduledJob_t* prev = NULL;
+		ScheduledJob_t* current = *pList;
 
 		/* Go through the list of jobs & update that job if it is already */
 		/* In the list of jobs, if not, add the job to the end of the list */

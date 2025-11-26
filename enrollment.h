@@ -18,7 +18,7 @@
 
 #define RSA_DEFAULT_EXP 65537
 
-int cms_job_enroll(struct SessionJob* jobInfo, char* sessionToken, 
+int cms_job_enroll(SessionJob_t* jobInfo, char* sessionToken, 
 	char** chainJob);
 
 #endif /* ENROLLMENT_H_ */

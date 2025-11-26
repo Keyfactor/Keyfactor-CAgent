@@ -18,21 +18,24 @@
 #include "config.h"
 #include "schedule.h"
 
-struct SessionInfo
-{
+#define CERT_SIZE  (1024 * 8)
+
+typedef struct {
 	char Token[GUID_SIZE];
 	char AgentId[GUID_SIZE];
-	time_t NextExecution;
-	int UnreachableCount;
+	char ClientMachine[GUID_SIZE];
+	char Certificate[CERT_SIZE];
 	int Interval;
-};
+	int UnreachableCount;
+	time_t NextExecution;
+} SessionInfo_t;
 
-int register_session(struct SessionInfo* session, 
-	struct ScheduledJob** pJobList, uint64_t agentVersion);
+int register_session(SessionInfo_t* session, 
+	ScheduledJob_t** pJobList, uint64_t agentVersion);
 
 #if defined(__INFINITE_AGENT__)
-int heartbeat_session(struct SessionInfo* session, 
-	struct ScheduledJob** pJobList, uint64_t agentVersion);
+int heartbeat_session(SessionInfo_t* session, 
+	ScheduledJob_t** pJobList, uint64_t agentVersion);
 #endif
 
 #endif /* CSS_SESSION_H */

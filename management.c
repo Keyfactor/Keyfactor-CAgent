@@ -59,12 +59,12 @@
 /*           failure : an HTTP response code                                  */
 /*                                                                            */
 static int get_management_config(const char* sessionToken, const char* jobId, 
-	const char* endpoint, struct ManagementConfigResp** pManConf)
+	const char* endpoint, ManagementConfigResp_t** pManConf)
 {
 	char* url = NULL;
 
 	log_verbose("%s::%s(%d) : Sending management config request: %s", LOG_INF, jobId);
-	struct CommonConfigReq* req = CommonConfigReq_new();
+	CommonConfigReq_t* req = CommonConfigReq_new();
     if (!req) {
         log_error("%s::%s(%d) : Error creating new request structure", LOG_INF);
         return 999;
@@ -107,13 +107,13 @@ static int get_management_config(const char* sessionToken, const char* jobId,
 /*                                                                            */
 static int send_management_job_complete(const char* sessionToken, 
 	const char* jobId, const char* endpoint, int jobStatus, long auditId, 
-	const char* message, struct ManagementCompleteResp** pManComp)
+	const char* message, ManagementCompleteResp_t** pManComp)
 {
 	char* url = NULL;
 
 	log_verbose("%s::%s(%d) : Sending management complete request: %ld "
 		"for session: %s", LOG_INF, auditId, sessionToken);
-	struct CommonCompleteReq* req = CommonCompleteReq_new();
+	CommonCompleteReq_t* req = CommonCompleteReq_new();
     if (!req) {
         log_error("%s::%s(%d) : Error creating new request structure", LOG_INF);
         return 999;
@@ -335,11 +335,11 @@ static int remove_cert_from_store(const char* storePath,
 /* @return - job was run : 0                                                  */
 /*		   - job was canceled : 1                                             */
 /*                                                                            */
-int cms_job_manage(struct SessionJob* jobInfo, char* sessionToken, 
+int cms_job_manage(SessionJob_t* jobInfo, char* sessionToken, 
 	char** chainJob)
 {
 	int res = 0;
-	struct ManagementConfigResp* manConf = NULL;
+	ManagementConfigResp_t* manConf = NULL;
 	char* statusMessage = strdup("");
 	enum AgentApiResultStatus status = STAT_UNK;
 	int returnable = 0;
@@ -394,7 +394,7 @@ int cms_job_manage(struct SessionJob* jobInfo, char* sessionToken,
 		/* if any test failed, then let the platform know about it. */
 		if (failed) 
 		{
-			struct ManagementCompleteResp* manComp = NULL;
+			ManagementCompleteResp_t* manComp = NULL;
 			send_management_job_complete(sessionToken, jobInfo->JobId, 
 				jobInfo->CompletionEndpoint, STAT_ERR, manConf->AuditId, 
 				statusMessage, &manComp);
@@ -462,7 +462,7 @@ int cms_job_manage(struct SessionJob* jobInfo, char* sessionToken,
 				break;
 			}
 
-			struct ManagementCompleteResp* manComp = NULL;
+			ManagementCompleteResp_t* manComp = NULL;
 			res = send_management_job_complete(sessionToken, 
 				jobInfo->JobId, jobInfo->CompletionEndpoint, status+1, 
 				auditId, statusMessage, &manComp);

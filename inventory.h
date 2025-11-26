@@ -16,7 +16,7 @@
 #include "dto.h"
 #include "config.h"
 
-int cms_job_inventory(struct SessionJob* jobInfo, char* sessionToken);
+int cms_job_inventory(SessionJob_t* jobInfo, char* sessionToken);
 
 #endif /* __INVENTORY_H__ */
 /******************************************************************************/

@@ -16,22 +16,21 @@
 #include <time.h>
 #include "dto.h"
 
-struct ScheduledJob
-{
-	struct SessionJob* Job;
+typedef struct ScheduledJob {
+	SessionJob_t* Job;
 	time_t NextExecution;
 
 	struct ScheduledJob* NextJob;
-};
+} ScheduledJob_t;
 
-struct SessionJob* get_runnable_job(struct ScheduledJob** pList, time_t now);
+SessionJob_t* get_runnable_job(ScheduledJob_t** pList, time_t now);
 
-struct SessionJob* get_job_by_id(struct ScheduledJob** pList, 
+SessionJob_t* get_job_by_id(ScheduledJob_t** pList, 
 	const char* jobId);
 
-void clear_job_schedules(struct ScheduledJob** pList);
+void clear_job_schedules(ScheduledJob_t** pList);
 
-void schedule_job(struct ScheduledJob** pList, struct SessionJob* job, 
+void schedule_job(ScheduledJob_t** pList, SessionJob_t* job, 
 	time_t prev);
 
 time_t next_execution(char* sch, time_t prev);

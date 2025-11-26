@@ -15,7 +15,7 @@
 #include "dto.h"
 #include "config.h"
 
-int cms_job_manage(struct SessionJob* jobInfo, char* sessionToken, 
+int cms_job_manage(SessionJob_t* jobInfo, char* sessionToken, 
 	char** chainJob);
 
 #endif

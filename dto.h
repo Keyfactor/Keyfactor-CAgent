@@ -18,8 +18,7 @@
 #include "constants.h"
 
 
-struct AgentApiResult
-{
+typedef struct {
 	enum AgentApiResultStatus Status;
 	struct 
 	{
@@ -27,16 +26,14 @@ struct AgentApiResult
 		char* Message;
 		char* CodeString;
 	} Error;
-};
+} AgentApiResult_t;
 
-struct ClientParameter
-{
+typedef struct {
 	char* Key;
 	char* Value;
-};
+} ClientParameter_t;
 
-struct SessionRegisterReq
-{
+typedef struct {
 	char* TenantId;
 	char* ClientMachine;
 	enum AgentPlatform AgentPlatform;
@@ -44,13 +41,12 @@ struct SessionRegisterReq
 	int Capabilities_count;
 	uint64_t AgentVersion;
 	char* AgentId;
-	struct ClientParameter** ClientParameters;
+	ClientParameter_t** ClientParameters;
 	int ClientParameters_count;
 	char* CSR;
-};
+} SessionRegisterReq_t;
 
-struct SessionJob
-{
+typedef struct {
 	char* JobTypeId;
 	char* JobId;
 	char* ConfigurationEndpoint;
@@ -58,67 +54,45 @@ struct SessionJob
 	char* Cron;
 	char* Schedule;
 	int Priority;
-};
+} SessionJob_t;
 
-struct SessionRegisterResp
-{
-	struct AgentApiResult Result;
+typedef struct {
+	AgentApiResult_t Result;
 	struct 
 	{
 		char* Token;
 		char* AgentId;
 		int HeartbeatInterval;
-		struct SessionJob** Jobs;
+		SessionJob_t** Jobs;
 		int Jobs_count;
-		struct ClientParameter** ClientParameters;
+		ClientParameter_t** ClientParameters;
 		int ClientParameters_count;
 		char* ClientMachine;
 		char* Certificate;
 	} Session;
-};
+} SessionRegisterResp_t;
 
-#if defined(__INFINITE_AGENT__)
-struct SessionHeartbeatReq
-{
-	char* SessionToken;
-	char* TenantId;
-	char* ClientMachine;
-	enum AgentPlatform AgentPlatform;
-};
-
-struct SessionHeartbeatResp
-{
-	struct AgentApiResult Result;
-	int HeartbeatInterval;
-	bool SessionValid;
-};
-#endif /* Infinite Agent */
-
-struct CommonConfigReq
-{
+typedef struct {
 	char* SessionToken;
 	char* JobId;
-};
+} CommonConfigReq_t;
 
-struct CommonCompleteReq
-{
+typedef struct {
 	char* SessionToken;
 	char* JobId;
 	enum JobCompleteStatus Status;
 	uint64_t AuditId;
 	char* Message;
-};
+} CommonCompleteReq_t;
 
-struct CommonCompleteResp
-{
-	struct AgentApiResult Result;
-};
+typedef struct {
+	AgentApiResult_t Result;
+} CommonCompleteResp_t;
 
-struct ManagementConfigResp
-{
+typedef struct {
 	uint64_t AuditId;
 	bool JobCancelled;
-	struct AgentApiResult Result;
+	AgentApiResult_t Result;
 	struct 
 	{
 		enum OperationType OperationType;
@@ -136,72 +110,64 @@ struct ManagementConfigResp
 		bool Overwrite;
 		char* PrivateKeyPath;
 	} Job;
-};
+} ManagementConfigResp_t;
 
-struct ManagementCompleteResp
-{
-	struct AgentApiResult Result;
+typedef struct {
+	AgentApiResult_t Result;
 	char* InventoryJob;
-};
+} ManagementCompleteResp_t;
 
-struct InventoryCurrentItem
-{
+typedef struct {
 	char* Alias;
 	bool PrivateKeyEntry;
 	char** Thumbprints;
 	int Thumbprints_count;
-};
+} InventoryCurrentItem_t;
 
-struct InventoryConfigResp
-{
+typedef struct {
 	char* InventoryEndpoint;
 	uint64_t AuditId;
 	bool JobCancelled;
-	struct AgentApiResult Result;
+	AgentApiResult_t Result;
 	struct 
 	{
 		char* ClientMachine;
 		char* StorePath;
 		char* StorePassword;
 		int Category;
-		struct InventoryCurrentItem** Inventory;
+		InventoryCurrentItem_t** Inventory;
 		int Inventory_count;
 	} Job;
-};
+} InventoryConfigResp_t;
 
-struct InventoryUpdateItem
-{
+typedef struct {
 	char* Alias;
 	bool PrivateKeyEntry;
 	int ItemStatus;
 	bool UseChainLevel;
 	char** Certificates;
 	int Certificates_count;
-};
+} InventoryUpdateItem_t;
 
-struct InventoryUpdateList
-{
+typedef struct {
 	int count;
-	struct InventoryUpdateItem** items;
-};
+	InventoryUpdateItem_t** items;
+} InventoryUpdateList_t;
 
-struct InventoryUpdateReq
-{
+typedef struct {
 	char* SessionToken;
 	char* JobId;
-	struct InventoryUpdateList Inventory;
-};
+	InventoryUpdateList_t Inventory;
+} InventoryUpdateReq_t;
 
-struct InventoryUpdateResp
-{
-	struct AgentApiResult Result;
-};
+typedef struct {
+	AgentApiResult_t Result;
+} InventoryUpdateResp_t;
 
-struct EnrollmentConfigResp
-{
+typedef struct {
 	uint64_t AuditId;
 	bool JobCancelled;
-	struct AgentApiResult Result;
+	AgentApiResult_t Result;
 	char* Entropy;
 	int KeySize;
 	char* KeyType;
@@ -212,138 +178,120 @@ struct EnrollmentConfigResp
 	char* EnrollEndpoint;
 	char* PrivateKeyPath;
 	char* Properties;
-};
+} EnrollmentConfigResp_t;
 
-struct EnrollmentEnrollReq
-{
+typedef struct {
 	char* SessionToken;
 	char* JobId;
 	char* CSRText;
-};
+} EnrollmentEnrollReq_t;
 
-struct EnrollmentEnrollResp
-{
-	struct AgentApiResult Result;
+typedef struct {
+	AgentApiResult_t Result;
 	char* Certificate;
-};
+} EnrollmentEnrollResp_t;
 
-struct EnrollmentCompleteResp
-{
-	struct AgentApiResult Result;
+typedef struct {
+	AgentApiResult_t Result;
 	char* InventoryJob;
-};
+} EnrollmentCompleteResp_t;
 
-struct FetchLogsConfigResp
-{
+typedef struct {
 	int64_t AuditId;
 	bool JobCancelled;
-	struct AgentApiResult Result;
+	AgentApiResult_t Result;
 	int32_t MaxCharactersToReturn;
-};
+} FetchLogsConfigResp_t;
 
-struct FetchLogsCompleteReq
-{
-	char* Log;
-	
-	char* SessionToken;
-	char* JobId;
-	enum JobCompleteStatus Status;
-	uint64_t AuditId;
-	char* Message;
-};
+typedef struct {
+  char* Log;
+  char* SessionToken;
+  char* JobId;
+  enum JobCompleteStatus Status;
+  uint64_t AuditId;
+  char* Message;
+} FetchLogsCompleteReq_t;
 
-bool AgentApiResult_log(struct AgentApiResult result, char** pMessage, \
+bool AgentApiResult_log(AgentApiResult_t result, char** pMessage, \
 	enum AgentApiResultStatus* pStatus);
 
-struct SessionRegisterReq* SessionRegisterReq_new(char* clientParamPath);
+SessionRegisterReq_t* SessionRegisterReq_new(char* clientParamPath);
 
-void SessionRegisterReq_free(struct SessionRegisterReq* req);
+void SessionRegisterReq_free(SessionRegisterReq_t* req);
 
-char* SessionRegisterReq_toJson(struct SessionRegisterReq* req);
+char* SessionRegisterReq_toJson(SessionRegisterReq_t* req);
 
-void SessionRegisterResp_free(struct SessionRegisterResp* resp);
+void SessionRegisterResp_free(SessionRegisterResp_t* resp);
 
-struct SessionRegisterResp* SessionRegisterResp_fromJson(char* jsonString);
+SessionRegisterResp_t* SessionRegisterResp_fromJson(char* jsonString);
 
-void SessionRegisterResp_freeJobs(struct SessionRegisterResp*);
+void SessionRegisterResp_freeJobs(SessionRegisterResp_t*);
 
-void SessionJob_free(struct SessionJob* job);
+void SessionJob_free(SessionJob_t* job);
 
-#if defined(__INFINITE_AGENT__)
-struct SessionHeartbeatReq* SessionHeartbeatReq_new();
+CommonConfigReq_t* CommonConfigReq_new();
 
-void SessionHeartbeatReq_free(struct SessionHeartbeatReq* req);
+void CommonConfigReq_free(CommonConfigReq_t* req);
 
-char* SessionHeartbeatReq_toJson(struct SessionHeartbeatReq* req);
+char* CommonConfigReq_toJson(CommonConfigReq_t* req);
 
-void SessionHeartbeatResp_free(struct SessionHeartbeatResp* resp);
+CommonCompleteReq_t* CommonCompleteReq_new();
 
-struct SessionHeartbeatResp* SessionHeartbeatResp_fromJson(char* jsonString);
-#endif /* Infinite Agent */
+void CommonCompleteReq_free(CommonCompleteReq_t* req);
 
-struct CommonConfigReq* CommonConfigReq_new();
+char* CommonCompleteReq_toJson(CommonCompleteReq_t* req);
 
-void CommonConfigReq_free(struct CommonConfigReq* req);
+void CommonCompleteResp_free(CommonCompleteResp_t* resp);
 
-char* CommonConfigReq_toJson(struct CommonConfigReq* req);
+CommonCompleteResp_t* CommonCompleteResp_fromJson(char* jsonString);
 
-struct CommonCompleteReq* CommonCompleteReq_new();
+void ManagementConfigResp_free(ManagementConfigResp_t* resp);
 
-void CommonCompleteReq_free(struct CommonCompleteReq* req);
+ManagementConfigResp_t* ManagementConfigResp_fromJson(char* jsonString);
 
-char* CommonCompleteReq_toJson(struct CommonCompleteReq* req);
+void ManagementCompleteResp_free(ManagementCompleteResp_t* resp);
 
-void CommonCompleteResp_free(struct CommonCompleteResp* resp);
+ManagementCompleteResp_t* ManagementCompleteResp_fromJson(char* jsonString);
 
-struct CommonCompleteResp* CommonCompleteResp_fromJson(char* jsonString);
+void InventoryConfigResp_free(InventoryConfigResp_t* resp);
 
-void ManagementConfigResp_free(struct ManagementConfigResp* resp);
+InventoryConfigResp_t* InventoryConfigResp_fromJson(char* jsonString);
 
-struct ManagementConfigResp* ManagementConfigResp_fromJson(char* jsonString);
+void InventoryUpdateReq_free(InventoryUpdateReq_t* req);
 
-void ManagementCompleteResp_free(struct ManagementCompleteResp* resp);
+char* InventoryUpdateReq_toJson(InventoryUpdateReq_t* req);
 
-struct ManagementCompleteResp* ManagementCompleteResp_fromJson(char* jsonString);
+void InventoryUpdateResp_free(InventoryUpdateResp_t* resp);
 
-void InventoryConfigResp_free(struct InventoryConfigResp* resp);
+InventoryUpdateResp_t* InventoryUpdateResp_fromJson(char* jsonString);
 
-struct InventoryConfigResp* InventoryConfigResp_fromJson(char* jsonString);
+void EnrollmentConfigResp_free(EnrollmentConfigResp_t* resp);
 
-void InventoryUpdateReq_free(struct InventoryUpdateReq* req);
+EnrollmentConfigResp_t* EnrollmentConfigResp_fromJson(char* jsonString);
 
-char* InventoryUpdateReq_toJson(struct InventoryUpdateReq* req);
+void EnrollmentEnrollReq_free(EnrollmentEnrollReq_t* req);
 
-void InventoryUpdateResp_free(struct InventoryUpdateResp* resp);
+char* EnrollmentEnrollReq_toJson(EnrollmentEnrollReq_t* req);
 
-struct InventoryUpdateResp* InventoryUpdateResp_fromJson(char* jsonString);
+void EnrollmentEnrollResp_free(EnrollmentEnrollResp_t* resp);
 
-void EnrollmentConfigResp_free(struct EnrollmentConfigResp* resp);
+EnrollmentEnrollResp_t* EnrollmentEnrollResp_fromJson(char* jsonString);
 
-struct EnrollmentConfigResp* EnrollmentConfigResp_fromJson(char* jsonString);
+void EnrollmentCompleteResp_free(EnrollmentCompleteResp_t* resp);
 
-void EnrollmentEnrollReq_free(struct EnrollmentEnrollReq* req);
+EnrollmentCompleteResp_t* EnrollmentCompleteResp_fromJson(char* jsonString);
 
-char* EnrollmentEnrollReq_toJson(struct EnrollmentEnrollReq* req);
+void FetchLogsConfigResp_free(FetchLogsConfigResp_t* req);
 
-void EnrollmentEnrollResp_free(struct EnrollmentEnrollResp* resp);
+FetchLogsConfigResp_t* FetchLogsConfigResp_fromJson(char* jsonString);
 
-struct EnrollmentEnrollResp* EnrollmentEnrollResp_fromJson(char* jsonString);
+void FetchLogsCompleteReq_free(FetchLogsCompleteReq_t* req);
 
-void EnrollmentCompleteResp_free(struct EnrollmentCompleteResp* resp);
+char* FetchLogsCompleteReq_toJson(FetchLogsCompleteReq_t* req);
 
-struct EnrollmentCompleteResp* EnrollmentCompleteResp_fromJson(char* jsonString);
+FetchLogsCompleteReq_t* FetchLogsCompleteReq_new();
 
-void FetchLogsConfigResp_free(struct FetchLogsConfigResp* req);
-
-struct FetchLogsConfigResp* FetchLogsConfigResp_fromJson(char* jsonString);
-
-void FetchLogsCompleteReq_free(struct FetchLogsCompleteReq* req);
-
-char* FetchLogsCompleteReq_toJson(struct FetchLogsCompleteReq* req);
-
-struct FetchLogsCompleteReq* FetchLogsCompleteReq_new();
-
-bool SessionRegisterReq_addNewClientParameter(struct SessionRegisterReq* req, \
+bool SessionRegisterReq_addNewClientParameter(SessionRegisterReq_t* req, \
 	const char* key, const char* value);
 
 #endif

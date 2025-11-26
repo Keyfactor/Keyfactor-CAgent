@@ -16,7 +16,7 @@
 #include "dto.h"
 #include "config.h"
 
-int cms_job_fetchLogs(struct SessionJob* jobInfo, char* sessionToken);
+int cms_job_fetchLogs(SessionJob_t* jobInfo, char* sessionToken);
 
 #endif /* KEYFACTOR_FETCHLOGS_H_ */
 /******************************************************************************/

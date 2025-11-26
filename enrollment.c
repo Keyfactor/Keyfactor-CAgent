@@ -61,12 +61,12 @@
 /* @return http response                                                      */
 /*                                                                            */
 static int get_enroll_config(const char* sessionToken, const char* jobId, 
-	const char* endpoint, struct EnrollmentConfigResp** pManConf)
+	const char* endpoint, EnrollmentConfigResp_t** pManConf)
 {
 	char* url = NULL;
 
 	log_verbose("%s::%s(%d) : Sending enrollment config request: %s", LOG_INF, jobId);
-	struct CommonConfigReq* req = CommonConfigReq_new();
+	CommonConfigReq_t* req = CommonConfigReq_new();
     if (!req) {
         log_error("%s::%s(%d) : Error creating common config request structure", LOG_INF);
         return 999;
@@ -114,12 +114,12 @@ static int get_enroll_config(const char* sessionToken, const char* jobId,
 /*                                                                            */
 static int send_enrollment(const char* sessionToken, const char* jobId, 
 	const char* endpoint, const char* csr, 
-	struct EnrollmentEnrollResp** pEnrResp)
+	EnrollmentEnrollResp_t** pEnrResp)
 {
 	char* url = NULL;
 
 	log_verbose("%s::%s(%d) : Sending enrollment request: %s", LOG_INF, jobId);
-	struct EnrollmentEnrollReq* enrReq = calloc(1, sizeof(*enrReq));
+	EnrollmentEnrollReq_t* enrReq = calloc(1, sizeof(*enrReq));
     if (!enrReq) {
         log_error("%s::%s(%d) : Error creating enrollment request", LOG_INF);
         return 999;
@@ -170,13 +170,13 @@ static int send_enrollment(const char* sessionToken, const char* jobId,
 /*                                                                            */
 static int send_enroll_job_complete(const char* sessionToken, const char* jobId,
  const char* endpoint, int jobStatus, long auditId, const char* message, 
- struct EnrollmentCompleteResp** pEnrComp)
+ EnrollmentCompleteResp_t** pEnrComp)
 {
 	char* url = NULL;
 
 	log_verbose("%s::%s(%d) : Sending enrollment complete request: %ld for"
 		" session: %s", LOG_INF, auditId, sessionToken);
-	struct CommonCompleteReq* req = CommonCompleteReq_new();
+	CommonCompleteReq_t* req = CommonCompleteReq_new();
     if (!req) {
         log_error("%s::%s(%d) : Error creating common complete request structure", LOG_INF);
         return 999;
@@ -231,12 +231,12 @@ static int send_enroll_job_complete(const char* sessionToken, const char* jobId,
 /* @return 0 if job is finished                                               */
 /*         1 if job is canceled                                               */
 /*                                                                            */
-int cms_job_enroll(struct SessionJob* jobInfo, char* sessionToken, 
+int cms_job_enroll(SessionJob_t* jobInfo, char* sessionToken, 
 	char** chainJob)
 {
 	int res = 0;
 	int returnable = 0;
-	struct EnrollmentConfigResp* enrConf = NULL;
+	EnrollmentConfigResp_t* enrConf = NULL;
 	char* statusMessage = strdup("");
 	enum AgentApiResultStatus status = STAT_UNK;
 
@@ -283,7 +283,7 @@ int cms_job_enroll(struct SessionJob* jobInfo, char* sessionToken,
 		/* Send failure to platform */
 		if (failed)
 		{
-			struct EnrollmentCompleteResp* enrComp = NULL;
+			EnrollmentCompleteResp_t* enrComp = NULL;
 			send_enroll_job_complete(sessionToken, jobInfo->JobId, 
 				jobInfo->CompletionEndpoint, STAT_ERR, enrConf->AuditId, 
 				statusMessage, &enrComp);
@@ -310,8 +310,8 @@ int cms_job_enroll(struct SessionJob* jobInfo, char* sessionToken,
 		else
 		{
 			char* csrString = NULL;
-			struct EnrollmentEnrollResp* enrResp = NULL;
-			struct EnrollmentCompleteResp* enrComp = NULL;
+			EnrollmentEnrollResp_t* enrResp = NULL;
+			EnrollmentCompleteResp_t* enrComp = NULL;
 
 			long auditId = enrConf->AuditId;
 			log_verbose("%s::%s(%d) : Audit Id: %ld", LOG_INF, auditId);
