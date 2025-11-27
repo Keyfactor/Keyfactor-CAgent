@@ -18,8 +18,7 @@
 #define MAX_CONFIG_FILE_LEN 4096 /* Config file should never be this long */
 #define DATE_TIME_LEN 14 /* YYYYMMDDHHMMSS */
 
-struct ConfigData
-{
+typedef struct {
 	char*  Hostname; /**< The hostname of the Keyfactor Platform */
 	char*  VirtualDirectory; /**< The proxy used by the Platform */
 	bool   UseSsl;           /**< true = https, false = http */
@@ -45,12 +44,12 @@ struct ConfigData
 	char*  LogFile; /**< File where agent logs are stored. */
     size_t LogFileIndex; /**< Last byte written to the log file */
 	bool   UseAgentCert; /**< true = the agent uses a cert for mTLS authentication, false = no mTLS is used */
-};
+} ConfigData_t;
 
 /******************************************************************************/
 /***************************** GLOBAL VARIABLES *******************************/
 /******************************************************************************/
-extern struct ConfigData* ConfigData;
+extern ConfigData_t* ConfigData;
 extern bool config_loaded;
 extern char* config_location;
 extern bool use_host_as_agent_name;
@@ -76,7 +75,7 @@ extern bool use_host_as_agent_name;
  * @return - success : a filled out configuration structure
  *           failure : NULL
  */
-struct ConfigData* config_decode(const char* buf);
+ConfigData_t* config_decode(const char* buf);
 
 /**
  * Load data from the configuration file into the configuration data structure
@@ -89,7 +88,7 @@ struct ConfigData* config_decode(const char* buf);
  * @param  - none
  * @return - a reference to a filled out ConfigData element
  */
-struct ConfigData* config_load( void );
+ConfigData_t* config_load( void );
 
 /**
  * Convert the configuration data structure into a json string. Call

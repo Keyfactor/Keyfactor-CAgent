@@ -16,11 +16,10 @@
 #include <time.h>
 #include "dto.h"
 
-typedef struct ScheduledJob {
+typedef struct ScheduledJob_s {
 	SessionJob_t* Job;
 	time_t NextExecution;
-
-	struct ScheduledJob* NextJob;
+	struct ScheduledJob_s* NextJob;
 } ScheduledJob_t;
 
 SessionJob_t* get_runnable_job(ScheduledJob_t** pList, time_t now);

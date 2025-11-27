@@ -36,7 +36,7 @@
 /*************************** GLOBAL VARIABLES *********************************/
 /******************************************************************************/
 bool config_loaded = false;
-struct ConfigData* ConfigData;
+ConfigData_t* ConfigData;
 char* config_location = NULL;
 bool use_host_as_agent_name = false;
 
@@ -57,7 +57,7 @@ bool use_host_as_agent_name = false;
 /* @param  - [Input] config = a pointer to the configuration data             */
 /* @return - none                                                             */
 /*                                                                            */
-static void print_config( struct ConfigData* ConfigData )
+static void print_config( ConfigData_t* ConfigData )
 {
 	printf("\n\n          AgentId = %s\n", ConfigData->AgentId);
 	printf("          AgentName = %s\n", ConfigData->AgentName);
@@ -270,7 +270,7 @@ exit:
 /* @param  - config = pointer to the configuration data structure to modify   */
 /* @return - none                                                             */
 /*                                                                            */
-static void set_agent_name( struct ConfigData* config )
+static void set_agent_name( ConfigData_t* config )
 {
 	bool bResult = false;
 
@@ -367,13 +367,13 @@ cleanup:
 /* @return - success : a filled out configuration structure                   */
 /*           failure : NULL                                                   */
 /*                                                                            */
-struct ConfigData* config_decode(const char* buf)
+ConfigData_t* config_decode(const char* buf)
 {
-	struct ConfigData* config = NULL;
+	ConfigData_t* config = NULL;
 	/* The entire configuration file is in buf, so now decode it */
 	JsonNode* jsonRoot = json_decode(buf);
 	if(jsonRoot) {
-		config = calloc(1, sizeof(struct ConfigData));
+		config = calloc(1, sizeof(ConfigData_t));
 		if ( NULL == config ) {
 			log_error("%s::%s(%d) : Out of memory! ", LOG_INF);
 			return NULL;
@@ -447,7 +447,7 @@ struct ConfigData* config_decode(const char* buf)
 /* @return - a reference to a filled out ConfigData element                   */
 /*           NULL on error                                                    */
 /*                                                                            */
-struct ConfigData* config_load( void )
+ConfigData_t* config_load( void )
 {
 	char buf[MAX_CONFIG_FILE_LEN]; 
 

@@ -29,7 +29,7 @@ int KF_main( int argc, char* argv[]);
 /******************************************************************************/
 extern SessionInfo_t SessionData;
 extern ScheduledJob_t* JobList;
-extern struct ConfigData* ConfigData;
+extern ConfigData_t* ConfigData;
 extern ScheduledJob_t* currentJob; /* Defined in schedule.c */
 
 #if defined(__OPEN_SSL__)
