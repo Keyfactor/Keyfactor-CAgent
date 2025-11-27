@@ -40,82 +40,6 @@
 /******************************************************************************/
 
 /**                                                                           */
-/*	Convert a single hex nibble 0..9..F                                       */
-/*	@param char hexStr[] = Where to store the converted hex String            */
-/*	@param int stringSize = The size of the string passed to the function     */
-/*	@param unsigned char byteData[] = the byte data to convert as a byte array*/
-/*	@param int byteSize = the size of the byte array                          */
-/*	@returns The ascii character for the hex nibble on success                */
-/*	@returns A Z character if the nibble wasn't a valid hex character         */
-/*   																		  */
-char NibbleToChar( unsigned char nibbleData )
-{
-	char retVal;
-	if ( nibbleData <= 9 ) { /* note: it is unsigned so always >= 0 */
-		retVal = 0x30 + nibbleData;
-	} else if ( nibbleData <= 15 ) {
-		/* use 0x41 if you want upper case A..F */
-		retVal = 0x61 + ( nibbleData - 10 );
-	} else {
-		retVal = 'Z'; /* Error!! */
-	}
-	return retVal;
-} /* NibbleToChar */
-
-/**                                                                           */
-/*	@brief Convert a byte array into a hex string of characters.              */
-/*	@param char hexStr[] = Where to store the converted hex String            */
-/*	@param int stringSize = The size of the string passed to the function     */
-/*	@param unsigned char byteData[] = the byte data to convert as a byte array*/
-/*	@param int byteSize = the size of the byte array                          */
-/*	@returns 0 on success, -1 on failure                                      */
-/*                                                                            */
-int byte_to_hex_string( char hexStr[], int stringSize, 
-	unsigned char byteData[], int byteSize )
-{
-	int i = 0, c = 0;
-	unsigned char lowNibble, highNibble;
-	char lowNibbleChar, highNibbleChar;
-
-	if ( stringSize < (( 2 * byteSize ) + 1) ) {
-		/* String array isn't big enough */
-		goto err; 
-	}
-
-	for ( ; byteSize > i; i++ )	{
-		lowNibble = 0x0F & byteData[i];
-		highNibble = (0xF0 & byteData[i]) >> 4;
-		lowNibbleChar = NibbleToChar( lowNibble );
-		highNibbleChar = NibbleToChar( highNibble );
-		hexStr[c++] = highNibbleChar;
-		hexStr[c++] = lowNibbleChar;
-	}
-	hexStr[c] = '\0'; /* remember to terminate the string! */
-	return 0; /* success */
-
-err:
-	return -1;
-} /* ByteToHexString */
-
-/**                                                                           */
-/*	@brief convert a string to lower case, but ignore special characters      */
-/*	@param char[] s = the string to convert                                   */
-/*	@param len = the number of characters in the string                       */
-/*	@return nothing                                                           */
-/*                                                                            */
-void to_Lower_Case( char s[], const int len)
-{
-	int i = 0;
-
-	for( ; len > i; i++ ) {
-		if ( s[i] >= 'A' && s[i] <= 'Z' ) {
-			s[i] = s[i] + 0x20;  /* shift up 32 */
-		}
-	}
-	return;
-} /* toLowerCase */
-
-/**                                                                           */
 /*	checks if a file exists already                                           */
 /*	@param const char *file = path and filename of file to check              */
 /*	@returns 0 if file does not exist, is a directory, or is a sym link,      */
@@ -348,23 +272,6 @@ int backup_file(const char* file)
 	return err;
 }
 
-int restore_file(const char* file)
-{
-	int err = 0;
-
-	if(file) {
-		char backupPath[strlen(file) + 2];
-		strcpy(backupPath, file);
-		strcat(backupPath, "~");
-
-		err = copy_file(backupPath, file);
-	} else {
-		err = EINVAL;
-	}
-
-	return err;
-}
-
 int replace_file(const char* file, const char* contents, long len, bool backup)
 {
 	int err = 0;
@@ -478,57 +385,6 @@ exit:
 	if ( beforeString )	free(beforeString);
 	return returnString;
 } /* util_strip_string */
-
-/**                                                                           */
-/* Better string concatenation vs the mess that is ANSI C                     */
-/*                                                                            */
-/* @param  - [Input] s1 = null terminated string to pre-pend                  */
-/* @param  - [Input] s2 = null terminated string to append                    */
-/* @return - failure: NULL                                                    */
-/*           success: ptr to the new string                                   */
-/*                                                                            */
-char* bstrcat(const char* s1, const char* s2)
-{
-	size_t s1Len, s2Len, i, j;
-	char* result = NULL;;
-
-	s1Len = strlen(s1);
-	s2Len = strlen(s2);
-	result = calloc(s1Len+s2Len+1, sizeof(*result));
-	if (!result)
-	{
-		log_error("%s::%s(%d) : Out of memory", LOG_INF);
-		goto exit;
-	}
-
-	i = 0;
-	while ((s1Len > i) && (*(s1 + i) != '\0')) {
-		result[i] = s1[i];
-		i++;
-	}
-	if (s1Len != i)	{
-		if ( NULL != result ) free(result); 
-		result = NULL;
-	} else {
-		j = 0;
-		while ((s2Len > j) && (*(s2 + j) != '\0')) {
-			result[i] = s2[j];
-			i++;
-			j++;
-		}
-		if (s2Len != j) {
-			if ( NULL != result ) { free(result); }
-			result = NULL;
-		}	
-	}
-
-	if ( NULL != result ) {
-		result[i] = '\0';
-	}
-
-exit:
-	return result;
-} /* bstrcat */
 
 /**                                                                           */
 /* Take two strings and merge them together.                                  */
