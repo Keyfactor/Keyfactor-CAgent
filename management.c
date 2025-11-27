@@ -54,7 +54,7 @@
 /* @param  - [Input] sessionToken = the GUID for the curl session             */
 /* @param  - [Input] jobId = the platform's GUID for this job                 */
 /* @param  - [Input] endpoint = the relative URL to hit for the config        */
- * request */
+/* request                                                                    */
 /* @param  - [Output] pManConf = The platform's response is placed into this  */
 /* @return - success : 0                                                      */
 /* failure : an HTTP response code                                            */
@@ -468,3 +468,4 @@ exit:
 }                               /* cms_job_manage */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/
+/******************************************************************************/

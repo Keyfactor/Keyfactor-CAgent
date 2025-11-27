@@ -53,8 +53,7 @@
 /* Ask the platform to provide the details for the reenrollment job.          */
 /*                                                                            */
 /* @param  [Input] sessionToken The session GUID currently established        */
- * between */
-/* the agent and the platform.                                                */
+/* between the agent and the platform.                                        */
 /* @param  [Input] jobId is the GUID for the reenrollment job                 */
 /* @param  [Input] endpoint is the relative URL to retrieve the config from   */
 /* @param  [Output] pManConf is the enrollment job configuration response     */
@@ -108,8 +107,7 @@ static int get_enroll_config(const char *sessionToken, const char *jobId,
 /* the platform to sign.                                                      */
 /*                                                                            */
 /* @param  [Input] sessionToken The session GUID currently established        */
- * between */
-/* the agent and the platform.                                                */
+/* between the agent and the platform.                                        */
 /* @param  [Input] jobId is the GUID for the reenrollment job                 */
 /* @param  [Input] Endpoint is the relative URL to send the reenrollment to   */
 /* @param  [Input] csr is the naked PEM for the CSR                           */
@@ -165,8 +163,7 @@ static int send_enrollment(const char *sessionToken, const char *jobId,
 /*                                                                            */
 /*                                                                            */
 /* @param  [Input] sessionToken The session GUID currently established        */
- * between */
-/* the agent and the platform.                                                */
+/* between the agent and the platform.                                        */
 /* @param  [Input] jobId is the GUID for the reenrollment job                 */
 /* @param  [Input] Endpoint is the relative URL to send the complete to       */
 /* @param  [Input] jobStatus is an enum JobCompleteStatus result              */
@@ -445,6 +442,7 @@ exit:
     }
 
     return returnable;
-}                               /* cms_job_enroll */
+} /* cms_job_enroll */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/
+/******************************************************************************/

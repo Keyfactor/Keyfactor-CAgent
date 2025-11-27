@@ -67,24 +67,18 @@
  /******************************************************************************/ 
 enum keyTypeEnum 
 {
-    
-        NO_KEY_TYPE, 
-        RSA_KEY_TYPE, 
-        ECC_KEY_TYPE 
+    NO_KEY_TYPE, 
+    RSA_KEY_TYPE, 
+    ECC_KEY_TYPE 
 };
 
 
 struct entropy_storage 
 {
-    
-        byte * entropy_blob;
-    
-        bool has_entropy_loaded;
-    
-        size_t current_byte_ptr;
-    
-        size_t entropy_size;
-    
+    byte * entropy_blob;
+    bool has_entropy_loaded;
+    size_t current_byte_ptr;
+    size_t entropy_size;
 };
 
 typedef struct entropy_storage entropy_storage;
@@ -97,11 +91,8 @@ typedef struct entropy_storage entropy_storage;
  /* */ 
 struct PEMx509List 
 {
-    
-        int item_count;
-    
-        WOLFSSL_X509 * *certs;
-    
+    int item_count;
+    WOLFSSL_X509 * *certs;
 };
 
 typedef struct PEMx509List PEMx509List;
@@ -113,11 +104,8 @@ typedef struct PEMx509List PEMx509List;
  /* */ 
 struct PrivKeyList 
 {
-    
-        int key_count;
-    
-        WOLFSSL_EVP_PKEY * *priv_keys;
-    
+    int key_count;
+    WOLFSSL_EVP_PKEY * *priv_keys;
 };
 
 typedef struct PrivKeyList PrivKeyList;
@@ -129,9 +117,7 @@ typedef struct PrivKeyList PrivKeyList;
  /* Native wolfssl doesn't provide a keyPair union structure */ 
  /* Instead we must hold both types of Keypairs */ 
 RsaKey rsaKey;
-
 ecc_key eccKey;
-
 enum keyTypeEnum keyType = NO_KEY_TYPE;
 
 
@@ -139,7 +125,6 @@ enum keyTypeEnum keyType = NO_KEY_TYPE;
  /* require the above key types, and some wolf functions require this type  */ 
  /* this key is stored as a DER */ 
 WOLFSSL_EVP_PKEY privateKey;
-
 WOLFSSL_EVP_PKEY * pPrivateKey = &privateKey;
 
 
@@ -147,9 +132,7 @@ WOLFSSL_EVP_PKEY * pPrivateKey = &privateKey;
  /* Variable to hold the RNG seed if entropy was provided and a structure */ 
  /* to hold the entropy */ 
 WC_RNG rng;
-
 entropy_storage ES;
-
 
  /* Use this global variable to hold a password for the callback function */ 
 char *gPasswd = NULL;
@@ -171,26 +154,20 @@ char *gPasswd = NULL;
  /* */ 
 byte custom_rng_seed_generator(void)
 {
-    
-        byte returnByte;
-    
-        if (ES.has_entropy_loaded && (0 < ES.entropy_size)) {
+    byte returnByte;
+    if (ES.has_entropy_loaded && (0 < ES.entropy_size)) {
         
-            returnByte = ES.entropy_blob[ES.current_byte_ptr++];
-        
-            if (ES.entropy_size >= ES.current_byte_ptr) {
-            
+        returnByte = ES.entropy_blob[ES.current_byte_ptr++];
+        if (ES.entropy_size >= ES.current_byte_ptr) {
                  /* make sure we can't overrun this buffer */ 
-                ES.current_byte_ptr = 0;
-            
+            ES.current_byte_ptr = 0;
         } 
     } else {
         
              /* Use the OSes pseudo random number generator */ 
-            returnByte = (byte) random();
-        
+    returnByte = (byte) random();
     } 
-        return returnByte;
+    return returnByte;
     
 } /* custom_rng_seed_generator */ 
 
@@ -206,46 +183,36 @@ byte custom_rng_seed_generator(void)
  /* failure : -1                                                     */ 
  /* */ 
 static WC_INLINE int PasswordCallBack(char *passwd, int sz, int rwflag, 
-                                      void *userdata)
+    void *userdata)
 {
     
-        (void)rwflag;           /* we aren't going to implement writes
+    (void)rwflag;           /* we aren't going to implement writes
                                  * differently than reads */
     
-        (void)userdata;
+    (void)userdata;
     
          /* Prefer user supplied data over global data */ 
-        if (userdata != NULL) {
-        
-            log_trace("%s::%s(%d) : Using user data", LOG_INF);
-        
-            strncpy(passwd, (char *)userdata, sz);
-        
-            return (int)strlen((char *)userdata);
+    if (userdata != NULL) {
+    log_trace("%s::%s(%d) : Using user data", LOG_INF);
+    strncpy(passwd, (char *)userdata, sz);
+    return (int)strlen((char *)userdata);
         
     } else {
         
-            log_trace("%s::%s(%d) : User data is null", LOG_INF);
-        
-            if (NULL == gPasswd) {
+    log_trace("%s::%s(%d) : User data is null", LOG_INF);
+    if (NULL == gPasswd) {
+    gPasswd = strdup("");
+    } 
             
-                gPasswd = strdup("");
+    if (NULL == gPasswd) {
+    log_error("%s::%s(%d) : Out of memory", LOG_INF);
+    return 0;
             
-        } 
+    } else {
             
-            if (NULL == gPasswd) {
-            
-                log_error("%s::%s(%d) : Out of memory", LOG_INF);
-            
-                return 0;
-            
-        } else {
-            
-                passwd = strdup(gPasswd);
-            
-                return strlen(gPasswd);
-            
-        } 
+    passwd = strdup(gPasswd);
+    return strlen(gPasswd);
+    } 
     } 
 }                               /* PasswordCallBack *//* PasswordCallBack *//* parasoft-suppress
   * BD-RES-LEAKS "Freed in wolf library" */ 
@@ -261,43 +228,31 @@ static WC_INLINE int PasswordCallBack(char *passwd, int sz, int rwflag,
  /* */ 
 static char    *compute_thumbprint(WOLFSSL_X509 * cert) 
 {
+    const WOLFSSL_EVP_MD * pSha1 = wolfSSL_EVP_sha1();
+    unsigned len = 0;
+    unsigned char  *buf = calloc(SHA1LEN, sizeof(*buf));
     
-        const WOLFSSL_EVP_MD * pSha1 = wolfSSL_EVP_sha1();
-    
-        unsigned len = 0;
-    
-        unsigned char  *buf = calloc(SHA1LEN, sizeof(*buf));
-    
-        
-        if (!buf)
+    if (!buf)
         
     {
-        
-            log_error("%s::%s(%d) : Out of memory", LOG_INF);
-        
-            return NULL;
-        
+    log_error("%s::%s(%d) : Out of memory", LOG_INF);
+    return NULL;
     } 
         
-        int rc = wolfSSL_X509_digest(cert, pSha1, buf, &len);
-    
-        if ((rc == 0) || (len != SHA1LEN))
+    int rc = wolfSSL_X509_digest(cert, pSha1, buf, &len);
+    if ((rc == 0) || (len != SHA1LEN))
         
     {
-        
-            log_error("%s::%s(%d) : Error generating sha1 hash", LOG_INF);
-        
-            return NULL;
-        
+    log_error("%s::%s(%d) : Error generating sha1 hash", LOG_INF);
+    return NULL;
     } 
         
-        char *return_value = hex_encode(buf, len);
-    
-        if (buf)
-        free(buf);
+    char *return_value = hex_encode(buf, len);
+    if (buf)
+    free(buf);
     
          /* Now convert the binary data to a character string */ 
-        return return_value;
+    return return_value;
     
 } /* compute_thumbprint */ 
 
@@ -331,99 +286,70 @@ static char    *compute_thumbprint(WOLFSSL_X509 * cert)
  /* */ 
 static bool naked_PEM_to_PEM(const char *in, char **pem, int type)
 {
+    bool bResult = false;
+    int ret = 0;
+    int pemSz = 0;
+    size_t derSz = 0;
+    byte * der = NULL;
     
-        bool bResult = false;
-    
-        int ret = 0;
-    
-        int pemSz = 0;
-    
-        size_t derSz = 0;
-    
-        byte * der = NULL;
-    
-        
-        log_trace("%s::%s(%d) : Converting naked_PEM_to_PEM", LOG_INF);
-    
-        if (
-            (CERT_TYPE != type) && \
-            (PRIVATEKEY_TYPE != type) && \
-            (ECC_PRIVATEKEY_TYPE != type) && \
-            (CERTREQ_TYPE != type))
+    log_trace("%s::%s(%d) : Converting naked_PEM_to_PEM", LOG_INF);
+    if (
+    (CERT_TYPE != type) && \
+    (PRIVATEKEY_TYPE != type) && \
+    (ECC_PRIVATEKEY_TYPE != type) && \
+    (CERTREQ_TYPE != type))
         
     {
+    log_error("%s::%s(%d) : Error in requested PEM type.  " 
+    "Type %d is not supported", LOG_INF, type);
         
-            log_error("%s::%s(%d) : Error in requested PEM type.  " 
-                      "Type %d is not supported", LOG_INF, type);
-        
-            goto exit;
-        
+    goto exit;
     } 
          /* Decode the naked PEM to create the DER format */ 
-        der = base64_decode(in, -1, &derSz);
-    
-        if (!der || 0 == derSz)
+    der = base64_decode(in, -1, &derSz);
+    if (!der || 0 == derSz)
         
     {
-        
-            log_error("%s::%s(%d) : Error decoding PEM", LOG_INF);
-        
-            goto exit;
-        
+    log_error("%s::%s(%d) : Error decoding PEM", LOG_INF);
+    goto exit;
     } 
          /* Re-encode the PEM with headers & footers */ 
-        pemSz = wc_DerToPemEx(der, derSz, NULL, 0, NULL, type);
-    
-        if (0 >= pemSz)
+    pemSz = wc_DerToPemEx(der, derSz, NULL, 0, NULL, type);
+    if (0 >= pemSz)
         
     {
-        
-            log_error("%s::%s(%d) : Error converting DER to PEM", LOG_INF);
-        
-            goto exit;
-        
+    log_error("%s::%s(%d) : Error converting DER to PEM", LOG_INF);
+    goto exit;
     } 
-        *pem = calloc(pemSz, sizeof(*(*pem)));
+    *pem = calloc(pemSz, sizeof(*(*pem)));
     
-        if (!(*pem))
+    if (!(*pem))
         
     {
-        
-            log_error("%s::%s(%d) : Out of memory", LOG_INF);
-        
-            goto exit;
-        
+    log_error("%s::%s(%d) : Out of memory", LOG_INF);
+    goto exit;
     } 
-        ret = wc_DerToPemEx(der, derSz, (byte *) * pem, pemSz, NULL, type);
-    
-        if (0 >= ret)
+    ret = wc_DerToPemEx(der, derSz, (byte *) * pem, pemSz, NULL, type);
+    if (0 >= ret)
         
     {
-        
-            log_error("%s::%s(%d) : Error converting DER to PEM second time", 
-                      LOG_INF);
-        
-            goto exit;
-        
+    log_error("%s::%s(%d) : Error converting DER to PEM second time", 
+    LOG_INF);
+    goto exit;
     } 
         
-        log_trace("%s::%s(%d) : Successfuly converted naked PEM to PEM", LOG_INF);
-    
-        bResult = true;
-    
+    log_trace("%s::%s(%d) : Successfuly converted naked PEM to PEM", LOG_INF);
+    bResult = true;
 exit:   
-        if (!bResult) {
-        
-            if (*pem)
-            free(*pem);
+    if (!bResult) {
+    if (*pem)
+    free(*pem);
         
             *pem = NULL;
-        
     } 
-        if (der)
-        free(der);
-    
-        return bResult;
+    if (der)
+    free(der);
+    return bResult;
     
 } /* naked_PEM_to_PEM */ 
 
@@ -436,26 +362,19 @@ exit:
  /* */ 
 static PrivKeyList * PrivKeyList_new(void)
 {
-    
-        PrivKeyList * pList = calloc(1, sizeof(*pList));
-    
-        if (pList)
+    PrivKeyList * pList = calloc(1, sizeof(*pList));
+    if (pList)
         
     {
-        
-            pList->key_count = 0;
-        
-            pList->priv_keys = NULL;
-        
+    pList->key_count = 0;
+    pList->priv_keys = NULL;
     } 
-        else
+    else
         
     {
-        
-            log_error("%s::%s(%d) : Out of memory", LOG_INF);
-        
+    log_error("%s::%s(%d) : Out of memory", LOG_INF);
     } 
-        return pList;
+    return pList;
     
 } /* PrivKeyList_new */ 
 
@@ -467,51 +386,36 @@ static PrivKeyList * PrivKeyList_new(void)
  /* */ 
 static void PrivKeyList_free(PrivKeyList * pList) 
 {
-    
-        if (NULL == pList) {
-        
-            return;
-        
+    if (NULL == pList) {
+    return;
     } 
         
-        if (0 < pList->key_count)
+    if (0 < pList->key_count)
         
     {
-        
-            for (int i = 0; pList->key_count > i; i++)
+    for (int i = 0; pList->key_count > i; i++)
             
-        {
-            
-                log_trace("%s::%s(%d) : Freeing PrivKey #%d from PrivKeyList", 
-                          LOG_INF, i);
-            
-                if (pList->priv_keys[i])
+    {
+    log_trace("%s::%s(%d) : Freeing PrivKey #%d from PrivKeyList", 
+    LOG_INF, i);
+    if (pList->priv_keys[i])
                 
             {
-                
-                    wolfSSL_EVP_PKEY_free(pList->priv_keys[i]);
-                
+    wolfSSL_EVP_PKEY_free(pList->priv_keys[i]);
             } 
-        } 
-            pList->key_count = 0;
-        
+    } 
+    pList->key_count = 0;
     } 
         
-        log_trace("%s::%s(%d) : Freeing the PrivKeyList", LOG_INF);
-    
-        if (pList->priv_keys) {
-        
-            free(pList->priv_keys);
-        
-            pList->priv_keys = NULL;
-        
+    log_trace("%s::%s(%d) : Freeing the PrivKeyList", LOG_INF);
+    if (pList->priv_keys) {
+    free(pList->priv_keys);
+    pList->priv_keys = NULL;
     } 
-        free(pList);
+    free(pList);
+    pList = NULL;
     
-        pList = NULL;
-    
-        
-        return;
+    return;
     
 } /* PrivKeyList_free */ 
 
@@ -527,49 +431,36 @@ static void PrivKeyList_free(PrivKeyList * pList)
  /* */ 
 static bool PrivKeyList_add(PrivKeyList * pList, WOLFSSL_EVP_PKEY * pPrivateKey) 
 {
+    bool bResult = false;
     
-        bool bResult = false;
-    
-        
-        if (pList && pPrivateKey)
+    if (pList && pPrivateKey)
         
     {
+    pList->priv_keys = realloc(pList->priv_keys, 
+    (1 + pList->key_count) * sizeof(*(pList->priv_keys)));
         
-            pList->priv_keys = realloc(pList->priv_keys, 
-                      (1 + pList->key_count) * sizeof(*(pList->priv_keys)));
-        
+    if (pList->priv_keys)
             
-            if (pList->priv_keys)
-            
-        {
-            
-                log_trace("%s::%s(%d) : Added EVP_PKEY #%d to PrivKeyList", 
-                          LOG_INF, pList->key_count);
-            
-                pList->priv_keys[pList->key_count] = pPrivateKey;
-            
-                pList->key_count++;
-            
-                bResult = true;
-            
-        } 
-            else
-            
-        {
-            
-                log_error("%s::%s(%d) : Out of memory", LOG_INF);
-            
-        } 
+    {
+    log_trace("%s::%s(%d) : Added EVP_PKEY #%d to PrivKeyList", 
+    LOG_INF, pList->key_count);
+    pList->priv_keys[pList->key_count] = pPrivateKey;
+    pList->key_count++;
+    bResult = true;
     } 
-        else
+    else
+            
+    {
+    log_error("%s::%s(%d) : Out of memory", LOG_INF);
+    } 
+    } 
+    else
         
     {
-        
-            log_error("%s::%s(%d) : Either the list or PrivateKey was NULL", 
-                      LOG_INF);
-        
+    log_error("%s::%s(%d) : Either the list or PrivateKey was NULL", 
+    LOG_INF);
     } 
-        return bResult;
+    return bResult;
     
 } /* PrivKeyList_add */ 
 
@@ -585,19 +476,14 @@ static bool PrivKeyList_add(PrivKeyList * pList, WOLFSSL_EVP_PKEY * pPrivateKey)
  /* */ 
 static PEMx509List * PEMx509List_new(void)
 {
-    
-        PEMx509List * pX509list = calloc(1, sizeof(*pX509list));
-    
-        if (pX509list)
+    PEMx509List * pX509list = calloc(1, sizeof(*pX509list));
+    if (pX509list)
         
     {
-        
-            pX509list->item_count = 0;
-        
-            pX509list->certs = NULL;
-        
+    pX509list->item_count = 0;
+    pX509list->certs = NULL;
     } 
-        return pX509list;
+    return pX509list;
     
 } /* PEMx509List_new */ 
 
@@ -609,45 +495,31 @@ static PEMx509List * PEMx509List_new(void)
  /* */ 
 static void PEMx509List_free(PEMx509List * pList) 
 {
-    
-        if (NULL == pList) {
-        
-            return;
-        
+    if (NULL == pList) {
+    return;
     } 
-        if (0 < pList->item_count)
+    if (0 < pList->item_count)
         
     {
-        
-            for (int i = 0; pList->item_count > i; i++)
+    for (int i = 0; pList->item_count > i; i++)
             
-        {
-            
-                log_trace("%s::%s(%d) Freeing cert #%d from PEMx509List", 
-                          LOG_INF, i);
-            
-                wolfSSL_X509_free(pList->certs[i]);
-            
-        } 
-            pList->item_count = 0;
-        
+    {
+    log_trace("%s::%s(%d) Freeing cert #%d from PEMx509List", 
+    LOG_INF, i);
+    wolfSSL_X509_free(pList->certs[i]);
+    } 
+    pList->item_count = 0;
     } 
         
-        log_trace("%s::%s(%d) : Freeing the PEMx509List", LOG_INF);
-    
-        if (pList->certs) {
-        
-            free(pList->certs);
-        
-            pList->certs = NULL;
-        
+    log_trace("%s::%s(%d) : Freeing the PEMx509List", LOG_INF);
+    if (pList->certs) {
+    free(pList->certs);
+    pList->certs = NULL;
     } 
-        free(pList);
+    free(pList);
+    pList = NULL;
     
-        pList = NULL;
-    
-        
-        return;
+    return;
     
 } /* PEMx509List_free */ 
 
@@ -661,46 +533,34 @@ static void PEMx509List_free(PEMx509List * pList)
  /* */ 
 static bool PEMx509List_add(PEMx509List * pList, WOLFSSL_X509 * pCert) 
 {
-    
-        bool bResult = false;
-    
-        if (pList && pCert)
+    bool bResult = false;
+    if (pList && pCert)
         
     {
+    pList->certs = realloc(pList->certs, 
+    (1 + pList->item_count) * sizeof(pCert));
         
-            pList->certs = realloc(pList->certs, 
-                                   (1 + pList->item_count) * sizeof(pCert));
-        
-            if (pList->certs)
+    if (pList->certs)
             
-        {
-            
-                log_trace("%s::%s(%d) : Adding X509 cert #%d to PEMx509List", 
-                          LOG_INF, pList->item_count);
-            
-                pList->certs[pList->item_count] = pCert;
-            
-                pList->item_count++;
-            
-                bResult = true;
-            
-        } 
-            else
-            
-        {
-            
-                log_error("%s::%s(%d) : Out of memory", LOG_INF);
-            
-        } 
+    {
+    log_trace("%s::%s(%d) : Adding X509 cert #%d to PEMx509List", 
+    LOG_INF, pList->item_count);
+    pList->certs[pList->item_count] = pCert;
+    pList->item_count++;
+    bResult = true;
     } 
-        else
+    else
+            
+    {
+    log_error("%s::%s(%d) : Out of memory", LOG_INF);
+    } 
+    } 
+    else
         
     {
-        
-            log_error("%s::%s(%d) : Either the pList or cert was NULL", LOG_INF);
-        
+    log_error("%s::%s(%d) : Either the pList or cert was NULL", LOG_INF);
     } 
-        return bResult;
+    return bResult;
     
 } /* PEMx509List_add */ 
 
@@ -718,28 +578,20 @@ static bool PEMx509List_add(PEMx509List * pList, WOLFSSL_X509 * pCert)
  /* */ 
 static PemInventoryItem * PemInventoryItem_new() 
 {
-    
-        PemInventoryItem * pPem = calloc(1, sizeof(*pPem));
-    
-        if (pPem)
+    PemInventoryItem * pPem = calloc(1, sizeof(*pPem));
+    if (pPem)
         
     {
-        
-            pPem->cert = NULL;
-        
-            pPem->thumbprint_string = NULL;
-        
-            pPem->has_private_key = false;
-        
+    pPem->cert = NULL;
+    pPem->thumbprint_string = NULL;
+    pPem->has_private_key = false;
     } 
-        else
+    else
         
     {
-        
-            log_error("%s::%s(%d) : Out of memory", LOG_INF);
-        
+    log_error("%s::%s(%d) : Out of memory", LOG_INF);
     } 
-        return pPem;
+    return pPem;
     
 } /* PemInventoryItem_new */ 
 
@@ -753,34 +605,23 @@ static PemInventoryItem * PemInventoryItem_new()
  /* */ 
 void PemInventoryItem_free(PemInventoryItem * pem) 
 {
-    
-        if (pem)
+    if (pem)
         
     {
-        
-            if (pem->cert) {
-            
-                log_trace("%s::%s(%d) : Freeing pem inventory item cert", LOG_INF);
-            
-                free(pem->cert);
-            
-                pem->cert = NULL;
-            
-        } 
-            if (pem->thumbprint_string) {
-            
-                log_trace("%s::%s(%d) : Freeing pem inventory item thumbprint", 
-                          LOG_INF);
-            
-                free(pem->thumbprint_string);
-            
-                pem->thumbprint_string = NULL;
-            
-        } 
-            free(pem);
-        
+    if (pem->cert) {
+    log_trace("%s::%s(%d) : Freeing pem inventory item cert", LOG_INF);
+    free(pem->cert);
+    pem->cert = NULL;
     } 
-        return;
+    if (pem->thumbprint_string) {
+    log_trace("%s::%s(%d) : Freeing pem inventory item thumbprint", 
+    LOG_INF);
+    free(pem->thumbprint_string);
+    pem->thumbprint_string = NULL;
+    } 
+    free(pem);
+    } 
+    return;
     
 } /* PemInventoryItem_free */ 
 
@@ -795,83 +636,58 @@ void PemInventoryItem_free(PemInventoryItem * pem)
  /* */ 
 static bool PemInventoryItem_populate(PemInventoryItem * pem, WOLFSSL_X509 * cert) 
 {
+    bool bResult = false;
+    char *pThumb = NULL;
+    unsigned char  *pCertContent = NULL;
+    int contLen = 0;
     
-        bool bResult = false;
-    
-        char *pThumb = NULL;
-    
-        unsigned char  *pCertContent = NULL;
-    
-        int contLen = 0;
-    
-        
-        if (pem && cert)
+    if (pem && cert)
         
     {
+    pThumb = compute_thumbprint(cert);
+    if (NULL == pThumb)
+            
+    {
+    pThumb = strdup("NULL");
+    } 
+    log_verbose("%s::%s(%d) : Thumbprint: %s", LOG_INF, pThumb);
+    contLen = wolfSSL_i2d_X509(cert, &pCertContent);
         
-            pThumb = compute_thumbprint(cert);
-        
-            if (NULL == pThumb)
+    if (0 < contLen)
             
-        {
-            
-                pThumb = strdup("NULL");
-            
-        } 
-            log_verbose("%s::%s(%d) : Thumbprint: %s", LOG_INF, pThumb);
-        
-            contLen = wolfSSL_i2d_X509(cert, &pCertContent);
-        
-            
-            if (0 < contLen)
-            
-        {
-            
+    {
                  /* Store the PEM minus any header or footer in here */ 
                  /* Note a PEM is a DER that is base64 encoded */ 
-                pem->cert = base64_encode(pCertContent, contLen, false, NULL);
-            
-                pem->thumbprint_string = strdup(pThumb);
-            
-                pem->has_private_key = false;
-            
-                bResult = true;
-            
-                log_trace("%s::%s(%d) : Cert added to a PemInventoryItem", LOG_INF);
-            
-        } 
-            else
-            
-        {
-            
-                log_error("%s::%s:(%d) : Error decoding cert i2d_X509\n%s", 
-                          LOG_INF, pCertContent);
-            
-        } 
+    pem->cert = base64_encode(pCertContent, contLen, false, NULL);
+    pem->thumbprint_string = strdup(pThumb);
+    pem->has_private_key = false;
+    bResult = true;
+    log_trace("%s::%s(%d) : Cert added to a PemInventoryItem", LOG_INF);
     } 
-        else
+    else
+            
+    {
+    log_error("%s::%s:(%d) : Error decoding cert i2d_X509\n%s", 
+    LOG_INF, pCertContent);
+    } 
+    } 
+    else
         
     {
-        
-            log_error("%s::%s(%d) : Bad pem, cert, or certString", 
-                      LOG_INF);
-        
+    log_error("%s::%s(%d) : Bad pem, cert, or certString", 
+    LOG_INF);
     } 
-        if (pThumb)
+    if (pThumb)
         
     {
-        
-            free(pThumb);
-        
+    free(pThumb);
     } 
-        if (pCertContent)
+    if (pCertContent)
         
     {
-        
-            wolfSSL_OPENSSL_free(pCertContent);
-        
+    wolfSSL_OPENSSL_free(pCertContent);
     } 
-        return bResult;
+    return bResult;
     
 } /* PemInventoryItem_populate */ 
 
@@ -884,19 +700,14 @@ static bool PemInventoryItem_populate(PemInventoryItem * pem, WOLFSSL_X509 * cer
  /* */ 
 static PemInventoryList * PemInventoryList_new() 
 {
-    
-        PemInventoryList * pList = (PemInventoryList *) malloc(sizeof(*pList));
-    
-        if (pList)
+    PemInventoryList * pList = (PemInventoryList *) malloc(sizeof(*pList));
+    if (pList)
         
     {
-        
-            pList->item_count = 0;
-        
-            pList->items = NULL;
-        
+    pList->item_count = 0;
+    pList->items = NULL;
     } 
-        return pList;
+    return pList;
     
 } /* PemInventoryList_new */ 
 
@@ -908,42 +719,29 @@ static PemInventoryList * PemInventoryList_new()
  /* */ 
 void PemInventoryList_free(PemInventoryList * list) 
 {
-    
-        if (NULL == list) {
-        
-            return;
-        
+    if (NULL == list) {
+    return;
     } 
         
-        if (list->items)
+    if (list->items)
         
     {
-        
-            for (int i = 0; list->item_count > i; i++)
+    for (int i = 0; list->item_count > i; i++)
             
-        {
-            
-                log_trace("%s::%s(%d) : Freeing PemInventoryItem #%d", LOG_INF, i);
-            
-                PemInventoryItem_free(list->items[i]);
-            
-        } 
-            log_trace("%s::%s(%d) : Freeing PemInventoryList", LOG_INF);
-        
-            if (list->items) {
-            
-                free(list->items);
-            
-                list->items = NULL;
-            
-        } 
-            
-            free(list);
-        
-            list = NULL;
-        
+    {
+    log_trace("%s::%s(%d) : Freeing PemInventoryItem #%d", LOG_INF, i);
+    PemInventoryItem_free(list->items[i]);
     } 
-        return;
+    log_trace("%s::%s(%d) : Freeing PemInventoryList", LOG_INF);
+    if (list->items) {
+    free(list->items);
+    list->items = NULL;
+    } 
+            
+    free(list);
+    list = NULL;
+    } 
+    return;
     
 } /* PemInventoryList_free */ 
 
@@ -957,46 +755,35 @@ void PemInventoryList_free(PemInventoryList * list)
  /* */ 
 static bool PemInventoryList_add(PemInventoryList * list, PemInventoryItem * item) 
 {
-    
-        bool bResult = false;
-    
-        if (list && item)
+    bool bResult = false;
+    if (list && item)
         
     {
+    list->items = realloc(list->items, 
+    (1 + list->item_count) * sizeof(item));
         
-            list->items = realloc(list->items, 
-                                  (1 + list->item_count) * sizeof(item));
-        
-            if (list->items)
+    if (list->items)
             
-        {
+    {
+    list->items[list->item_count] = item;
+    list->item_count++;
+    log_trace("%s::%s(%d) : Added cert with thumbprint %s to local " 
+    " inventory", LOG_INF, item->thumbprint_string);
             
-                list->items[list->item_count] = item;
-            
-                list->item_count++;
-            
-                log_trace("%s::%s(%d) : Added cert with thumbprint %s to local " 
-                          " inventory", LOG_INF, item->thumbprint_string);
-            
-                bResult = true;
-            
-        } 
-            else
-            
-        {
-            
-                log_error("%s::%s(%d) : Out of memory", LOG_INF);
-            
-        } 
+    bResult = true;
     } 
-        else
+    else
+            
+    {
+    log_error("%s::%s(%d) : Out of memory", LOG_INF);
+    } 
+    } 
+    else
         
     {
-        
-            log_error("%s::%s(%d) : Either the list or item was NULL", LOG_INF);
-        
+    log_error("%s::%s(%d) : Either the list or item was NULL", LOG_INF);
     } 
-        return bResult;
+    return bResult;
     
 } /* PemInventoryList_add */ 
 
@@ -1009,35 +796,22 @@ static bool PemInventoryList_add(PemInventoryList * list, PemInventoryItem * ite
 static void free_local_keys(void)
 {
     
-        
-        log_trace("%s::%s(%d) : Freeing RSA key", LOG_INF);
+    log_trace("%s::%s(%d) : Freeing RSA key", LOG_INF);
+    wc_FreeRsaKey(&rsaKey);
     
-        wc_FreeRsaKey(&rsaKey);
+    log_trace("%s::%s(%d) : Freeing ECC key", LOG_INF);
+    wc_ecc_free(&eccKey);
     
-        
-        
-        log_trace("%s::%s(%d) : Freeing ECC key", LOG_INF);
+    log_trace("%s::%s(%d) : Freeing RNG", LOG_INF);
+    wc_FreeRng(&rng);
     
-        wc_ecc_free(&eccKey);
+    keyType = NO_KEY_TYPE;
     
-        
-        log_trace("%s::%s(%d) : Freeing RNG", LOG_INF);
+    log_trace("%s::%s(%d) : Freeing EVP_PKEY structure", LOG_INF);
+    wolfSSL_EVP_PKEY_free(pPrivateKey);
+    pPrivateKey = NULL;
     
-        wc_FreeRng(&rng);
-    
-        
-        
-        keyType = NO_KEY_TYPE;
-    
-        
-        log_trace("%s::%s(%d) : Freeing EVP_PKEY structure", LOG_INF);
-    
-        wolfSSL_EVP_PKEY_free(pPrivateKey);
-    
-        pPrivateKey = NULL;
-    
-        
-        return;
+    return;
     
 } /* free_local_keys */ 
 
@@ -1052,104 +826,72 @@ static void free_local_keys(void)
  /* */ 
 static bool is_cert_key_match(WOLFSSL_X509 * cert, WOLFSSL_EVP_PKEY * key) 
 {
+    bool ret = false;
+    RSA * rsaPriv = NULL;
+    RSA * rsaCert = NULL;
+    EC_KEY * ecPriv = NULL;
+    EC_KEY * ecCert = NULL;
+    EVP_PKEY * certPubKey = NULL;
+    int certBaseId = -1;
+    int keyBaseId = -1;
+    const BIGNUM * nCert;
+    const BIGNUM * nPriv;
+    const EC_POINT * privPoint;
+    const EC_GROUP * privGroup;
+    const EC_POINT * certPoint;
+    const EC_GROUP * certGroup;
+    char *privPubBytes = NULL;
+    char *certPubBytes = NULL;
     
-        bool ret = false;
-    
-        RSA * rsaPriv = NULL;
-    
-        RSA * rsaCert = NULL;
-    
-        EC_KEY * ecPriv = NULL;
-    
-        EC_KEY * ecCert = NULL;
-    
-        EVP_PKEY * certPubKey = NULL;
-    
-        int certBaseId = -1;
-    
-        int keyBaseId = -1;
-    
-        const BIGNUM * nCert;
-    
-        const BIGNUM * nPriv;
-    
-        const EC_POINT * privPoint;
-    
-        const EC_GROUP * privGroup;
-    
-        const EC_POINT * certPoint;
-    
-        const EC_GROUP * certGroup;
-    
-        char *privPubBytes = NULL;
-    
-        char *certPubBytes = NULL;
-    
-        
-        if (cert && key)
+    if (cert && key)
         
     {
-        
              /* Get the public key from cert */ 
-            certPubKey = wolfSSL_X509_get_pubkey(cert);
+    certPubKey = wolfSSL_X509_get_pubkey(cert);
         
              /* Get the type of the public key */ 
-            certBaseId = wolfSSL_EVP_PKEY_base_id(certPubKey);
+    certBaseId = wolfSSL_EVP_PKEY_base_id(certPubKey);
         
              /* Get the type of the private key passed */ 
-            keyBaseId = wolfSSL_EVP_PKEY_base_id(key);
+    keyBaseId = wolfSSL_EVP_PKEY_base_id(key);
         
-            
              /* if the key types match we need to process things further */ 
-            if (certBaseId == keyBaseId)
+    if (certBaseId == keyBaseId)
             
-        {
-            
-                switch (certBaseId)
+    {
+    switch (certBaseId)
                 
             {
+    case EVP_PKEY_RSA:
                 
-            case EVP_PKEY_RSA:
-                
-                    rsaPriv = wolfSSL_EVP_PKEY_get1_RSA(key);
-                
-                    rsaCert = wolfSSL_EVP_PKEY_get1_RSA(certPubKey);
-                
-                    if (rsaCert && rsaPriv)
+    rsaPriv = wolfSSL_EVP_PKEY_get1_RSA(key);
+    rsaCert = wolfSSL_EVP_PKEY_get1_RSA(certPubKey);
+    if (rsaCert && rsaPriv)
                     
-                {
-                    
+    {
                          /* get RSA n (ignore d & e) */ 
-                        wolfSSL_RSA_get0_key(rsaCert, &nCert, NULL, NULL);
-                    
-                        wolfSSL_RSA_get0_key(rsaPriv, &nPriv, NULL, NULL);
+        wolfSSL_RSA_get0_key(rsaCert, &nCert, NULL, NULL);
+        wolfSSL_RSA_get0_key(rsaPriv, &nPriv, NULL, NULL);
                     
                          /* Compare the n's which should be equal */ 
                          /* when the priv and public key match */ 
-                        ret = (wolfSSL_BN_cmp(nCert, nPriv) == 0);
+        ret = (wolfSSL_BN_cmp(nCert, nPriv) == 0);
+    } 
+    wolfSSL_RSA_free(rsaPriv);
+    wolfSSL_RSA_free(rsaCert);
+    break;
+    case EVP_PKEY_EC:
+                
+    ecPriv = wolfSSL_EVP_PKEY_get1_EC_KEY(key);
+    ecCert = wolfSSL_EVP_PKEY_get1_EC_KEY(certPubKey);
+    if (ecPriv && ecCert)
                     
-                } 
-                    wolfSSL_RSA_free(rsaPriv);
-                
-                    wolfSSL_RSA_free(rsaCert);
-                
-                    break;
-                
-            case EVP_PKEY_EC:
-                
-                    ecPriv = wolfSSL_EVP_PKEY_get1_EC_KEY(key);
-                
-                    ecCert = wolfSSL_EVP_PKEY_get1_EC_KEY(certPubKey);
-                
-                    if (ecPriv && ecCert)
-                    
-                {
-                    
+    {
                          /* get EC_POINT public key */ 
-                        privPoint = wolfSSL_EC_KEY_get0_public_key(ecPriv);
+        privPoint = wolfSSL_EC_KEY_get0_public_key(ecPriv);
                     
                          /* get EC_GROUP  */ 
-                        privGroup = wolfSSL_EC_KEY_get0_group(ecPriv);
+        privGroup = wolfSSL_EC_KEY_get0_group(ecPriv);
                     
                          /* */ 
                     /* Convert the ECC_POINT using the EC_GROUP's curve into
@@ -1181,52 +923,41 @@ static bool is_cert_key_match(WOLFSSL_X509 * cert, WOLFSSL_EVP_PKEY * key)
                          /* used followed by the octets for x, followed by the     */ 
                          /* octets for y.                                          */ 
                          /* */ 
-                        privPubBytes = wolfSSL_EC_POINT_point2hex(privGroup, 
-                            privPoint, POINT_CONVERSION_UNCOMPRESSED, NULL);
+        privPubBytes = wolfSSL_EC_POINT_point2hex(privGroup, 
+        privPoint, POINT_CONVERSION_UNCOMPRESSED, NULL);
                     
                          /* get EC_POINT public key */ 
-                        certPoint = wolfSSL_EC_KEY_get0_public_key(ecCert);
+        certPoint = wolfSSL_EC_KEY_get0_public_key(ecCert);
                     
                          /* get EC_GROUP */ 
-                        certGroup = wolfSSL_EC_KEY_get0_group(ecCert);
+        certGroup = wolfSSL_EC_KEY_get0_group(ecCert);
+        certPubBytes = wolfSSL_EC_POINT_point2hex(certGroup, 
+        certPoint, POINT_CONVERSION_UNCOMPRESSED, NULL);
                     
-                        certPubBytes = wolfSSL_EC_POINT_point2hex(certGroup, 
-                            certPoint, POINT_CONVERSION_UNCOMPRESSED, NULL);
-                    
-                        
                     /*
                      * Now that we have the point on the curve compare them,
                      * they should be equal if the keys match
                           */ 
-                        ret = (strcasecmp(privPubBytes, certPubBytes) == 0);
+        ret = (strcasecmp(privPubBytes, certPubBytes) == 0);
                     
-                        
-                        wolfSSL_OPENSSL_free(privPubBytes);
-                    
-                        wolfSSL_OPENSSL_free(certPubBytes);
-                    
-                } 
-                    wolfSSL_EC_KEY_free(ecCert);
+        wolfSSL_OPENSSL_free(privPubBytes);
+        wolfSSL_OPENSSL_free(certPubBytes);
+    } 
+    wolfSSL_EC_KEY_free(ecCert);
+    wolfSSL_EC_KEY_free(ecPriv);
+    break;
+    default:
                 
-                    wolfSSL_EC_KEY_free(ecPriv);
-                
-                    break;
-                
-            default:
-                
-                    log_error("%s::%s(%d) : Unknown algorithm: %d", 
-                              LOG_INF, certBaseId);
-                
-                    break;
-                
+    log_error("%s::%s(%d) : Unknown algorithm: %d", 
+    LOG_INF, certBaseId);
+    break;
             } 
-        } 
+    } 
             
-            wolfSSL_EVP_PKEY_free(certPubKey);
-        
+    wolfSSL_EVP_PKEY_free(certPubKey);
     } 
         
-        return ret;
+    return ret;
     
 } /* is_cert_key_match */ 
 
@@ -1253,93 +984,67 @@ static bool is_cert_key_match(WOLFSSL_X509 * cert, WOLFSSL_EVP_PKEY * key)
  /* */ 
 static int read_subject_value(const char *subject, char *buf)
 {
-    
-        int subjLen = strlen(subject);
-    
-        int subInd = 0;
-    
-        int bufInd = 0;
-    
-        char c = ' ';
-    
-        char escaped[1] = {
-        ' '
+    int subjLen = strlen(subject);
+    int subInd = 0;
+    int bufInd = 0;
+    char c = ' ';
+    char escaped[1] = {
+    ' '
     };
     
-        unsigned int    hexHi, hexLo;
+    unsigned int    hexHi, hexLo;
     
-        
-        bool done = false;
+    bool done = false;
+    bool hasError = false;
     
-        bool hasError = false;
-    
-        
-        while (!done && !hasError && subInd < subjLen)
+    while (!done && !hasError && subInd < subjLen)
         
     {
-        
-            c = subject[subInd];
-        
-            switch (c)
+    c = subject[subInd];
+    switch (c)
             
-        {
+    {
+    case '\\':
             
-        case '\\':
-            
-                if (sscanf(&subject[subInd], "\\%1[\" #+,;<=>\\]", escaped) == 1) {
+    if (sscanf(&subject[subInd], "\\%1[\" #+,;<=>\\]", escaped) == 1) {
                 
-                    if (buf) {
-                    
-                        buf[bufInd++] = escaped[0];
-                    
-                } 
-                    subInd += 2;
-                
+    if (buf) {
+        buf[bufInd++] = escaped[0];
+    } 
+    subInd += 2;
             } 
-                else if (sscanf(&subject[subInd], "\\%1x%1x", &hexHi, &hexLo) == 2) {
+    else if (sscanf(&subject[subInd], "\\%1x%1x", &hexHi, &hexLo) == 2) {
                 
-                    if (buf) {
-                    
-                        buf[bufInd++] = (char)((hexHi << 4) | hexLo);
-                    
-                } 
-                    subInd += 3;
-                
+    if (buf) {
+        buf[bufInd++] = (char)((hexHi << 4) | hexLo);
+    } 
+    subInd += 3;
             } 
-                else {
+    else {
                 
-                    hasError = true;
-                
+    hasError = true;
             } 
-                break;
+    break;
+    case ',':
             
-        case ',':
+    done = true;
+    break;
+    default:
             
-                done = true;
-            
-                break;
-            
-        default:
-            
-                if (buf) {
-                
-                    buf[bufInd++] = c;
-                
+    if (buf) {
+    buf[bufInd++] = c;
             } 
-                ++subInd;
+    ++subInd;
             
-                break;
-            
-        } 
+    break;
+    } 
     } 
         
-        if (buf) {
-        
-            buf[bufInd] = '\0'; /* Null terminate the string */
-        
+    if (buf) {
+    buf[bufInd] = '\0'; /* Null terminate the string */
     } 
         
-        return hasError ? -1 : subInd;
+    return hasError ? -1 : subInd;
     
 } /* read_subject_value */ 
 
@@ -1369,37 +1074,30 @@ static int read_subject_value(const char *subject, char *buf)
  /* */ 
 static char    *strip_blanks(char *string, const unsigned long strSz)
 {
+    char *beg = string;     /* Copy the pointer so we can advance */
     
-        char *beg = string;     /* Copy the pointer so we can advance */
-    
-        char *end = string + strlen(string) - 1;        /* Point to the string's
+    char *end = string + strlen(string) - 1;        /* Point to the string's
                                                          * end */
     
-        
          /* Remove any leading spaces */ 
-        while (isspace((unsigned char)*beg))
+    while (isspace((unsigned char)*beg))
         
     {
-        
-            beg++;
-        
+    beg++;
     } 
         
          /* beg now points to the first non whitespace character */ 
          /* now find the last non-whitespace character */ 
-        while (isspace((unsigned char)*end) && (end != (beg - 1)))
+    while (isspace((unsigned char)*end) && (end != (beg - 1)))
         
     {
-        
-            end--;
-        
+    end--;
     } 
         
          /* Null terminate one after the last non-whitespace character */ 
-        end[1] = '\0';
+    end[1] = '\0';
     
-        
-        return beg;
+    return beg;
     
 } /* strip_blanks */ 
 
@@ -1413,71 +1111,51 @@ static char    *strip_blanks(char *string, const unsigned long strSz)
  /* */ 
 static void populate_subject(Cert * pReq, char *key, char *value)
 {
-    
-        if (0 == (strcasecmp(key, "C")))
+    if (0 == (strcasecmp(key, "C")))
         
     {
-        
-            log_trace("%s::%s(%d) : Setting Country to %s", LOG_INF, value);
-        
-            strncpy(pReq->subject.country, value, CTC_NAME_SIZE - 1);
-        
+    log_trace("%s::%s(%d) : Setting Country to %s", LOG_INF, value);
+    strncpy(pReq->subject.country, value, CTC_NAME_SIZE - 1);
     } 
-        else if (0 == (strcasecmp(key, "S")))
+    else if (0 == (strcasecmp(key, "S")))
         
     {
-        
-            log_trace("%s::%s(%d) : Setting State to %s", LOG_INF, value);
-        
-            strncpy(pReq->subject.state, value, CTC_NAME_SIZE - 1);
-        
+    log_trace("%s::%s(%d) : Setting State to %s", LOG_INF, value);
+    strncpy(pReq->subject.state, value, CTC_NAME_SIZE - 1);
     } 
-        else if (0 == (strcasecmp(key, "L")))
+    else if (0 == (strcasecmp(key, "L")))
         
     {
-        
-            log_trace("%s::%s(%d) : Setting locality to %s", LOG_INF, value);
-        
-            strncpy(pReq->subject.locality, value, CTC_NAME_SIZE - 1);
-        
+    log_trace("%s::%s(%d) : Setting locality to %s", LOG_INF, value);
+    strncpy(pReq->subject.locality, value, CTC_NAME_SIZE - 1);
     } 
-        else if (0 == (strcasecmp(key, "O")))
+    else if (0 == (strcasecmp(key, "O")))
         
     {
-        
-            log_trace("%s::%s(%d) : Setting Organization to %s", LOG_INF, value);
-        
-            strncpy(pReq->subject.org, value, CTC_NAME_SIZE - 1);
-        
+    log_trace("%s::%s(%d) : Setting Organization to %s", LOG_INF, value);
+    strncpy(pReq->subject.org, value, CTC_NAME_SIZE - 1);
     } 
-        else if (0 == (strcasecmp(key, "OU")))
+    else if (0 == (strcasecmp(key, "OU")))
         
     {
-        
-            log_trace("%s::%s(%d) : Setting Organizational Unit to %s", LOG_INF, 
-                      value);
+    log_trace("%s::%s(%d) : Setting Organizational Unit to %s", LOG_INF, 
+    value);
         
              /* Note pReq->subject.unit is only 64 bytes, so only copy 63 */ 
-            strncpy(pReq->subject.unit, value, CTC_NAME_SIZE - 1);
-        
+    strncpy(pReq->subject.unit, value, CTC_NAME_SIZE - 1);
     } 
-        else if (0 == (strcasecmp(key, "CN")))
+    else if (0 == (strcasecmp(key, "CN")))
         
     {
-        
-            log_trace("%s::%s(%d) : Setting Common Name to %s", LOG_INF, value);
-        
-            strncpy(pReq->subject.commonName, value, CTC_NAME_SIZE - 1);
-        
+    log_trace("%s::%s(%d) : Setting Common Name to %s", LOG_INF, value);
+    strncpy(pReq->subject.commonName, value, CTC_NAME_SIZE - 1);
     } 
-        else
+    else
         
     {
-        
-            log_info("%s::%s(%d) : key = %s is unknown, skipping", LOG_INF, key);
-        
+    log_info("%s::%s(%d) : key = %s is unknown, skipping", LOG_INF, key);
     } 
-        return;
+    return;
     
 } /* populate_subject */ 
 
@@ -1491,241 +1169,169 @@ static void populate_subject(Cert * pReq, char *key, char *value)
  /* */ 
 static bool parse_subject(Cert * pReq, const char *subject)
 {
+    bool bResult = false;
+    char *keyBytes = NULL;
+    char *strippedKey = NULL;
+    unsigned long   keyLen = 0;
+    char *valBytes = NULL;
+    char *strippedVal = NULL;
+    unsigned long   valLen = 0;
+    char *localSubjectPtr = NULL;
+    bool hasError = false;
+    int cur = 0;
+    char *curPtr = NULL;
+    int allocateMemorySize = 0;
+    bool endOfSubject = false;
     
-        bool bResult = false;
-    
-        char *keyBytes = NULL;
-    
-        char *strippedKey = NULL;
-    
-        unsigned long   keyLen = 0;
-    
-        char *valBytes = NULL;
-    
-        char *strippedVal = NULL;
-    
-        unsigned long   valLen = 0;
-    
-        char *localSubjectPtr = NULL;
-    
-        bool hasError = false;
-    
-        int cur = 0;
-    
-        char *curPtr = NULL;
-    
-        int allocateMemorySize = 0;
-    
-        bool endOfSubject = false;
-    
-        
-        localSubjectPtr = strdup(subject);
-    
-        if (localSubjectPtr == NULL) {
-        
-            log_error("%s::%s(%d) : Error copying subject, out of memory", LOG_INF);
-        
-            return NULL;
-        
+    localSubjectPtr = strdup(subject);
+    if (localSubjectPtr == NULL) {
+    log_error("%s::%s(%d) : Error copying subject, out of memory", LOG_INF);
+    return NULL;
     } 
-        curPtr = localSubjectPtr;
+    curPtr = localSubjectPtr;
+    log_debug("%s::%s(%d) : Subject \"%s\" is %ld characters long", 
+    LOG_INF, curPtr, strlen(curPtr));
     
-        log_debug("%s::%s(%d) : Subject \"%s\" is %ld characters long", 
-                  LOG_INF, curPtr, strlen(curPtr));
+    log_trace("%s::%s(%d) : hasError = %s endOfSubject = %s", LOG_INF, 
+    hasError ? "true" : "false", endOfSubject ? "true" : "false");
     
-        
-        log_trace("%s::%s(%d) : hasError = %s endOfSubject = %s", LOG_INF, 
-              hasError ? "true" : "false", endOfSubject ? "true" : "false");
-    
-        
-        while (!hasError && !endOfSubject)
+    while (!hasError && !endOfSubject)
         
     {
         
              /* Get the Key */ 
-            keyLen = strcspn(curPtr, "=");
-        
-            allocateMemorySize = (int)keyLen + 1;
-        
-            keyBytes = calloc(allocateMemorySize, sizeof(*keyBytes));
-        
-            if (NULL == keyBytes)
+    keyLen = strcspn(curPtr, "=");
+    allocateMemorySize = (int)keyLen + 1;
+    keyBytes = calloc(allocateMemorySize, sizeof(*keyBytes));
+    if (NULL == keyBytes)
             
-        {
-            
-                log_error("%s::%s(%d) : Out of memory", LOG_INF);
-            
-                goto cleanup;
-            
-        } 
-            strncpy(keyBytes, curPtr, (int)keyLen);
+    {
+    log_error("%s::%s(%d) : Out of memory", LOG_INF);
+    goto cleanup;
+    } 
+    strncpy(keyBytes, curPtr, (int)keyLen);
         
-            
-            strippedKey = strip_blanks(keyBytes, keyLen);
+    strippedKey = strip_blanks(keyBytes, keyLen);
+    log_verbose("%s::%s(%d) : Key: \"%s\" is %ld characters long", 
+    LOG_INF, strippedKey, strlen(strippedKey));
         
-            log_verbose("%s::%s(%d) : Key: \"%s\" is %ld characters long", 
-                        LOG_INF, strippedKey, strlen(strippedKey));
-        
-            
              /* Now get the value for the key */ 
-            curPtr += (keyLen + 1);     /* Advance past the equals character */
+    curPtr += (keyLen + 1);     /* Advance past the equals character */
         
-            if (*curPtr != '\0')
+    if (*curPtr != '\0')
             
-        {
-            
-                log_trace("%s::%s(%d) : localSubject is now \"%s\"", 
-                          LOG_INF, curPtr);
-            
-                valLen = read_subject_value(curPtr, NULL);
-            
-                if (valLen != 0)
+    {
+    log_trace("%s::%s(%d) : localSubject is now \"%s\"", 
+    LOG_INF, curPtr);
+    valLen = read_subject_value(curPtr, NULL);
+    if (valLen != 0)
                 
             {
-                
-                    allocateMemorySize = (int)valLen + 1;
-                
-                    valBytes = calloc(allocateMemorySize, sizeof(*valBytes));
-                
-                    if (NULL == valBytes)
+    allocateMemorySize = (int)valLen + 1;
+    valBytes = calloc(allocateMemorySize, sizeof(*valBytes));
+    if (NULL == valBytes)
                     
-                {
-                    
-                        log_error("%s::%s(%d) : Out of memory", LOG_INF);
-                    
-                        goto cleanup;
-                    
-                } 
-                    read_subject_value(curPtr, valBytes);
-                
-                    curPtr += (valLen + 1);
+    {
+        log_error("%s::%s(%d) : Out of memory", LOG_INF);
+        goto cleanup;
+    } 
+    read_subject_value(curPtr, valBytes);
+    curPtr += (valLen + 1);
                 //advance past the comma 
-                    strippedVal = strip_blanks(valBytes, strlen(valBytes));
+    strippedVal = strip_blanks(valBytes, strlen(valBytes));
+    log_verbose("%s::%s(%d) : Value: \"%s\" is %ld characters long", 
+    LOG_INF, strippedVal, strlen(strippedVal));
                 
-                    log_verbose("%s::%s(%d) : Value: \"%s\" is %ld characters long", 
-                                LOG_INF, strippedVal, strlen(strippedVal));
+    populate_subject(pReq, strippedKey, strippedVal);
                 
-                    
-                    populate_subject(pReq, strippedKey, strippedVal);
-                
-                    
                 /*
                  * Don't try to advance if we just advanced past the
                  * null-terminator
                       */ 
-                    if (*(curPtr - 1) != '\0')
+    if (*(curPtr - 1) != '\0')
                     
-                {
-                    
-                        if (*curPtr != '\0')
+    {
+        if (*curPtr != '\0')
                         
-                    {
-                        
+        {
                              /* Whitespace between RDNs should be ignored */ 
-                            log_trace("%s::%s(%d) : Stripping leading whitespace" 
-                                      " from \"%s\"", LOG_INF, curPtr);
+            log_trace("%s::%s(%d) : Stripping leading whitespace" 
+            " from \"%s\"", LOG_INF, curPtr);
                         
-                            curPtr = strip_blanks(curPtr, strlen(curPtr));
+            curPtr = strip_blanks(curPtr, strlen(curPtr));
+        } 
+        else
                         
-                    } 
-                        else
-                        
-                    {
-                        
-                            log_trace("%s::%s(%d) : Reached end of subject string", 
-                                      LOG_INF);
-                        
-                            endOfSubject = true;
-                        
-                    } 
-                } 
-                    else
+        {
+            log_trace("%s::%s(%d) : Reached end of subject string", 
+            LOG_INF);
+            endOfSubject = true;
+        } 
+    } 
+    else
                     
-                {
-                    
-                        log_trace("%s::%s(%d) : Reached end of subject string", 
-                                  LOG_INF);
-                    
-                        endOfSubject = true;
-                    
-                } 
+    {
+        log_trace("%s::%s(%d) : Reached end of subject string", 
+        LOG_INF);
+        endOfSubject = true;
+    } 
             } 
-                else
+    else
                 
             {
+    log_error("%s::%s(%d) : Input string '%s' is not a valid " 
+    "X509 name", LOG_INF, localSubjectPtr);
                 
-                    log_error("%s::%s(%d) : Input string '%s' is not a valid " 
-                              "X509 name", LOG_INF, localSubjectPtr);
-                
-                    hasError = true;
-                
+    hasError = true;
             } 
-        } 
-            else
+    } 
+    else
             
-        {
+    {
+    log_error("%s::%s(%d) : Input string '%s' is not a valid X509" 
+    " name", LOG_INF, localSubjectPtr);
             
-                log_error("%s::%s(%d) : Input string '%s' is not a valid X509" 
-                          " name", LOG_INF, localSubjectPtr);
-            
-                hasError = true;
-            
-        } 
-            if (keyBytes)
-            free(keyBytes);
-        
-            if (valBytes)
-            free(valBytes);
+    hasError = true;
+    } 
+    if (keyBytes)
+    free(keyBytes);
+    if (valBytes)
+    free(valBytes);
         
              /* Remember, *DONT* double free valBytes by freeing strippedVal */ 
              /* Likewise with strippedKey */ 
-            keyBytes = NULL;
-        
-            valBytes = NULL;
-        
-            strippedVal = NULL;
-        
-            strippedKey = NULL;
-        
-            log_trace("%s::%s(%d) : hasError = %s endOfSubject = %s", LOG_INF, 
-              hasError ? "true" : "false", endOfSubject ? "true" : "false");
-        
+    keyBytes = NULL;
+    valBytes = NULL;
+    strippedVal = NULL;
+    strippedKey = NULL;
+    log_trace("%s::%s(%d) : hasError = %s endOfSubject = %s", LOG_INF, 
+    hasError ? "true" : "false", endOfSubject ? "true" : "false");
     } 
         
-        if (!hasError)
-        bResult = true;
+    if (!hasError)
+    bResult = true;
     
-        
 cleanup:
-        if (localSubjectPtr)
+    if (localSubjectPtr)
         
     {
-        
-            log_trace("%s::%s(%d) : Freeing localSubjectPtr", LOG_INF);
-        
-            free(localSubjectPtr);
-        
-            localSubjectPtr = NULL;
-        
+    log_trace("%s::%s(%d) : Freeing localSubjectPtr", LOG_INF);
+    free(localSubjectPtr);
+    localSubjectPtr = NULL;
     } 
-        if (keyBytes)
-        free(keyBytes);
-    
-        if (valBytes)
-        free(valBytes);
+    if (keyBytes)
+    free(keyBytes);
+    if (valBytes)
+    free(valBytes);
     
          /* Remember, *DONT* double free valBytes by freeing strippedVal */ 
          /* Likewise with strippedKey */ 
-        keyBytes = NULL;
+    keyBytes = NULL;
+    valBytes = NULL;
+    strippedVal = NULL;
+    strippedKey = NULL;
     
-        valBytes = NULL;
-    
-        strippedVal = NULL;
-    
-        strippedKey = NULL;
-    
-        
-        return bResult;
+    return bResult;
     
 } /* parse_subject */ 
 
@@ -1751,39 +1357,27 @@ cleanup:
  /* */ 
 static unsigned long write_cert_bio(WOLFSSL_BIO * pBio, const char *pB64cert)
 {
+    unsigned long   errNum = 0;
+    char *pem = NULL;
     
-        unsigned long   errNum = 0;
-    
-        char *pem = NULL;
-    
-        
-        log_trace("%s::%s(%d) : Converting naked PEM to CERT PEM", LOG_INF);
-    
-        if (!naked_PEM_to_PEM(pB64cert, &pem, CERT_TYPE))
+    log_trace("%s::%s(%d) : Converting naked PEM to CERT PEM", LOG_INF);
+    if (!naked_PEM_to_PEM(pB64cert, &pem, CERT_TYPE))
         
     {
-        
-            log_error("%s::%s(%d) : Error converting naked PEM to CERT PEM", 
-                      LOG_INF);
-        
-            errNum = -1;
-        
-            goto cleanup;
-        
+    log_error("%s::%s(%d) : Error converting naked PEM to CERT PEM", 
+    LOG_INF);
+    errNum = -1;
+    goto cleanup;
     } 
-        log_trace("%s::%s(%d) : Successfully converted naked PEM to PEM", LOG_INF);
+    log_trace("%s::%s(%d) : Successfully converted naked PEM to PEM", LOG_INF);
     
-        
-        wolfSSL_BIO_puts(pBio, pem);
+    wolfSSL_BIO_puts(pBio, pem);
+    log_verbose("%s::%s(%d) : Cert written to BIO", LOG_INF);
     
-        log_verbose("%s::%s(%d) : Cert written to BIO", LOG_INF);
-    
-        
 cleanup:
-        if (pem)
-        free(pem);
-    
-        return errNum;
+    if (pem)
+    free(pem);
+    return errNum;
     
 } /* write_cert_bio */ 
 
@@ -1798,75 +1392,55 @@ cleanup:
  /* - failure : error code                                             */ 
  /* */ 
 static unsigned long write_key_bio(WOLFSSL_BIO * pBio, const char *password, 
-                                   WOLFSSL_EVP_PKEY * pkey)
+    WOLFSSL_EVP_PKEY * pkey)
 {
+    unsigned long   errNum = 0;
     
-        unsigned long   errNum = 0;
-    
-        
-        const char     *tmpPass = 
+    const char     *tmpPass = 
     (password && strcmp(password, "") != 0) ? password : NULL;
     
-        
-        const WOLFSSL_EVP_CIPHER * tmpCiph = 
-        (password && strcmp(password, "") != 0) ? wolfSSL_EVP_aes_256_cbc() : NULL;
+    const WOLFSSL_EVP_CIPHER * tmpCiph = 
+    (password && strcmp(password, "") != 0) ? wolfSSL_EVP_aes_256_cbc() : NULL;
     
-        
-        if (NULL == pkey)       /* We want to save the keyPair since no key
+    if (NULL == pkey)       /* We want to save the keyPair since no key
                                  * was passed */
         
     {
-        
-            log_trace("%s::%s(%d) : Writing temporary keyPair to BIO", LOG_INF);
-        
-            errNum = wolfSSL_PEM_write_bio_PKCS8PrivateKey(pBio, pPrivateKey, 
-                       tmpCiph, NULL, 0, PasswordCallBack, (char *)tmpPass);
-        
-            if (0 < errNum)
+    log_trace("%s::%s(%d) : Writing temporary keyPair to BIO", LOG_INF);
+    errNum = wolfSSL_PEM_write_bio_PKCS8PrivateKey(pBio, pPrivateKey, 
+    tmpCiph, NULL, 0, PasswordCallBack, (char *)tmpPass);
+    if (0 < errNum)
             
-        {
-            
-                log_verbose("%s::%s(%d) : Key written to BIO", LOG_INF);
-            
-                free_local_keys();
-            
-                errNum = 0;
-            
-        } 
-            else
-            
-        {
-            
-                errNum = ERR_peek_last_error();
-            
-        } 
+    {
+    log_verbose("%s::%s(%d) : Key written to BIO", LOG_INF);
+    free_local_keys();
+    errNum = 0;
     } 
-        else
+    else
+            
+    {
+    errNum = ERR_peek_last_error();
+    } 
+    } 
+    else
         
     {
-        
-            errNum = wolfSSL_PEM_write_bio_PKCS8PrivateKey(pBio, pkey, tmpCiph, 
-                                NULL, 0, PasswordCallBack, (char *)tmpPass);
-        
-            if (0 < errNum)
+    errNum = wolfSSL_PEM_write_bio_PKCS8PrivateKey(pBio, pkey, tmpCiph, 
+    NULL, 0, PasswordCallBack, (char *)tmpPass);
+    if (0 < errNum)
             
-        {
+    {
+    log_verbose("%s::%s(%d) : Key written to BIO", LOG_INF);
+    errNum = 0;
+    } 
+    else
             
-                log_verbose("%s::%s(%d) : Key written to BIO", LOG_INF);
-            
-                errNum = 0;
-            
-        } 
-            else
-            
-        {
-            
-                errNum = ERR_peek_last_error();
-            
-        } 
+    {
+    errNum = ERR_peek_last_error();
+    } 
     } 
         
-        return errNum;
+    return errNum;
     
 } /* write_key_bio */ 
 
@@ -1881,184 +1455,130 @@ static unsigned long write_key_bio(WOLFSSL_BIO * pBio, const char *password,
  /* failure = Any other integer                                      */ 
  /* */ 
 static int get_key_inventory(const char *path, const char *password, 
-                             PrivKeyList * *ppKeyList)
+    PrivKeyList * *ppKeyList)
 {
-    
-        int ret = 0;
-    
-        long length = 0;
-    
-        FILE * fp = NULL;
-    
-        char *name = NULL;
-    
-        char *header = NULL;
-    
-        unsigned char  *pData = NULL;
-    
-        WOLFSSL_BIO * pKeyBio = NULL;
-    
-        char aErrBuf[256];
+    int ret = 0;
+    long length = 0;
+    FILE * fp = NULL;
+    char *name = NULL;
+    char *header = NULL;
+    unsigned char  *pData = NULL;
+    WOLFSSL_BIO * pKeyBio = NULL;
+    char aErrBuf[256];
     
          /* Don't lose the pointer so it can be freed */ 
-        const unsigned char *pTempData = pData;
+    const unsigned char *pTempData = pData;
     
-        
-        const char     *tmpPass = 
+    const char     *tmpPass = 
     (password && strcmp(password, "") != 0) ? password : NULL;
     
-        
          /* Set the global password for callback */ 
-        if (tmpPass)
+    if (tmpPass)
         
     {
-        
-            gPasswd = strdup(tmpPass);
-        
+    gPasswd = strdup(tmpPass);
     } 
         
          /* Create an array to store keys into */ 
-        *ppKeyList = PrivKeyList_new();
+    *ppKeyList = PrivKeyList_new();
     
-        if (NULL == *ppKeyList)
+    if (NULL == *ppKeyList)
         
     {
-        
-            log_error("%s::%s(%d) : Out of memory", LOG_INF);
-        
-            return -1;
-        
+    log_error("%s::%s(%d) : Out of memory", LOG_INF);
+    return -1;
     } 
         
          /* Open the filestore */ 
-        fp = fopen(path, "r");
-    
-        if (!fp)
+    fp = fopen(path, "r");
+    if (!fp)
         
     {
-        
-            ret = errno;
-        
-            char *errStr = strerror(errno);
-        
-            log_error("%s::%s(%d) : Unable to open store at %s: %s", 
-                      LOG_INF, path, errStr);
-        
-            free(errStr);
-        
-            goto cleanup;
-        
+    ret = errno;
+    char *errStr = strerror(errno);
+    log_error("%s::%s(%d) : Unable to open store at %s: %s", 
+    LOG_INF, path, errStr);
+    free(errStr);
+    goto cleanup;
     } 
         
          /* Loop through the filestore adding keys to the keyList */ 
-        WOLFSSL_EVP_PKEY * pKey = NULL;
-    
-        while (wolfSSL_PEM_read(fp, &name, &header, &pData, &length))
+    WOLFSSL_EVP_PKEY * pKey = NULL;
+    while (wolfSSL_PEM_read(fp, &name, &header, &pData, &length))
         
     {
+    pKey = NULL;
+    pTempData = pData;
         
-            pKey = NULL;
-        
-            pTempData = pData;
-        
+    if ((strcasecmp(name, "CERTIFICATE") == 0))
             
-            if ((strcasecmp(name, "CERTIFICATE") == 0))
+    {
+    log_error("%s::%s(%d) WARNING: Certificate found in keystore" 
+    " -- skipping", LOG_INF);
+    } 
+    else if ((strcasecmp(name, "PRIVATE KEY") == 0) && 
+    (wolfSSL_d2i_AutoPrivateKey(&pKey, &pTempData, length)))
             
-        {
+    {
+    log_verbose("%s::%s(%d) : Entry is a private key", LOG_INF);
+    PrivKeyList_add(*ppKeyList, pKey);
+    } 
+    else if (strcasecmp(name, "ENCRYPTED PRIVATE KEY") == 0)
             
-                log_error("%s::%s(%d) WARNING: Certificate found in keystore" 
-                          " -- skipping", LOG_INF);
+    {
+    log_trace("%s::%s(%d) : FOUND ENCRYPTED PRIVATE KEY, " 
+    "Attempting decrypt", LOG_INF);
             
-        } 
-            else if ((strcasecmp(name, "PRIVATE KEY") == 0) && 
-                     (wolfSSL_d2i_AutoPrivateKey(&pKey, &pTempData, length)))
+    log_trace("%s::%s(%d) : Using PASSWORD = %s", LOG_INF, gPasswd);
             
-        {
+    pKeyBio = wolfSSL_BIO_new_mem_buf(pTempData, length);
+    log_trace("%s::%s(%d) : DECODED BIO = \n%s", LOG_INF, \
+    (char *)base64_encode(pKeyBio->ptr, length, false, NULL));
             
-                log_verbose("%s::%s(%d) : Entry is a private key", LOG_INF);
+    pKey = \
+    wolfSSL_d2i_PKCS8PrivateKey_bio(pKeyBio, &pKey, PasswordCallBack, 
+    (void *)tmpPass);
             
-                PrivKeyList_add(*ppKeyList, pKey);
-            
-        } 
-            else if (strcasecmp(name, "ENCRYPTED PRIVATE KEY") == 0)
-            
-        {
-            
-                log_trace("%s::%s(%d) : FOUND ENCRYPTED PRIVATE KEY, " 
-                          "Attempting decrypt", LOG_INF);
-            
-                log_trace("%s::%s(%d) : Using PASSWORD = %s", LOG_INF, gPasswd);
-            
+    if (pKey == NULL) {
+    unsigned long   errNum = wolfSSL_ERR_peek_last_error();
+    ERR_error_string(errNum, aErrBuf);
+    log_error("%s::%s(%d) : Unable to decrypt private key:" 
+    " %s Error code = %ld", LOG_INF, aErrBuf, errNum);
                 
-                pKeyBio = wolfSSL_BIO_new_mem_buf(pTempData, length);
-            
-                log_trace("%s::%s(%d) : DECODED BIO = \n%s", LOG_INF, \
-                  (char *)base64_encode(pKeyBio->ptr, length, false, NULL));
-            
-                
-                pKey = \
-                wolfSSL_d2i_PKCS8PrivateKey_bio(pKeyBio, &pKey, PasswordCallBack, 
-                                                (void *)tmpPass);
-            
-                
-                if (pKey == NULL) {
-                
-                    unsigned long   errNum = wolfSSL_ERR_peek_last_error();
-                
-                    ERR_error_string(errNum, aErrBuf);
-                
-                    log_error("%s::%s(%d) : Unable to decrypt private key:" 
-                          " %s Error code = %ld", LOG_INF, aErrBuf, errNum);
-                
-                    ret = -1;
-                
+    ret = -1;
             } 
-                else
+    else
                 
             {
-                
-                    log_verbose("%s::%s(%d) : Entry is an encrypted private key", 
-                                LOG_INF);
-                
-                    PrivKeyList_add(*ppKeyList, pKey);
-                
+    log_verbose("%s::%s(%d) : Entry is an encrypted private key", 
+    LOG_INF);
+    PrivKeyList_add(*ppKeyList, pKey);
             } 
-                wolfSSL_BIO_free(pKeyBio);
+    wolfSSL_BIO_free(pKeyBio);
+    } 
+    else
             
-        } 
-            else
+    {
+    log_verbose("%s::%s(%d) : Entry is not a key, and will be skipped", 
+    LOG_INF);
+    } 
             
-        {
-            
-                log_verbose("%s::%s(%d) : Entry is not a key, and will be skipped", 
-                            LOG_INF);
-            
-        } 
-            
-            wolfSSL_OPENSSL_free(name);
-        
-            wolfSSL_OPENSSL_free(header);
-        
-            wolfSSL_OPENSSL_free(pData);
-        
-            length = 0;
-        
+    wolfSSL_OPENSSL_free(name);
+    wolfSSL_OPENSSL_free(header);
+    wolfSSL_OPENSSL_free(pData);
+    length = 0;
     } 
         
 cleanup:
-        if (fp)
-        fclose(fp);
-    
-        if (gPasswd)
+    if (fp)
+    fclose(fp);
+    if (gPasswd)
         
     {
-        
-            free(gPasswd);
-        
-            gPasswd = NULL;
-        
+    free(gPasswd);
+    gPasswd = NULL;
     } 
-        return ret;
+    return ret;
     
 } /* get_key_inventory */ 
 
@@ -2092,230 +1612,165 @@ cleanup:
  /* - failure = any other integer                                      */ 
  /* */ 
 static int get_inventory(const char *path, const char *password, 
-                  PemInventoryList * *ppPemList, PEMx509List * *pPemArray, 
-                     const bool returnX509array, PrivKeyList * *pKeyArray, 
-                         const bool returnKeyArray)
+    PemInventoryList * *ppPemList, PEMx509List * *pPemArray, 
+    const bool returnX509array, PrivKeyList * *pKeyArray, 
+    const bool returnKeyArray)
 {
+    int ret = 0;
+    char *name = NULL;
+    char *header = NULL;
+    unsigned char  *data = NULL;
+    WOLFSSL_BIO * pKeyBio = NULL;
+    long length = 0;
+    char errBuf[1024];
+    char *pErrBuf = &errBuf[0];
     
-        int ret = 0;
-    
-        char *name = NULL;
-    
-        char *header = NULL;
-    
-        unsigned char  *data = NULL;
-    
-        WOLFSSL_BIO * pKeyBio = NULL;
-    
-        long length = 0;
-    
-        char errBuf[1024];
-    
-        char *pErrBuf = &errBuf[0];
-    
-        
-        const char     *tmpPass = 
+    const char     *tmpPass = 
     (password && strcmp(password, "") != 0) ? password : NULL;
     
-        
-        if (tmpPass)
+    if (tmpPass)
         
     {
-        
-            gPasswd = strdup(tmpPass);
-        
+    gPasswd = strdup(tmpPass);
     } 
         
          /* Open the filestore */ 
-        log_trace("%s::%s(%d) : Opening %s", LOG_INF, path);
-    
-        FILE * fp = fopen(path, "r");
-    
-        if (!fp)
+    log_trace("%s::%s(%d) : Opening %s", LOG_INF, path);
+    FILE * fp = fopen(path, "r");
+    if (!fp)
         
     {
-        
-            ret = errno;
-        
-            pErrBuf = strerror(errno);
-        
-            log_error("%s::%s(%d) : Unable to open store at %s: %s", 
-                      LOG_INF, path, pErrBuf);
-        
-            return ret;
-        
+    ret = errno;
+    pErrBuf = strerror(errno);
+    log_error("%s::%s(%d) : Unable to open store at %s: %s", 
+    LOG_INF, path, pErrBuf);
+    return ret;
     } 
-        log_trace("%s::%s(%d) : Opened file, now allocating memory for new lists", 
-                  LOG_INF);
+    log_trace("%s::%s(%d) : Opened file, now allocating memory for new lists", 
+    LOG_INF);
     
-        
          /* Create the inventory list to share with the agent */ 
-        *ppPemList = PemInventoryList_new();
+    *ppPemList = PemInventoryList_new();
     
-        log_trace("%s::%s(%d) : Created a new PemInventoryList", LOG_INF);
+    log_trace("%s::%s(%d) : Created a new PemInventoryList", LOG_INF);
     
          /* Now create a 'mirror' array where each index into the                  */ 
          /* PemInventoryList->items array is equal to the index into this array.   */ 
          /* That is:                                                               */ 
          /* PemInventoryList->items[x] = PEMx509List->certs[x] for all values of x */ 
          /* */ 
-        PEMx509List * x509array = PEMx509List_new();
-    
-        log_trace("%s::%s(%d) : Created a new PEMx509List", LOG_INF);
+    PEMx509List * x509array = PEMx509List_new();
+    log_trace("%s::%s(%d) : Created a new PEMx509List", LOG_INF);
     
          /* Also create an array into which private keys are stored */ 
-        PrivKeyList * keyList = PrivKeyList_new();
+    PrivKeyList * keyList = PrivKeyList_new();
+    log_trace("%s::%s(%d) : Created a new PrivKeyList", LOG_INF);
     
-        log_trace("%s::%s(%d) : Created a new PrivKeyList", LOG_INF);
-    
-        
-        if ((NULL == (*ppPemList)) || 
-            (NULL == x509array) || 
-            (NULL == keyList))
+    if ((NULL == (*ppPemList)) || 
+    (NULL == x509array) || 
+    (NULL == keyList))
         
     {
-        
-            log_error("%s::%s(%d) : Out of memory", 
-                      LOG_INF);
-        
-            ret = -1;
-        
-            goto cleanup;
-        
+    log_error("%s::%s(%d) : Out of memory", 
+    LOG_INF);
+    ret = -1;
+    goto cleanup;
     } 
         
-        PemInventoryItem * pem = NULL;
-    
-        WOLFSSL_X509 * cert = NULL;
-    
-        WOLFSSL_EVP_PKEY * key = NULL;
+    PemInventoryItem * pem = NULL;
+    WOLFSSL_X509 * cert = NULL;
+    WOLFSSL_EVP_PKEY * key = NULL;
     
          /* Don't lose the pointer so it can be freed */ 
-        const unsigned char *tempData = data;
+    const unsigned char *tempData = data;
     
          /* Loop through the data in the store, one object at a time */ 
-        log_trace("%s::%s(%d) : Fetching objects from the datastore", LOG_INF);
-    
-        while (PEM_read(fp, &name, &header, &data, &length))
+    log_trace("%s::%s(%d) : Fetching objects from the datastore", LOG_INF);
+    while (PEM_read(fp, &name, &header, &data, &length))
         
     {
+    pem = NULL;
+    cert = NULL;
+    key = NULL;
+    tempData = data;
         
-            pem = NULL;
-        
-            cert = NULL;
-        
-            key = NULL;
-        
-            tempData = data;
-        
+    log_trace("%s::%s(%d) : found %s", LOG_INF, name);
+    if ((strcmp(name, "CERTIFICATE") == 0) && \
+    (wolfSSL_d2i_X509(&cert, &tempData, length)))
             
-            log_trace("%s::%s(%d) : found %s", LOG_INF, name);
-        
-            if ((strcmp(name, "CERTIFICATE") == 0) && \
-                (wolfSSL_d2i_X509(&cert, &tempData, length)))
-            
-        {
+    {
             
                  /* Then, store it into the inventory list */ 
-                pem = PemInventoryItem_new();
-            
-                if (PemInventoryItem_populate(pem, cert))
+    pem = PemInventoryItem_new();
+    if (PemInventoryItem_populate(pem, cert))
                 
             {
-                
-                    PemInventoryList_add(*ppPemList, pem);
-                
-                    PEMx509List_add(x509array, cert);
-                
+    PemInventoryList_add(*ppPemList, pem);
+    PEMx509List_add(x509array, cert);
             } 
-                else
+    else
                 
             {
-                
-                    log_error("%s::%s(%d) Not adding cert to list of certs in store", 
-                              LOG_INF);
-                
+    log_error("%s::%s(%d) Not adding cert to list of certs in store", 
+    LOG_INF);
             } 
-        } 
-            else if ((strcmp(name, "PRIVATE KEY") == 0) && 
-                     (wolfSSL_d2i_AutoPrivateKey(&key, &tempData, length)))
+    } 
+    else if ((strcmp(name, "PRIVATE KEY") == 0) && 
+    (wolfSSL_d2i_AutoPrivateKey(&key, &tempData, length)))
             
-        {
+    {
+    log_verbose("%s::%s(%d) : Entry is a private key", LOG_INF);
+    PrivKeyList_add(keyList, key);
+    } 
+    else if (strcmp(name, "ENCRYPTED PRIVATE KEY") == 0)
             
-                log_verbose("%s::%s(%d) : Entry is a private key", LOG_INF);
-            
-                PrivKeyList_add(keyList, key);
-            
-        } 
-            else if (strcmp(name, "ENCRYPTED PRIVATE KEY") == 0)
-            
-        {
-            
-                pKeyBio = wolfSSL_BIO_new_mem_buf(data, length);
-            
-                key = wolfSSL_d2i_PKCS8PrivateKey_bio(pKeyBio, &key, 
-                      PasswordCallBack, (char *)(password ? password : ""));
-            
-                if (NULL != key)
+    {
+    pKeyBio = wolfSSL_BIO_new_mem_buf(data, length);
+    key = wolfSSL_d2i_PKCS8PrivateKey_bio(pKeyBio, &key, 
+    PasswordCallBack, (char *)(password ? password : ""));
+    if (NULL != key)
                 
             {
-                
-                    log_verbose("%s::%s(%d) : Entry is an encrypted private key", 
-                                LOG_INF);
-                
-                    PrivKeyList_add(keyList, key);
-                
+    log_verbose("%s::%s(%d) : Entry is an encrypted private key", 
+    LOG_INF);
+    PrivKeyList_add(keyList, key);
             } 
-                else
+    else
                 
             {
-                
-                    unsigned long   errNum = wolfSSL_ERR_peek_last_error();
-                
-                    ERR_error_string(errNum, errBuf);
-                
-                    log_error("%s::%s(%d) : Unable to decrypt private key: %s = %ld", 
-                              LOG_INF, errBuf, errNum);
-                
+    unsigned long   errNum = wolfSSL_ERR_peek_last_error();
+    ERR_error_string(errNum, errBuf);
+    log_error("%s::%s(%d) : Unable to decrypt private key: %s = %ld", 
+    LOG_INF, errBuf, errNum);
             } 
-                wolfSSL_BIO_free(pKeyBio);
+    wolfSSL_BIO_free(pKeyBio);
+    } 
+    else
             
-        } 
-            else
+    {
+    log_verbose("%s::%s(%d) : Entry is not a certificate, " 
+    "and will be skipped", LOG_INF);
+    } 
             
-        {
-            
-                log_verbose("%s::%s(%d) : Entry is not a certificate, " 
-                            "and will be skipped", LOG_INF);
-            
-        } 
-            
-            wolfSSL_OPENSSL_free(name);
-        
-            wolfSSL_OPENSSL_free(header);
-        
-            wolfSSL_OPENSSL_free(data);
-        
-            length = 0;
-        
+    wolfSSL_OPENSSL_free(name);
+    wolfSSL_OPENSSL_free(header);
+    wolfSSL_OPENSSL_free(data);
+    length = 0;
     } 
         
-        log_verbose("%s::%s(%d) : %d items in PEM list", LOG_INF, 
-                    (*ppPemList)->item_count);
+    log_verbose("%s::%s(%d) : %d items in PEM list", LOG_INF, 
+    (*ppPemList)->item_count);
     
-        log_verbose("%s::%s(%d) : Checking for matching private keys", LOG_INF);
-    
-        for (int i = 0; i < (*ppPemList)->item_count; ++i)
+    log_verbose("%s::%s(%d) : Checking for matching private keys", LOG_INF);
+    for (int i = 0; i < (*ppPemList)->item_count; ++i)
         
     {
+    log_verbose("%s::%s(%d) : Thumbprint: %s", LOG_INF, 
+    (*ppPemList)->items[i]->thumbprint_string);
         
-            log_verbose("%s::%s(%d) : Thumbprint: %s", LOG_INF, 
-                        (*ppPemList)->items[i]->thumbprint_string);
-        
+    for (int k = 0; k < keyList->key_count; ++k)
             
-            for (int k = 0; k < keyList->key_count; ++k)
-            
-        {
+    {
             
                  /* Use the x509array to grab the X509 certificate associated with */ 
                  /* the (*ppPemList)->items[i]->cert.  Since *ppPemList has the    */ 
@@ -2325,93 +1780,72 @@ static int get_inventory(const char *path, const char *password,
                  /* Remember, the x509array is a 1:1 match with the items array    */ 
                  /* in the *ppPemList.                                             */ 
                  /* */ 
-                if (is_cert_key_match(x509array->certs[i], keyList->priv_keys[k]))
+    if (is_cert_key_match(x509array->certs[i], keyList->priv_keys[k]))
                 
             {
+    log_verbose("%s::%s(%d) : Found matching cert and private key", 
+    LOG_INF);
                 
-                    log_verbose("%s::%s(%d) : Found matching cert and private key", 
-                                LOG_INF);
-                
-                    (*ppPemList)->items[i]->has_private_key = true;
-                
+    (*ppPemList)->items[i]->has_private_key = true;
             } 
-        } 
+    } 
     } 
         
 cleanup:
          /* Cleanup things */ 
-        if (x509array)
+    if (x509array)
         
     {
-        
-            if (!returnX509array || (0 != ret))
+    if (!returnX509array || (0 != ret))
             
-        {
-            
-                log_trace("%s::%s(%d) : Freeing x509array", LOG_INF);
+    {
+    log_trace("%s::%s(%d) : Freeing x509array", LOG_INF);
             
                  /* We no longer need the X509 cert versions */ 
-                PEMx509List_free(x509array);
-            
-        } 
-            else
-            
-        {
-            
-                (*pPemArray) = x509array;       /* Return the array */
-            
-        } 
-            x509array = NULL;
-        
+    PEMx509List_free(x509array);
     } 
-        if (*ppPemList && (0 != ret))
+    else
+            
+    {
+            
+    (*pPemArray) = x509array;       /* Return the array */
+    } 
+    x509array = NULL;
+    } 
+    if (*ppPemList && (0 != ret))
         
     {
-        
-            log_trace("%s::%s(%d) : Freeing *ppPemList", LOG_INF);
-        
-            PemInventoryList_free(*ppPemList);
+    log_trace("%s::%s(%d) : Freeing *ppPemList", LOG_INF);
+    PemInventoryList_free(*ppPemList);
         
             *ppPemList = NULL;
-        
     } 
-        if (keyList)
+    if (keyList)
         
     {
-        
-            if (!returnKeyArray)
+    if (!returnKeyArray)
             
-        {
+    {
+    log_trace("%s::%s(%d) : Freeing keyList", LOG_INF);
+    PrivKeyList_free(keyList);
+    } 
+    else
             
-                log_trace("%s::%s(%d) : Freeing keyList", LOG_INF);
+    {
             
-                PrivKeyList_free(keyList);
-            
-        } 
-            else
-            
-        {
-            
-                (*pKeyArray) = keyList;
-            
-                
-        } 
-            keyList = NULL;
-        
+    (*pKeyArray) = keyList;
+    } 
+    keyList = NULL;
     } 
         
-        if (fp)
+    if (fp)
         
     {
-        
-            log_trace("%s::%s(%d) : Closing fp", LOG_INF);
-        
-            fclose(fp);
-        
-            fp = NULL;
-        
+    log_trace("%s::%s(%d) : Closing fp", LOG_INF);
+    fclose(fp);
+    fp = NULL;
     } 
-        return ret;
+    return ret;
     
 } /* get_inventory */ 
 
@@ -2426,53 +1860,37 @@ cleanup:
  /* */ 
 static int store_append_cert(const char *storePath, WOLFSSL_X509 * pCert)
 {
-    
-        FILE * fpAdd = fopen(storePath, "a");
-    
-        int ret = 0;
-    
-        if (!fpAdd)
+    FILE * fpAdd = fopen(storePath, "a");
+    int ret = 0;
+    if (!fpAdd)
         
     {
-        
-            ret = errno;
-        
-            char *errStr = strerror(errno);
-        
-            log_error("%s::%s(%d) : Unable to open store at %s: %s", LOG_INF, 
-                      storePath, errStr);
-        
+    ret = errno;
+    char *errStr = strerror(errno);
+    log_error("%s::%s(%d) : Unable to open store at %s: %s", LOG_INF, 
+    storePath, errStr);
     } 
-        else
+    else
         
     {
-        
-            if (!wolfSSL_PEM_write_X509(fpAdd, pCert))
+    if (!wolfSSL_PEM_write_X509(fpAdd, pCert))
             
-        {
-            
-                char errBuf[120];
-            
-                unsigned long   errNum = ERR_peek_last_error();
-            
-                ERR_error_string(errNum, errBuf);
-            
-                log_error("%s::%s(%d) : Unable to write certificate to store: %s", 
-                          LOG_INF, errBuf);
-            
-                ret = -1;
-            
-        } 
-            
-            if (fpAdd)
-            
-        {
-            
-                fclose(fpAdd);
-            
-        } 
+    {
+    char errBuf[120];
+    unsigned long   errNum = ERR_peek_last_error();
+    ERR_error_string(errNum, errBuf);
+    log_error("%s::%s(%d) : Unable to write certificate to store: %s", 
+    LOG_INF, errBuf);
+    ret = -1;
     } 
-        return ret;
+            
+    if (fpAdd)
+            
+    {
+    fclose(fpAdd);
+    } 
+    } 
+    return ret;
     
 } /* store_append_cert */ 
 
@@ -2489,33 +1907,24 @@ static int store_append_cert(const char *storePath, WOLFSSL_X509 * pCert)
  /* */ 
 int ssl_seed_rng(const char *b64entropy)
 {
-    
-        if (b64entropy)
+    if (b64entropy)
         
     {
-        
              /* Init the locally global entropy variable with the provided entropy */ 
              /* convert the entropy from b64 */ 
-            if (ES.entropy_blob)
-            free(ES.entropy_blob);      /* Free old entropy */
+    if (ES.entropy_blob)
+    free(ES.entropy_blob);      /* Free old entropy */
         
-            ES.entropy_blob = base64_decode(b64entropy, -1, &ES.entropy_size);
-        
-            ES.has_entropy_loaded = true;
-        
-            ES.current_byte_ptr = 0;
-        
-            return 0;
-        
+    ES.entropy_blob = base64_decode(b64entropy, -1, &ES.entropy_size);
+    ES.has_entropy_loaded = true;
+    ES.current_byte_ptr = 0;
+    return 0;
     } 
-        else
+    else
         
     {
-        
-            log_error("%s::%s(%d) : No entropy provided", LOG_INF);
-        
-            return -1;
-        
+    log_error("%s::%s(%d) : No entropy provided", LOG_INF);
+    return -1;
     } 
 } /* seed_rng */ 
 
@@ -2529,168 +1938,115 @@ int ssl_seed_rng(const char *b64entropy)
  /* */ 
 bool ssl_generate_rsa_keypair(int keySize)
 {
+    unsigned long   errNum = 0;
+    bool bResult = false;
+    byte * pDer = NULL;
+    const unsigned char **ppDer = NULL;
+    int derSz = 0;
     
-        unsigned long   errNum = 0;
+    log_trace("%s::%s(%d) : Received request to generate RSA key of length %d", 
+    LOG_INF, keySize);
     
-        bool bResult = false;
-    
-        byte * pDer = NULL;
-    
-        const unsigned char **ppDer = NULL;
-    
-        int derSz = 0;
-    
-        
-        log_trace("%s::%s(%d) : Received request to generate RSA key of length %d", 
-                  LOG_INF, keySize);
-    
-        
-        log_trace("%s::%s(%d) : Allocating space for DER", LOG_INF);
-    
-        pDer = calloc((keySize + 1), sizeof(*pDer));
-    
-        if (!pDer)
+    log_trace("%s::%s(%d) : Allocating space for DER", LOG_INF);
+    pDer = calloc((keySize + 1), sizeof(*pDer));
+    if (!pDer)
         
     {
-        
-            log_error("%s::%s(%d) : Out of memory", LOG_INF);
-        
-            goto fail_cleanup;
-        
+    log_error("%s::%s(%d) : Out of memory", LOG_INF);
+    goto fail_cleanup;
     } 
         
-        log_trace("%s::%s(%d) : Seeding the RNG", LOG_INF);
-    
-        errNum = wc_InitRng(&rng);
-    
-        if (0 != errNum)
+    log_trace("%s::%s(%d) : Seeding the RNG", LOG_INF);
+    errNum = wc_InitRng(&rng);
+    if (0 != errNum)
         
     {
-        
-            log_error("%s::%s(%d) : Error seeding rng: %ld", LOG_INF, errNum);
-        
-            goto fail_cleanup;
-        
+    log_error("%s::%s(%d) : Error seeding rng: %ld", LOG_INF, errNum);
+    goto fail_cleanup;
     } 
         
-        log_trace("%s::%s(%d) : Initializing RSA key", LOG_INF);
+    log_trace("%s::%s(%d) : Initializing RSA key", LOG_INF);
+    errNum = wc_InitRsaKey(&rsaKey, NULL);  /* not using heap hint. */
     
-        errNum = wc_InitRsaKey(&rsaKey, NULL);  /* not using heap hint. */
-    
-        if (0 != errNum)
+    if (0 != errNum)
         
     {
-        
-            log_error("%s::%s(%d) : Error initializing RSA key", LOG_INF);
-        
-            goto fail_cleanup;
-        
+    log_error("%s::%s(%d) : Error initializing RSA key", LOG_INF);
+    goto fail_cleanup;
     } 
         
-        log_trace("%s::%s(%d) : Generating RSA key", LOG_INF);
-    
-        errNum = wc_MakeRsaKey(&rsaKey, keySize, RSA_DEFAULT_EXP, &rng);
-    
-        if (0 == errNum)
+    log_trace("%s::%s(%d) : Generating RSA key", LOG_INF);
+    errNum = wc_MakeRsaKey(&rsaKey, keySize, RSA_DEFAULT_EXP, &rng);
+    if (0 == errNum)
         
     {
+    log_verbose("%s::%s(%d) : Successfully created RSA keypair - " 
+    "converting to DER", LOG_INF);
         
-            log_verbose("%s::%s(%d) : Successfully created RSA keypair - " 
-                        "converting to DER", LOG_INF);
-        
-            derSz = wc_RsaKeyToDer(&rsaKey, pDer, (keySize + 1));
-        
-            if (0 >= derSz)
+    derSz = wc_RsaKeyToDer(&rsaKey, pDer, (keySize + 1));
+    if (0 >= derSz)
             
-        {
-            
-                log_error("%s::%s(%d) Error converting key to DER", LOG_INF);
-            
-                goto fail_cleanup;
-            
-        } 
-            
-            ppDer = (const unsigned char **)&pDer;
-        
-            pPrivateKey = wolfSSL_d2i_PrivateKey(EVP_PKEY_RSA, &pPrivateKey, 
-                                                 ppDer, derSz);
-        
-            if (pPrivateKey)
-            
-        {
-            
-                log_trace("%s::%s(%d) : Successfully converted RSA keypair to DER", 
-                          LOG_INF);
-            
-        } 
-            else
-            
-        {
-            
-                log_error("%s::%s(%d) : Failed to convert RSA key to EVP_PKEY", 
-                          LOG_INF);
-            
-                goto fail_cleanup;
-            
-        } 
+    {
+    log_error("%s::%s(%d) Error converting key to DER", LOG_INF);
+    goto fail_cleanup;
     } 
-        else
+            
+    ppDer = (const unsigned char **)&pDer;
+    pPrivateKey = wolfSSL_d2i_PrivateKey(EVP_PKEY_RSA, &pPrivateKey, 
+    ppDer, derSz);
+    if (pPrivateKey)
+            
+    {
+    log_trace("%s::%s(%d) : Successfully converted RSA keypair to DER", 
+    LOG_INF);
+    } 
+    else
+            
+    {
+    log_error("%s::%s(%d) : Failed to convert RSA key to EVP_PKEY", 
+    LOG_INF);
+    goto fail_cleanup;
+    } 
+    } 
+    else
         
     {
-        
-            log_error("%s::%s(%d) : Error making RSA key. code = %ld", LOG_INF, 
-                      errNum);
-        
-            goto fail_cleanup;
-        
+    log_error("%s::%s(%d) : Error making RSA key. code = %ld", LOG_INF, 
+    errNum);
+    goto fail_cleanup;
     } 
         
          /* successful_cleanup: */ 
-        if (pDer)
+    if (pDer)
         
     {
-        
              /* NOTE wolfSSL_d2i_PrivateKey advanced pDer by derSz */ 
              /* So reset it back to the beginning of the der */ 
-            pDer -= derSz;
-        
-            free(pDer);
-        
-            pDer = NULL;
-        
+    pDer -= derSz;
+    free(pDer);
+    pDer = NULL;
     } 
-        keyType = RSA_KEY_TYPE;
+    keyType = RSA_KEY_TYPE;
+    bResult = true;
+    return bResult;
     
-        bResult = true;
-    
-        return bResult;
-    
-        
 fail_cleanup:
-        if (pDer)
+    if (pDer)
         
     {
-        
-            free(pDer);
-        
-            pDer = NULL;
-        
+    free(pDer);
+    pDer = NULL;
     } 
-        if (pPrivateKey)
+    if (pPrivateKey)
         
     {
-        
-            log_trace("%s::%s(%d) : Freeing EVP_PKEY Private Key Structure", 
-                      LOG_INF);
-        
-            wolfSSL_EVP_PKEY_free(pPrivateKey);
-        
+    log_trace("%s::%s(%d) : Freeing EVP_PKEY Private Key Structure", 
+    LOG_INF);
+    wolfSSL_EVP_PKEY_free(pPrivateKey);
     } 
-        keyType = NO_KEY_TYPE;
+    keyType = NO_KEY_TYPE;
+    return bResult;
     
-        return bResult;
-    
-        
 } /* generate_rsa_keypair */ 
 
  /**                                                                           */ 
@@ -2704,206 +2060,141 @@ fail_cleanup:
  /* */ 
 bool ssl_generate_ecc_keypair(int keySize)
 {
+    int eccNid = -1;
+    int keySz = -1;
+    unsigned long   errNum = 0;
+    bool bResult = false;
+    byte * pDer = NULL;
+    const unsigned char **ppDer = NULL;
+    int derSz = 0;
     
-        int eccNid = -1;
+    log_trace("%s::%s(%d) : Allocating memory for DER", LOG_INF);
+    pDer = calloc(ONEK_SIZE, sizeof(*pDer));
     
-        int keySz = -1;
-    
-        unsigned long   errNum = 0;
-    
-        bool bResult = false;
-    
-        byte * pDer = NULL;
-    
-        const unsigned char **ppDer = NULL;
-    
-        int derSz = 0;
-    
-        
-        log_trace("%s::%s(%d) : Allocating memory for DER", LOG_INF);
-    
-        pDer = calloc(ONEK_SIZE, sizeof(*pDer));
-    
-        
-        if (!pDer)
+    if (!pDer)
         
     {
-        
-            log_error("%s::%s(%d) : Out of memory", LOG_INF);
-        
-            goto fail_cleanup;
-        
+    log_error("%s::%s(%d) : Out of memory", LOG_INF);
+    goto fail_cleanup;
     } 
         
-        switch (keySize)
+    switch (keySize)
         
     {
-        
     case 256:
         
-            log_trace("%s::%s(%d) : Setting ECC curve to ECC_SECP256R1", 
-                      LOG_INF);
+    log_trace("%s::%s(%d) : Setting ECC curve to ECC_SECP256R1", 
+    LOG_INF);
+    eccNid = ECC_SECP256R1;
+    keySz = 32;         /* 256/8 = 32 bytes */
         
-            eccNid = ECC_SECP256R1;
-        
-            keySz = 32;         /* 256/8 = 32 bytes */
-        
-            break;
-        
+    break;
     case 384:
         
-            log_trace("%s::%s(%d) : Setting ECC curve to ECC_SECP384R1", 
-                      LOG_INF);
+    log_trace("%s::%s(%d) : Setting ECC curve to ECC_SECP384R1", 
+    LOG_INF);
+    eccNid = ECC_SECP384R1;
+    keySz = 48;         /* 384/8 = 48 bytes */
         
-            eccNid = ECC_SECP384R1;
-        
-            keySz = 48;         /* 384/8 = 48 bytes */
-        
-            break;
-        
+    break;
     case 521:
         
-            log_trace("%s::%s(%d) : Setting ECC curve to ECC_SECP521R1", 
-                      LOG_INF);
+    log_trace("%s::%s(%d) : Setting ECC curve to ECC_SECP521R1", 
+    LOG_INF);
+    eccNid = ECC_SECP521R1;
+    keySz = 66;         /* 521/8 = 65.125 bytes */
         
-            eccNid = ECC_SECP521R1;
-        
-            keySz = 66;         /* 521/8 = 65.125 bytes */
-        
-            break;
-        
+    break;
     default:
         
-            log_error("%s::%s(%d) : Invalid ECC key length: %d. " 
-                      "Falling back to default curve", LOG_INF, keySize);
+    log_error("%s::%s(%d) : Invalid ECC key length: %d. " 
+    "Falling back to default curve", LOG_INF, keySize);
         
-            eccNid = ECC_SECP256R1;
-        
-            keySz = 32;
-        
-            break;
-        
+    eccNid = ECC_SECP256R1;
+    keySz = 32;
+    break;
     } 
         
          /**********************************************************************/ 
          /* Create keypair using wolfcrypt                                     */ 
          /**********************************************************************/ 
-        log_trace("%s::%s(%d) : Initializing ECC key", LOG_INF);
-    
-        errNum = wc_ecc_init(&eccKey);
-    
-        if (errNum != 0)
+    log_trace("%s::%s(%d) : Initializing ECC key", LOG_INF);
+    errNum = wc_ecc_init(&eccKey);
+    if (errNum != 0)
         
     {
-        
-            log_error("%s::%s(%d) : Error initializing ecc key", LOG_INF);
-        
-            goto fail_cleanup;
-        
+    log_error("%s::%s(%d) : Error initializing ecc key", LOG_INF);
+    goto fail_cleanup;
     } 
         
-        log_trace("%s::%s(%d) : Initializing RNG", LOG_INF);
-    
-        errNum = wc_InitRng(&rng);
-    
-        if (0 != errNum)
+    log_trace("%s::%s(%d) : Initializing RNG", LOG_INF);
+    errNum = wc_InitRng(&rng);
+    if (0 != errNum)
         
     {
-        
-            log_error("%s::%s(%d) : Error seeding rng: %ld", LOG_INF, errNum);
-        
-            goto fail_cleanup;
-        
+    log_error("%s::%s(%d) : Error seeding rng: %ld", LOG_INF, errNum);
+    goto fail_cleanup;
     } 
         
-        log_trace("%s::%s(%d) : Generating ECC key", LOG_INF);
-    
-        errNum = wc_ecc_make_key_ex(&rng, keySz, &eccKey, eccNid);
-    
-        if (errNum != 0)
+    log_trace("%s::%s(%d) : Generating ECC key", LOG_INF);
+    errNum = wc_ecc_make_key_ex(&rng, keySz, &eccKey, eccNid);
+    if (errNum != 0)
         
     {
-        
-            log_error("%s::%s(%d) : Error generating ecc key. code = %ld", 
-                      LOG_INF, errNum);
-        
-            goto fail_cleanup;
-        
+    log_error("%s::%s(%d) : Error generating ecc key. code = %ld", 
+    LOG_INF, errNum);
+    goto fail_cleanup;
     } 
         
-        log_trace("%s::%s(%d) : Converting ECC to der", LOG_INF);
-    
-        derSz = wc_EccKeyToDer(&eccKey, pDer, ONEK_SIZE);
-    
-        if (0 >= derSz)
+    log_trace("%s::%s(%d) : Converting ECC to der", LOG_INF);
+    derSz = wc_EccKeyToDer(&eccKey, pDer, ONEK_SIZE);
+    if (0 >= derSz)
         
     {
-        
-            log_error("%s::%s(%d) : Error converting ECC key to DER", LOG_INF);
-        
-            goto fail_cleanup;
-        
+    log_error("%s::%s(%d) : Error converting ECC key to DER", LOG_INF);
+    goto fail_cleanup;
     } 
         
-        log_trace("%s::%s(%d) : Converting DER to EVP_PKEY structure", LOG_INF);
-    
-        ppDer = (const unsigned char **)&pDer;
-    
-        pPrivateKey = wolfSSL_d2i_PrivateKey(EVP_PKEY_EC, &pPrivateKey, 
-                                             ppDer, derSz);
-    
-        if (pPrivateKey)
+    log_trace("%s::%s(%d) : Converting DER to EVP_PKEY structure", LOG_INF);
+    ppDer = (const unsigned char **)&pDer;
+    pPrivateKey = wolfSSL_d2i_PrivateKey(EVP_PKEY_EC, &pPrivateKey, 
+    ppDer, derSz);
+    if (pPrivateKey)
         
     {
-        
-            log_trace("%s::%s(%d) : Successfully converted ECC keypair to EVP_PKEY", 
-                      LOG_INF);
-        
+    log_trace("%s::%s(%d) : Successfully converted ECC keypair to EVP_PKEY", 
+    LOG_INF);
     } 
-        else
+    else
         
     {
-        
-            log_error("%s::%s(%d) : Failed to convert ECC key to EVP_PKEY", 
-                      LOG_INF);
-        
-            goto fail_cleanup;
-        
+    log_error("%s::%s(%d) : Failed to convert ECC key to EVP_PKEY", 
+    LOG_INF);
+    goto fail_cleanup;
     } 
         
          /* successful_cleanup: */ 
          /* NOTE wolfSSL_d2i_PrivateKey advanced pDer by derSz */ 
-        if (pDer)
+    if (pDer)
         
     {
-        
-            pDer -= derSz;
-        
-            free(pDer);
-        
-            pDer = NULL;
-        
+    pDer -= derSz;
+    free(pDer);
+    pDer = NULL;
     } 
-        keyType = ECC_KEY_TYPE;
+    keyType = ECC_KEY_TYPE;
+    bResult = true;
+    return bResult;
     
-        bResult = true;
-    
-        return bResult;
-    
-        
 fail_cleanup:
-        if (pDer)
+    if (pDer)
         
     {
-        
-            free(pDer);
-        
-            pDer = NULL;
-        
+    free(pDer);
+    pDer = NULL;
     } 
-        keyType = NO_KEY_TYPE;
-    
-        return bResult;
+    keyType = NO_KEY_TYPE;
+    return bResult;
     
 } /* generate_ecc_keypair */ 
 
@@ -2923,191 +2214,138 @@ fail_cleanup:
   */ 
 char *ssl_generate_csr(const char *asciiSubject, size_t * csrLen, char **pMessage)
 {
+    char *csrString = NULL;
+    byte * pDer = calloc(MAX_CSR_SIZE, sizeof(*pDer));
+    Cert req;
+    int derSz = -1;
+    int ret = -1;
     
-        char *csrString = NULL;
-    
-        byte * pDer = calloc(MAX_CSR_SIZE, sizeof(*pDer));
-    
-        Cert req;
-    
-        int derSz = -1;
-    
-        int ret = -1;
-    
-        
          /* Validate memory allocation succeeded */ 
-        if (!pDer)
+    if (!pDer)
         
     {
-        
-            log_error("%s::%s(%d) : Out of memory", LOG_INF);
-        
-            goto cleanup;
-        
+    log_error("%s::%s(%d) : Out of memory", LOG_INF);
+    goto cleanup;
     } 
         
          /************************************************************************/ 
          /* 1.) Set up the CSR as a new Cert request by creating a blank request */ 
          /************************************************************************/ 
-        log_verbose("%s::%s(%d) : Setting up a CSR", LOG_INF);
+    log_verbose("%s::%s(%d) : Setting up a CSR", LOG_INF);
     
          /* Init the new structure */ 
-        ret = wc_InitCert(&req);
-    
-        if (ret != 0)
+    ret = wc_InitCert(&req);
+    if (ret != 0)
         
     {
-        
-            log_error("%s::%s(%d) : Init cert failed %d", LOG_INF, ret);
-        
-            append_linef(pMessage, "%s::%s(%d) : Init cert failed %d", LOG_INF, ret);
-        
-            goto cleanup;
-        
+    log_error("%s::%s(%d) : Init cert failed %d", LOG_INF, ret);
+    append_linef(pMessage, "%s::%s(%d) : Init cert failed %d", LOG_INF, ret);
+    goto cleanup;
     } 
-        req.version = 1;
+    req.version = 1;
     
-        
-        
          /************************************************************************/ 
          /* 2.) Update the request's subject                                     */ 
          /************************************************************************/ 
-        if (!parse_subject(&req, asciiSubject))
+    if (!parse_subject(&req, asciiSubject))
         
     {
-        
-            log_error("%s::%s(%d) : Subject creation failed", LOG_INF);
-        
-            append_linef(pMessage, "%s::%s(%d) : Subject creation failed", LOG_INF);
-        
-            goto cleanup;
-        
+    log_error("%s::%s(%d) : Subject creation failed", LOG_INF);
+    append_linef(pMessage, "%s::%s(%d) : Subject creation failed", LOG_INF);
+    goto cleanup;
     } 
         
          /************************************************************************/ 
          /* 3.) Add the CSR request to the DER before signing it. DER now has    */ 
          /* the CSR request - which includes the public portion of the key.  */ 
          /************************************************************************/ 
-        switch (keyType)
+    switch (keyType)
         
     {
-        
     case ECC_KEY_TYPE:
         
-            log_trace("%s::%s(%d) : Creating CSR Request with ECC key", 
-                      LOG_INF);
-        
-            ret = wc_MakeCertReq(&req, pDer, MAX_CSR_SIZE, NULL, &eccKey);
-        
-            break;
-        
+    log_trace("%s::%s(%d) : Creating CSR Request with ECC key", 
+    LOG_INF);
+    ret = wc_MakeCertReq(&req, pDer, MAX_CSR_SIZE, NULL, &eccKey);
+    break;
     case RSA_KEY_TYPE:
         
-            log_trace("%s::%s(%d) : Creating CSR Request with RSA key", 
-                      LOG_INF);
-        
-            ret = wc_MakeCertReq(&req, pDer, MAX_CSR_SIZE, &rsaKey, NULL);
-        
-            break;
-        
+    log_trace("%s::%s(%d) : Creating CSR Request with RSA key", 
+    LOG_INF);
+    ret = wc_MakeCertReq(&req, pDer, MAX_CSR_SIZE, &rsaKey, NULL);
+    break;
     case NO_KEY_TYPE:
         
     default:
         
-            log_error("%s::%s(%d) : Error -- cannot make CSR before " 
-                      "generating key pair", LOG_INF);
+    log_error("%s::%s(%d) : Error -- cannot make CSR before " 
+    "generating key pair", LOG_INF);
         
-            goto cleanup;
-        
+    goto cleanup;
     } 
-        if (ret <= 0) {
-        
-            log_error("%s::%s(%d) : CSR creation failed code %d", LOG_INF, ret);
-        
-            append_linef(pMessage, "%s::%s(%d) : CSR creation failed code %d", 
-                         LOG_INF, ret);
-        
-            goto cleanup;
-        
+    if (ret <= 0) {
+    log_error("%s::%s(%d) : CSR creation failed code %d", LOG_INF, ret);
+    append_linef(pMessage, "%s::%s(%d) : CSR creation failed code %d", 
+    LOG_INF, ret);
+    goto cleanup;
     } 
-        derSz = ret;
+    derSz = ret;
     
-        
          /***********************************************************************/ 
          /* 4.) Sign the cert request that sits in der                          */ 
          /***********************************************************************/ 
-        switch (keyType)
+    switch (keyType)
         
     {
-        
     case ECC_KEY_TYPE:
         
-            log_trace("%s::%s(%d) : Signing CSR Request with ECC key", LOG_INF);
-        
-            req.sigType = CTC_SHA256wECDSA;
-        
-            ret = wc_SignCert(req.bodySz, req.sigType, pDer, MAX_CSR_SIZE, 
-                              NULL, &eccKey, &rng);
-        
-            log_trace("%s::%s(%d) : Successfully exited signing function", 
-                      LOG_INF);
-        
-            break;
-        
+    log_trace("%s::%s(%d) : Signing CSR Request with ECC key", LOG_INF);
+    req.sigType = CTC_SHA256wECDSA;
+    ret = wc_SignCert(req.bodySz, req.sigType, pDer, MAX_CSR_SIZE, 
+    NULL, &eccKey, &rng);
+    log_trace("%s::%s(%d) : Successfully exited signing function", 
+    LOG_INF);
+    break;
     case RSA_KEY_TYPE:
         
-            log_trace("%s::%s(%d) : Signing CSR Request with RSA key", LOG_INF);
+    log_trace("%s::%s(%d) : Signing CSR Request with RSA key", LOG_INF);
+    req.sigType = CTC_SHA256wRSA;
+    ret = wc_SignCert(req.bodySz, req.sigType, pDer, MAX_CSR_SIZE, 
+    &rsaKey, NULL, &rng);
         
-            req.sigType = CTC_SHA256wRSA;
-        
-            ret = wc_SignCert(req.bodySz, req.sigType, pDer, MAX_CSR_SIZE, 
-                              &rsaKey, NULL, &rng);
-        
-            log_trace("%s::%s(%d) : Successfully exited signing function", 
-                      LOG_INF);
-        
-            break;
-        
+    log_trace("%s::%s(%d) : Successfully exited signing function", 
+    LOG_INF);
+    break;
     default:
         
-            log_error("%s::%s(%d) : Logically can't get here!", LOG_INF);
-        
-            goto cleanup;
-        
+    log_error("%s::%s(%d) : Logically can't get here!", LOG_INF);
+    goto cleanup;
     } 
         
-        if (ret <= 0) {
-        
-            log_error("%s::%s(%d) : CSR signing failed code %d", LOG_INF, ret);
-        
-            append_linef(pMessage, "%s::%s(%d) : CSR signing failed code %d", 
-                         LOG_INF, ret);
-        
-            goto cleanup;
-        
+    if (ret <= 0) {
+    log_error("%s::%s(%d) : CSR signing failed code %d", LOG_INF, ret);
+    append_linef(pMessage, "%s::%s(%d) : CSR signing failed code %d", 
+    LOG_INF, ret);
+    goto cleanup;
     } 
-        derSz = ret;
+    derSz = ret;
     
-        
          /************************************************************************/ 
          /* 5.) Encode the DER as b64 (aka PEM) to send to the platform          */ 
          /* do it this way to prevent the BEGIN CERT REQUEST and             */ 
          /* END CERT REQUEST lines from being added to the platform's request */ 
          /************************************************************************/ 
-        csrString = base64_encode(pDer, (size_t) derSz, false, NULL);
+    csrString = base64_encode(pDer, (size_t) derSz, false, NULL);
     
-        *csrLen = strlen(csrString);
+    *csrLen = strlen(csrString);
     
-        log_trace("%s::%s(%d) : csrString=\n%s", LOG_INF, csrString);
+    log_trace("%s::%s(%d) : csrString=\n%s", LOG_INF, csrString);
+    log_trace("%s::%s(%d) : csrLen = %ld", LOG_INF, *csrLen);
     
-        log_trace("%s::%s(%d) : csrLen = %ld", LOG_INF, *csrLen);
-    
-        
 cleanup:
-        if (pDer)
-        free(pDer);
-    
-        return csrString;
+    if (pDer)
+    free(pDer);
+    return csrString;
     
 } /* ssl_generate_csr */ 
 
@@ -3129,150 +2367,102 @@ cleanup:
  /* @return - unsigned long error code                                         */ 
  /* */ 
 unsigned long ssl_save_cert_key(const char *storePath, const char *keyPath, 
-                   const char *password, const char *cert, char **pMessage)
+    const char *password, const char *cert, char **pMessage)
 {
+    WOLFSSL_BIO * pCertBIO = NULL;
+    WOLFSSL_BIO * pKeyBIO = NULL;
+    char *pData = NULL;
+    long len = 0;
+    unsigned long   err = 0;
+    char errBuf[120];
     
-        WOLFSSL_BIO * pCertBIO = NULL;
-    
-        WOLFSSL_BIO * pKeyBIO = NULL;
-    
-        char *pData = NULL;
-    
-        long len = 0;
-    
-        unsigned long   err = 0;
-    
-        char errBuf[120];
-    
-        
-        log_verbose("%s::%s(%d) : Entering function %s", LOG_INF, __FUNCTION__);
-    
-        err = backup_file(storePath);
-    
-        if (err != 0 && err != ENOENT)
+    log_verbose("%s::%s(%d) : Entering function %s", LOG_INF, __FUNCTION__);
+    err = backup_file(storePath);
+    if (err != 0 && err != ENOENT)
         
     {
-        
-            char *errStr = strerror(err);
-        
-            log_error("%s::%s(%d) : Unable to backup store at %s: %s\n", 
-                      LOG_INF, storePath, errStr);
-        
-            append_linef(pMessage, "Unable to open store at %s: %s", 
-                         storePath, errStr);
-        
-            goto cleanup;
-        
+    char *errStr = strerror(err);
+    log_error("%s::%s(%d) : Unable to backup store at %s: %s\n", 
+    LOG_INF, storePath, errStr);
+    append_linef(pMessage, "Unable to open store at %s: %s", 
+    storePath, errStr);
+    goto cleanup;
     } 
         
-        pCertBIO = wolfSSL_BIO_new(wolfSSL_BIO_s_mem());
+    pCertBIO = wolfSSL_BIO_new(wolfSSL_BIO_s_mem());
     
-        
-        err = write_cert_bio(pCertBIO, cert);
-    
-        if (err)
+    err = write_cert_bio(pCertBIO, cert);
+    if (err)
         
     {
-        
-            wolfSSL_ERR_error_string(err, errBuf);
-        
-            log_error("%s::%s(%d) : Unable to write certificate to BIO: %s", 
-                      LOG_INF, errBuf);
-        
-            append_linef(pMessage, "Unable to write certificate to BIO: %s", 
-                         errBuf);
-        
-            goto cleanup;
-        
+    wolfSSL_ERR_error_string(err, errBuf);
+    log_error("%s::%s(%d) : Unable to write certificate to BIO: %s", 
+    LOG_INF, errBuf);
+    append_linef(pMessage, "Unable to write certificate to BIO: %s", 
+    errBuf);
+    goto cleanup;
     } 
         
-        if (keyPath)
+    if (keyPath)
         
     {
-        
-            pKeyBIO = wolfSSL_BIO_new(wolfSSL_BIO_s_mem());
-        
-            err = write_key_bio(pKeyBIO, password, NULL);
-        
+    pKeyBIO = wolfSSL_BIO_new(wolfSSL_BIO_s_mem());
+    err = write_key_bio(pKeyBIO, password, NULL);
     } 
-        else
+    else
         
     {
-        
-            err = write_key_bio(pCertBIO, password, NULL);
-        
+    err = write_key_bio(pCertBIO, password, NULL);
     } 
-        if (err)
+    if (err)
         
     {
-        
-            wolfSSL_ERR_error_string(err, errBuf);
-        
-            log_error("%s::%s(%d) : Unable to write key to BIO: %ld - %s", 
-                      LOG_INF, err, errBuf);
-        
-            append_linef(pMessage, "Unable to write key to BIO: %ld - %s", 
-                         err, errBuf);
-        
-            goto cleanup;
-        
+    wolfSSL_ERR_error_string(err, errBuf);
+    log_error("%s::%s(%d) : Unable to write key to BIO: %ld - %s", 
+    LOG_INF, err, errBuf);
+    append_linef(pMessage, "Unable to write key to BIO: %ld - %s", 
+    err, errBuf);
+    goto cleanup;
     } 
         
-        len = wolfSSL_BIO_get_mem_data(pCertBIO, &pData);
-    
-        err = replace_file(storePath, pData, len, true);
-    
-        if (err)
+    len = wolfSSL_BIO_get_mem_data(pCertBIO, &pData);
+    err = replace_file(storePath, pData, len, true);
+    if (err)
         
     {
-        
-            char *errStr = strerror(err);
-        
-            log_error("%s::%s(%d) : Unable to write store at %s: %s", 
-                      LOG_INF, storePath, errStr);
-        
-            append_linef(pMessage, "Unable to write store at %s: %s", 
-                         storePath, errStr);
-        
-            goto cleanup;
-        
+    char *errStr = strerror(err);
+    log_error("%s::%s(%d) : Unable to write store at %s: %s", 
+    LOG_INF, storePath, errStr);
+    append_linef(pMessage, "Unable to write store at %s: %s", 
+    storePath, errStr);
+    goto cleanup;
     } 
         
-        if (keyPath)
+    if (keyPath)
         
     {
+    pData = NULL;       /* Don't point to pCertBio->ptr anymore */
         
-            pData = NULL;       /* Don't point to pCertBio->ptr anymore */
-        
-            len = wolfSSL_BIO_get_mem_data(pKeyBIO, &pData);
-        
-            err = replace_file(keyPath, pData, len, true);
-        
-            if (err)
+    len = wolfSSL_BIO_get_mem_data(pKeyBIO, &pData);
+    err = replace_file(keyPath, pData, len, true);
+    if (err)
             
-        {
-            
-                char *errStr = strerror(err);
-            
-                log_error("%s::%s(%d) : Unable to write key at %s: %s", 
-                          LOG_INF, keyPath, errStr);
-            
-                append_linef(pMessage, "Unable to write key at %s: %s", 
-                             keyPath, errStr);
-            
-                goto cleanup;
-            
-        } 
+    {
+    char *errStr = strerror(err);
+    log_error("%s::%s(%d) : Unable to write key at %s: %s", 
+    LOG_INF, keyPath, errStr);
+    append_linef(pMessage, "Unable to write key at %s: %s", 
+    keyPath, errStr);
+    goto cleanup;
+    } 
     } 
         
 cleanup:
-        if (pCertBIO)
-        wolfSSL_BIO_free(pCertBIO);
-    
-        if (pKeyBIO)
-        wolfSSL_BIO_free(pKeyBIO);
-    
-        return err;
+    if (pCertBIO)
+    wolfSSL_BIO_free(pCertBIO);
+    if (pKeyBIO)
+    wolfSSL_BIO_free(pKeyBIO);
+    return err;
     
 } /* ssl_save_cert_key */ 
 
@@ -3291,8 +2481,7 @@ cleanup:
  /* */ 
 int ssl_read_store_inventory(const char *path, const char *password, PemInventoryList * *ppPemList)
 {
-    
-        return get_inventory(path, password, ppPemList, NULL, false, NULL, false);
+    return get_inventory(path, password, ppPemList, NULL, false, NULL, false);
     
 } /* ssl_read_store_inventory */ 
 
@@ -3309,95 +2498,68 @@ int ssl_read_store_inventory(const char *path, const char *password, PemInventor
  /* - failure : false                                                  */ 
  /* */ 
 bool ssl_PemInventoryItem_create(struct PemInventoryItem **ppPEMout, 
-                                 const char *pCertASCII)
+    const char *pCertASCII)
 {
+    bool bResult = false;
+    WOLFSSL_X509 * pCert = NULL;
+    char *pPEM = NULL;
+    WOLFSSL_BIO * pBIO = NULL;
     
-        bool bResult = false;
-    
-        WOLFSSL_X509 * pCert = NULL;
-    
-        char *pPEM = NULL;
-    
-        WOLFSSL_BIO * pBIO = NULL;
-    
-        
-        if (!naked_PEM_to_PEM(pCertASCII, &pPEM, CERT_TYPE))
+    if (!naked_PEM_to_PEM(pCertASCII, &pPEM, CERT_TYPE))
         
     {
-        
-            log_error("%s::%s(%d) : Error converting naked PEM to PEM", LOG_INF);
-        
-            goto cleanup;
-        
+    log_error("%s::%s(%d) : Error converting naked PEM to PEM", LOG_INF);
+    goto cleanup;
     } 
          /* Place the PEM into a BIO structure to be decoded */ 
-        pBIO = wolfSSL_BIO_new(wolfSSL_BIO_s_mem());
+    pBIO = wolfSSL_BIO_new(wolfSSL_BIO_s_mem());
+    wolfSSL_BIO_puts(pBIO, pPEM);
     
-        wolfSSL_BIO_puts(pBIO, pPEM);
-    
-        
-        if (pBIO && pPEM)
+    if (pBIO && pPEM)
         
     {
-        
-            pCert = wolfSSL_PEM_read_bio_X509(pBIO, NULL, 0, NULL);
-        
-            if (NULL == pCert)
+    pCert = wolfSSL_PEM_read_bio_X509(pBIO, NULL, 0, NULL);
+    if (NULL == pCert)
             
-        {
-            
-                log_error("%s::%s(%d) : This is not a valid X509 cert: \n%s", 
-                          LOG_INF, pPEM);
-            
-                goto cleanup;
-            
-        } 
-             /* cert now contains the X509 cert */ 
-            if (NULL == (*ppPEMout = PemInventoryItem_new()))
-            
-        {
-            
-                log_error("%s::%s(%d) : Out of memory", LOG_INF);
-            
-                goto cleanup;
-            
-        } 
-             /* Populate the PemInventoryItem with a thumbprint */ 
-            if (PemInventoryItem_populate(*ppPEMout, pCert))
-            
-        {
-            
-                bResult = true;
-            
-        } 
-            else
-            
-        {
-            
-                log_error("%s::%s(%d) : Error populating cert", LOG_INF);
-            
-        } 
+    {
+    log_error("%s::%s(%d) : This is not a valid X509 cert: \n%s", 
+    LOG_INF, pPEM);
+    goto cleanup;
     } 
-        else
+             /* cert now contains the X509 cert */ 
+    if (NULL == (*ppPEMout = PemInventoryItem_new()))
+            
+    {
+    log_error("%s::%s(%d) : Out of memory", LOG_INF);
+    goto cleanup;
+    } 
+             /* Populate the PemInventoryItem with a thumbprint */ 
+    if (PemInventoryItem_populate(*ppPEMout, pCert))
+            
+    {
+    bResult = true;
+    } 
+    else
+            
+    {
+    log_error("%s::%s(%d) : Error populating cert", LOG_INF);
+    } 
+    } 
+    else
         
     {
-        
-            log_error("%s::%s(%d) : Out of memory", LOG_INF);
-        
+    log_error("%s::%s(%d) : Out of memory", LOG_INF);
     } 
         
 cleanup:
-        if (pPEM)
-        free(pPEM);
+    if (pPEM)
+    free(pPEM);
+    if (pCert)
+    wolfSSL_X509_free(pCert);
+    if (pBIO)
+    wolfSSL_BIO_free(pBIO);
     
-        if (pCert)
-        wolfSSL_X509_free(pCert);
-    
-        if (pBIO)
-        wolfSSL_BIO_free(pBIO);
-    
-        
-        return bResult;
+    return bResult;
     
 } /* ssl_PemInventoryItem_create */ 
 
@@ -3411,112 +2573,79 @@ cleanup:
  /* */ 
 bool ssl_Store_Cert_add(const char *storePath, const char *certASCII)
 {
+    bool bResult = false;
+    int ret = 0;
+    char *pPem = NULL;
+    WOLFSSL_X509 * pCert = NULL;
+    WOLFSSL_BIO * pBIO = NULL;
     
-        bool bResult = false;
-    
-        int ret = 0;
-    
-        char *pPem = NULL;
-    
-        WOLFSSL_X509 * pCert = NULL;
-    
-        WOLFSSL_BIO * pBIO = NULL;
-    
-        
-        log_trace("%s::%s(%d) : Converting naked PEM to a CERT PEM", LOG_INF);
-    
-        if (!naked_PEM_to_PEM(certASCII, &pPem, CERT_TYPE))
+    log_trace("%s::%s(%d) : Converting naked PEM to a CERT PEM", LOG_INF);
+    if (!naked_PEM_to_PEM(certASCII, &pPem, CERT_TYPE))
         
     {
-        
-            log_error("%s::%s(%d) : Error converting naked PEM to CERT PEM", 
-                      LOG_INF);
-        
-            goto exit;
-        
+    log_error("%s::%s(%d) : Error converting naked PEM to CERT PEM", 
+    LOG_INF);
+    goto exit;
     } 
         
-        log_trace("%s::%s(%d) : Converting cert to X509\n %s", LOG_INF, pPem);
+    log_trace("%s::%s(%d) : Converting cert to X509\n %s", LOG_INF, pPem);
     
          /* Place the PEM into a BIO structure to be decoded */ 
-        pBIO = wolfSSL_BIO_new(wolfSSL_BIO_s_mem());
+    pBIO = wolfSSL_BIO_new(wolfSSL_BIO_s_mem());
+    wolfSSL_BIO_puts(pBIO, pPem);
     
-        wolfSSL_BIO_puts(pBIO, pPem);
-    
-        
-        if (pBIO && pPem)
+    if (pBIO && pPem)
         
     {
-        
-            pCert = wolfSSL_PEM_read_bio_X509(pBIO, NULL, 0, NULL);
-        
-            if (NULL == pCert)
+    pCert = wolfSSL_PEM_read_bio_X509(pBIO, NULL, 0, NULL);
+    if (NULL == pCert)
             
-        {
-            
-                log_error("%s::%s(%d) : This is not a valid cert:\n%s", 
-                          LOG_INF, pPem);
-            
-                goto exit;
-            
-        } 
-            
-            ret = backup_file(storePath);
-        
-            if (ret != 0 && ret != ENOENT)
-            
-        {
-            
-                char *errStr = strerror(ret);
-            
-                log_error("%s::%s(%d) : Unable to backup store at %s: %s\n", 
-                          LOG_INF, storePath, errStr);
-            
-        } 
-            else
-            
-        {
-            
-                ret = store_append_cert(storePath, pCert);
-            
-                if (0 != ret)
-                
-            {
-                
-                    log_error("%s::%s(%d) : Unable to append cert to store at %s", 
-                              LOG_INF, storePath);
-                
-                    goto exit;
-                
-            } 
-                else
-                
-            {
-                
-                    bResult = true;
-                
-            } 
-        } 
+    {
+    log_error("%s::%s(%d) : This is not a valid cert:\n%s", 
+    LOG_INF, pPem);
+    goto exit;
     } 
-        else
+            
+    ret = backup_file(storePath);
+    if (ret != 0 && ret != ENOENT)
+            
+    {
+    char *errStr = strerror(ret);
+    log_error("%s::%s(%d) : Unable to backup store at %s: %s\n", 
+    LOG_INF, storePath, errStr);
+    } 
+    else
+            
+    {
+    ret = store_append_cert(storePath, pCert);
+    if (0 != ret)
+                
+            {
+    log_error("%s::%s(%d) : Unable to append cert to store at %s", 
+    LOG_INF, storePath);
+    goto exit;
+            } 
+    else
+                
+            {
+    bResult = true;
+            } 
+    } 
+    } 
+    else
         
     {
-        
-            log_error("%s::%s(%d) : Out of memory", LOG_INF);
-        
+    log_error("%s::%s(%d) : Out of memory", LOG_INF);
     } 
         
 exit:   
-        if (pCert)
-        wolfSSL_X509_free(pCert);
-    
-        if (pPem)
-        free(pPem);
-    
-        if (pBIO)
-        wolfSSL_BIO_free(pBIO);
-    
-        return bResult;
+    if (pCert)
+    wolfSSL_X509_free(pCert);
+    if (pPem)
+    free(pPem);
+    if (pBIO)
+    wolfSSL_BIO_free(pBIO);
+    return bResult;
     
 } /* ssl_Store_Cert_add */ 
 
@@ -3534,314 +2663,232 @@ exit:
  *           failure : false
   */ 
 bool ssl_remove_cert_from_store(const char *storePath, const char *searchThumb, 
-                                const char *keyPath, const char *password)
+    const char *keyPath, const char *password)
 {
+    bool bResult = false;
+    PemInventoryList * pemList = NULL;
+    PEMx509List * pemX509Array = NULL;
+    PrivKeyList * keyArray = NULL;
+    WOLFSSL_BIO * bio = NULL;
+    char *data = NULL;
+    size_t len = 0;
+    int ret = 0;
+    char *pem = NULL;
     
-        bool bResult = false;
-    
-        PemInventoryList * pemList = NULL;
-    
-        PEMx509List * pemX509Array = NULL;
-    
-        PrivKeyList * keyArray = NULL;
-    
-        WOLFSSL_BIO * bio = NULL;
-    
-        char *data = NULL;
-    
-        size_t len = 0;
-    
-        int ret = 0;
-    
-        char *pem = NULL;
-    
-        
          /***************************************************************************/ 
     /*
      * 1.)Get the PEM inventory, X509 PEM, and list of private keys in the
      * store
           */ 
          /***************************************************************************/ 
-        log_trace("%s::%s(%d) : Get PEM inventory", 
-                  LOG_INF);
-    
-        if (0 != get_inventory(storePath, password, &pemList, &pemX509Array, true, 
-                               &keyArray, true))
+    log_trace("%s::%s(%d) : Get PEM inventory", 
+    LOG_INF);
+    if (0 != get_inventory(storePath, password, &pemList, &pemX509Array, true, 
+    &keyArray, true))
         
     {
-        
-            log_error("%s::%s(%d) : Failed to get inventory", LOG_INF);
-        
-            goto cleanup;
-        
+    log_error("%s::%s(%d) : Failed to get inventory", LOG_INF);
+    goto cleanup;
     } 
         
          /**************************************************************************/ 
          /* 2.) Search for the certificate inside of the store by sha1 hash        */ 
          /**************************************************************************/ 
-        log_trace("%s::%s(%d) : Search for matching hash to remove in inventory", 
-                  LOG_INF);
-    
-        bool certFound = false;
-    
-        int i = pemList->item_count - 1;
-    
-        while ((!certFound) && \
-               (0 <= i))
+    log_trace("%s::%s(%d) : Search for matching hash to remove in inventory", 
+    LOG_INF);
+    bool certFound = false;
+    int i = pemList->item_count - 1;
+    while ((!certFound) && \
+    (0 <= i))
         
     {
-        
-            log_trace("%s::%s(%d) : comparing thumbprint #%d " 
-                      "searchThumb = %s, " 
-                      "thumbprint = %s", \
-                      LOG_INF, i, searchThumb, \
-                      pemList->items[i]->thumbprint_string);
-        
-            if (0 == strcasecmp(searchThumb, pemList->items[i]->thumbprint_string))
+    log_trace("%s::%s(%d) : comparing thumbprint #%d " 
+    "searchThumb = %s, " 
+    "thumbprint = %s", \
+    LOG_INF, i, searchThumb, \
+    pemList->items[i]->thumbprint_string);
+    if (0 == strcasecmp(searchThumb, pemList->items[i]->thumbprint_string))
             
-        {
-            
-                certFound = true;
-            
-                log_trace("%s::%s(%d) : Certificate #%d matches thumbprint %s", 
-                          LOG_INF, i, searchThumb);
-            
-        } 
-            else
-            
-        {
-            
-                i--;
-            
-        } 
+    {
+    certFound = true;
+    log_trace("%s::%s(%d) : Certificate #%d matches thumbprint %s", 
+    LOG_INF, i, searchThumb);
     } 
-        log_verbose("%s::%s(%d) : Found cert: %s", LOG_INF, 
-                    (certFound ? "yes" : "no"));
+    else
+            
+    {
+    i--;
+    } 
+    } 
+    log_verbose("%s::%s(%d) : Found cert: %s", LOG_INF, 
+    (certFound ? "yes" : "no"));
     
-        
          /**************************************************************************/ 
          /* 3.) Update the store, but skip the cert we want to remove              */ 
          /**************************************************************************/ 
-        if (certFound)
+    if (certFound)
         
     {
-        
              /**************************/ 
              /* 3a.) Add all the certs */ 
              /**************************/ 
-            log_trace("%s::%s(%d) : Writing certs to store", LOG_INF);
+    log_trace("%s::%s(%d) : Writing certs to store", LOG_INF);
         
              /* Get new memory to store the bio */ 
-            bio = wolfSSL_BIO_new(wolfSSL_BIO_s_mem());
+    bio = wolfSSL_BIO_new(wolfSSL_BIO_s_mem());
         
              /* At this point i points to the pemList & */ 
              /* PEMx509List of the cert to delete */ 
-            for (int j = 0; pemList->item_count > j; j++)
+    for (int j = 0; pemList->item_count > j; j++)
             
-        {
-            
-                if (i != j)
+    {
+    if (i != j)
                 
             {
+    log_trace("%s::%s(%d) : Adding certificate #%d to BIO" 
+    " with thumbprint %s", LOG_INF, j, 
+    (char *)pemList->items[j]->thumbprint_string);
                 
-                    log_trace("%s::%s(%d) : Adding certificate #%d to BIO" 
-                              " with thumbprint %s", LOG_INF, j, 
-                              (char *)pemList->items[j]->thumbprint_string);
-                
-                    if (pem)
-                    free(pem);
-                
-                    pem = NULL;
-                
-                    if (!naked_PEM_to_PEM(pemList->items[j]->cert, &pem, CERT_TYPE))
+    if (pem)
+    free(pem);
+    pem = NULL;
+    if (!naked_PEM_to_PEM(pemList->items[j]->cert, &pem, CERT_TYPE))
                     
-                {
+    {
+        log_error("%s::%s(%d) Failed converting naked PEM to PEM", 
+        LOG_INF);
+        goto cleanup;
+    } 
+    ret = wolfSSL_BIO_puts(bio, pem);
+    if (0 >= ret)
                     
-                        log_error("%s::%s(%d) Failed converting naked PEM to PEM", 
-                                  LOG_INF);
-                    
-                        goto cleanup;
-                    
-                } 
-                    ret = wolfSSL_BIO_puts(bio, pem);
-                
-                    if (0 >= ret)
-                    
-                {
-                    
-                        log_error("%s::%s(%d) : Failed to put cert into BIO", 
-                                  LOG_INF);
-                    
-                        goto cleanup;
-                    
-                } 
+    {
+        log_error("%s::%s(%d) : Failed to put cert into BIO", 
+        LOG_INF);
+        goto cleanup;
+    } 
             } 
-        } 
+    } 
              /**********************************************************************/ 
              /* 3b.) Add all the keys found but the one for the cert we don't want */ 
              /**********************************************************************/ 
              /* Now, loop through all the private keys & */ 
              /* save them too, except the one */ 
-            if (keyArray) {
-            
-                for (int k = 0; keyArray->key_count > k; k++) {
+    if (keyArray) {
+    for (int k = 0; keyArray->key_count > k; k++) {
                 
-                    if (!is_cert_key_match(pemX509Array->certs[i], 
-                                           keyArray->priv_keys[k])) {
+    if (!is_cert_key_match(pemX509Array->certs[i], 
+    keyArray->priv_keys[k])) {
                     
-                        log_trace("%s::%s(%d) : Writing key #%d to BIO", LOG_INF, k);
-                    
-                        ret = write_key_bio(bio, password, keyArray->priv_keys[k]);
-                    
-                        if (0 != ret) {
-                        
-                            log_error("%s::%s(%d) : Failed to add key to BIO %s", 
-                                      LOG_INF, storePath);
-                        
-                            goto cleanup;
-                        
-                    } 
-                } 
-            } 
+        log_trace("%s::%s(%d) : Writing key #%d to BIO", LOG_INF, k);
+        ret = write_key_bio(bio, password, keyArray->priv_keys[k]);
+        if (0 != ret) {
+            log_error("%s::%s(%d) : Failed to add key to BIO %s", 
+            LOG_INF, storePath);
+            goto cleanup;
         } 
+    } 
+            } 
+    } 
             
              /**********************/ 
              /* 3c.) Write to disk */ 
              /**********************/ 
-            data = NULL;
-        
-            len = wolfSSL_BIO_get_mem_data(bio, &data);
-        
-            ret = replace_file(storePath, data, len, true);
-        
-            if (0 != ret)
+    data = NULL;
+    len = wolfSSL_BIO_get_mem_data(bio, &data);
+    ret = replace_file(storePath, data, len, true);
+    if (0 != ret)
             
-        {
-            
-                char *errStr = strerror(ret);
-            
-                log_error("%s::%s(%d) : Unable to write BIO at %s: %s", 
-                          LOG_INF, storePath, errStr);
-            
-                goto cleanup;
-            
-        } 
+    {
+    char *errStr = strerror(ret);
+    log_error("%s::%s(%d) : Unable to write BIO at %s: %s", 
+    LOG_INF, storePath, errStr);
+    goto cleanup;
+    } 
             
              /**************************************************************/ 
              /* 3d.) Optional: if a keystore was provided, remove that key */ 
              /* from the keystore                                     */ 
              /**************************************************************/ 
-            if (keyPath)
+    if (keyPath)
             
-        {
-            
-                BIO_free(bio);
-            
-                free(data);
-            
-                if (keyArray)
+    {
+    BIO_free(bio);
+    free(data);
+    if (keyArray)
                 
             {
-                
-                    PrivKeyList_free(keyArray); /* Free this bit of keys */
-                
+    PrivKeyList_free(keyArray); /* Free this bit of keys */
             } 
                  /* And populate it with the keystore located at keyPath */ 
-                ret = get_key_inventory(keyPath, password, &keyArray);
-            
-                if (0 != ret)
+    ret = get_key_inventory(keyPath, password, &keyArray);
+    if (0 != ret)
                 
             {
-                
-                    log_error("%s::%s(%d) : Error reading keystore %s", 
-                              LOG_INF, keyPath);
-                
-                    goto cleanup;
-                
+    log_error("%s::%s(%d) : Error reading keystore %s", 
+    LOG_INF, keyPath);
+    goto cleanup;
             } 
-                bio = BIO_new(BIO_s_mem());     /* Get new memory to store
+    bio = BIO_new(BIO_s_mem());     /* Get new memory to store
                                                  * the bio */
             
                  /* Write the keys to bio memory */ 
-                for (int x = keyArray->key_count; 0 < x; x--)
+    for (int x = keyArray->key_count; 0 < x; x--)
                 
             {
-                
-                    ret = write_key_bio(bio, password, keyArray->priv_keys[x]);
-                
-                    if (0 != ret)
+    ret = write_key_bio(bio, password, keyArray->priv_keys[x]);
+    if (0 != ret)
                     
-                {
-                    
-                        log_error("%s::%s(%d) : Failed to add key to store %s", 
-                                  LOG_INF, keyPath);
-                    
-                        goto cleanup;
-                    
-                } 
+    {
+        log_error("%s::%s(%d) : Failed to add key to store %s", 
+        LOG_INF, keyPath);
+        goto cleanup;
+    } 
             } 
                 
                  /*******************************/ 
                  /* 3e.) Write keystore to disk */ 
                  /*******************************/ 
-                data = NULL;
-            
-                len = wolfSSL_BIO_get_mem_data(bio, &data);
-            
-                ret = replace_file(keyPath, data, len, true);
-            
-                if (0 != ret)
+    data = NULL;
+    len = wolfSSL_BIO_get_mem_data(bio, &data);
+    ret = replace_file(keyPath, data, len, true);
+    if (0 != ret)
                 
             {
-                
-                    char *errStr = strerror(ret);
-                
-                    log_error("%s::%s(%d) : Unable to write key at %s: %s", 
-                              LOG_INF, keyPath, errStr);
-                
-                    goto cleanup;
-                
+    char *errStr = strerror(ret);
+    log_error("%s::%s(%d) : Unable to write key at %s: %s", 
+    LOG_INF, keyPath, errStr);
+    goto cleanup;
             } 
-        } /* end separate keystore */ 
+    } /* end separate keystore */ 
     } 
-        else
+    else
         
     {
-        
-            log_error("%s::%s(%d) Cert not found in PEM store %s", 
-                      LOG_INF, storePath);
-        
-            goto cleanup;
-        
+    log_error("%s::%s(%d) Cert not found in PEM store %s", 
+    LOG_INF, storePath);
+    goto cleanup;
     } 
         
 cleanup:
-        if (pemList)
-        PemInventoryList_free(pemList);
-    
-        if (pemX509Array)
-        PEMx509List_free(pemX509Array);
-    
-        if (keyArray)
-        PrivKeyList_free(keyArray);
-    
-        if (pem)
-        free(pem);
-    
-        if (bio)
-        wolfSSL_BIO_free(bio);
+    if (pemList)
+    PemInventoryList_free(pemList);
+    if (pemX509Array)
+    PEMx509List_free(pemX509Array);
+    if (keyArray)
+    PrivKeyList_free(keyArray);
+    if (pem)
+    free(pem);
+    if (bio)
+    wolfSSL_BIO_free(bio);
     
          /* Note data is freed with bio, data is just a pointer into the bio */ 
-        pem = NULL;
-    
-        data = NULL;
-    
-        bio = NULL;
-    
-        if (0 == ret)
-        bResult = true;
-    
-        return bResult;
+    pem = NULL;
+    data = NULL;
+    bio = NULL;
+    if (0 == ret)
+    bResult = true;
+    return bResult;
     
 } /* ssl_remove_cert_from_store */ 
 
@@ -3857,85 +2904,52 @@ cleanup:
 
 static bool string_to_time_t(const unsigned char *date, time_t * time)
 {
+    bool bResult = false;
+    struct tm dt;
+    int temp = 0;
+    const int       ascii_0 = 48;   /* Decimal value of ASCII zero */
     
-        bool bResult = false;
+    temp = 2000 + ((int)(date[2] - ascii_0) * 10) + ((int)(date[3] - ascii_0));
+    temp = temp - 1900;
+    dt.tm_year = temp;
+    log_trace("%s::%s(%d) : tm_year = %d", LOG_INF, dt.tm_year);
+    temp = ((int)(date[4] - ascii_0) * 10) + ((int)(date[5] - ascii_0));
+    dt.tm_mon = --temp;
+    log_trace("%s::%s(%d) : tm_mon = %d", LOG_INF, dt.tm_mon);
+    temp = ((int)(date[6] - ascii_0) * 10) + ((int)(date[7] - ascii_0));
+    dt.tm_mday = temp;
+    log_trace("%s::%s(%d) : tm_mday = %d", LOG_INF, dt.tm_mday);
+    temp = ((int)(date[8] - ascii_0) * 10) + ((int)(date[9] - ascii_0));
+    dt.tm_hour = temp;
+    log_trace("%s::%s(%d) : tm_hour = %d", LOG_INF, dt.tm_hour);
+    temp = ((int)(date[10] - ascii_0) * 10) + ((int)(date[11] - ascii_0));
+    dt.tm_min = temp;
+    log_trace("%s::%s(%d) : tm_min = %d", LOG_INF, dt.tm_min);
+    temp = ((int)(date[12] - ascii_0) * 10) + ((int)(date[13] - ascii_0));
+    dt.tm_sec = temp;
+    log_trace("%s::%s(%d) : tm_sec = %d", LOG_INF, dt.tm_sec);
+    dt.tm_isdst = -1;
     
-        struct tm dt;
+    *time = mktime(&dt);
     
-        int temp = 0;
-    
-        const int       ascii_0 = 48;   /* Decimal value of ASCII zero */
-    
+    if ((time_t) - 1 == *time)
         
-        temp = 2000 + ((int)(date[2] - ascii_0) * 10) + ((int)(date[3] - ascii_0));
-    
-        temp = temp - 1900;
-    
-        dt.tm_year = temp;
-    
-        log_trace("%s::%s(%d) : tm_year = %d", LOG_INF, dt.tm_year);
-    
-        temp = ((int)(date[4] - ascii_0) * 10) + ((int)(date[5] - ascii_0));
-    
-        dt.tm_mon = --temp;
-    
-        log_trace("%s::%s(%d) : tm_mon = %d", LOG_INF, dt.tm_mon);
-    
-        temp = ((int)(date[6] - ascii_0) * 10) + ((int)(date[7] - ascii_0));
-    
-        dt.tm_mday = temp;
-    
-        log_trace("%s::%s(%d) : tm_mday = %d", LOG_INF, dt.tm_mday);
-    
-        temp = ((int)(date[8] - ascii_0) * 10) + ((int)(date[9] - ascii_0));
-    
-        dt.tm_hour = temp;
-    
-        log_trace("%s::%s(%d) : tm_hour = %d", LOG_INF, dt.tm_hour);
-    
-        temp = ((int)(date[10] - ascii_0) * 10) + ((int)(date[11] - ascii_0));
-    
-        dt.tm_min = temp;
-    
-        log_trace("%s::%s(%d) : tm_min = %d", LOG_INF, dt.tm_min);
-    
-        temp = ((int)(date[12] - ascii_0) * 10) + ((int)(date[13] - ascii_0));
-    
-        dt.tm_sec = temp;
-    
-        log_trace("%s::%s(%d) : tm_sec = %d", LOG_INF, dt.tm_sec);
-    
-        dt.tm_isdst = -1;
-    
-        
-        *time = mktime(&dt);
-    
-        if ((time_t) - 1 == *time)
+    {
+    log_error("%s::%s(%d) : Unable to convert time", LOG_INF);
+    goto exit;
+    } 
+    else
         
     {
         
-            log_error("%s::%s(%d) : Unable to convert time", LOG_INF);
-        
-            goto exit;
-        
+    log_trace("%s::%s(%d) : %ld is the converted time", LOG_INF, *time);
+    log_trace("%s::%s(%d) : %s", LOG_INF, ctime(time));
+    log_trace("%s::%s(%d) : %s", LOG_INF, ctime(time));
     } 
-        else
-        
-    {
-        
-            
-            log_trace("%s::%s(%d) : %ld is the converted time", LOG_INF, *time);
-        
-            log_trace("%s::%s(%d) : %s", LOG_INF, ctime(time));
-        
-            log_trace("%s::%s(%d) : %s", LOG_INF, ctime(time));
-        
-    } 
-        bResult = true;
+    bResult = true;
     
-        
 exit:   
-        return bResult;
+    return bResult;
     
 } /* string_to_time_t */ 
 
@@ -3947,202 +2961,143 @@ exit:
  /* otherwise = false                                                */ 
 bool ssl_is_cert_active(char *certFile)
 {
+    bool bResult = false;
+    WOLFSSL_X509 * x509 = NULL;
+    const unsigned char *start_date = NULL;
+    const unsigned char *end_date = NULL;
+    time_t start_time = 0;
+    time_t end_time = 0;
+    time_t now = 0;
     
-        bool bResult = false;
-    
-        WOLFSSL_X509 * x509 = NULL;
-    
-        const unsigned char *start_date = NULL;
-    
-        const unsigned char *end_date = NULL;
-    
-        time_t start_time = 0;
-    
-        time_t end_time = 0;
-    
-        time_t now = 0;
-    
-        
-        do
+    do
         
     {
+    log_info("%s::%s(%d) : Verify certificate is active", LOG_INF);
+    log_trace("%s::%s(%d) : Reading PEM file %s", LOG_INF, certFile);
+    x509 = wolfSSL_X509_load_certificate_file(certFile, SSL_FILETYPE_PEM);
+    if (NULL == x509)
+            
+    {
+    log_error("%s::%s(%d) : Error reading PEM file", LOG_INF);
+    break;
+    } 
+            
+    log_trace("%s::%s(%d) : Getting certificate start date", LOG_INF);
+    start_date = wolfSSL_X509_notBefore(x509);
+    if (!start_date)
+            
+    {
+    log_warn("%s::%s(%d) : Cannot get start date of the certificate", 
+    LOG_INF);
+    break;
+    } 
+            
+    log_trace("%s::%s(%d) : Getting certificate end date", LOG_INF);
+    end_date = wolfSSL_X509_notAfter(x509);
+    if (!end_date)
+            
+    {
+    log_warn("%s::%s(%d) : Cannot get end date of the certificate", 
+    LOG_INF);
+    break;
+    } 
+            
+    if (start_date && end_date)
+            
+    {
+    log_verbose("%s::%s(%d) : Certificate is valid from " 
+    "20%c%c-%c%c-%c%c %c%c:%c%c:%c%c GMT to " 
+    "20%c%c-%c%c-%c%c %c%c:%c%c:%c%c GMT", 
+    LOG_INF, 
+    (char)start_date[2], (char)start_date[3], 
+    (char)start_date[4], (char)start_date[5], 
+    (char)start_date[6], (char)start_date[7], 
+    (char)start_date[8], (char)start_date[9], 
+    (char)start_date[10], (char)start_date[11], 
+    (char)start_date[12], (char)start_date[13], 
+    (char)end_date[2], (char)end_date[3], 
+    (char)end_date[4], (char)end_date[5], 
+    (char)end_date[6], (char)end_date[7], 
+    (char)end_date[8], (char)end_date[9], 
+    (char)end_date[10], (char)end_date[11], 
+    (char)end_date[12], (char)end_date[13]);
+    } 
+            
+    log_trace("%s::%s(%d) : Converting start date to a time_t structure", 
+    LOG_INF);
+    string_to_time_t(start_date, &start_time);
+    if ((time_t) - 1 == start_time)
+            
+    {
+    log_error("%s::%s(%d) : Failed to convert start date structure" 
+    " to time_t", LOG_INF);
+            
+    break;
+    } 
+            
+    log_trace("%s::%s(%d) : Converting end date to a time_t structure", 
+    LOG_INF);
+    string_to_time_t(end_date, &end_time);
+    if ((time_t) - 1 == end_time)
+            
+    {
+    log_error("%s::%s(%d) Failed to convert end date to a time_t " 
+    "structure", LOG_INF);
+            
+    break;
+    } 
+            
+    log_trace("%s::%s(%d) : Getting curent GMT time", LOG_INF);
+    now = time(&now);
+    if ((time_t) - 1 == now)
+            
+    {
+    log_error("%s::%s(%d) : Failed to get local time", LOG_INF);
+    break;
+    } 
+    now = mktime(gmtime(&now));
+    if ((time_t) - 1 == now)
+            
+    {
+    log_error("%s::%s(%d) : Failed to convert local time to GMT", LOG_INF);
+    break;
+    } 
+            
+    log_trace("%s::%s(%d) : Current GMT time %ld", LOG_INF, now);
+    log_trace("%s::%s(%d) : %s", LOG_INF, ctime(&now));
+    log_verbose("%s::%s(%d) : Comparing start time of %ld to " 
+    "current time of %ld", LOG_INF, start_time, now);
         
-            log_info("%s::%s(%d) : Verify certificate is active", LOG_INF);
+    if (now < start_time)
+            
+    {
+    log_error("%s::%s(%d) : Error certificate is NOT active yet", LOG_INF);
+    break;
+    } 
+            
+    log_verbose("%s::%s(%d) : Comparing end time of %ld to " 
+    "current time of %ld", LOG_INF, end_time, now);
         
-            log_trace("%s::%s(%d) : Reading PEM file %s", LOG_INF, certFile);
-        
-            x509 = wolfSSL_X509_load_certificate_file(certFile, SSL_FILETYPE_PEM);
-        
-            if (NULL == x509)
+    if (now > end_time)
             
-        {
+    {
+    log_error("%s::%s(%d) : Error certificate is EXPIRED", LOG_INF);
+    break;
+    } 
             
-                log_error("%s::%s(%d) : Error reading PEM file", LOG_INF);
-            
-                break;
-            
-        } 
-            
-            log_trace("%s::%s(%d) : Getting certificate start date", LOG_INF);
-        
-            start_date = wolfSSL_X509_notBefore(x509);
-        
-            if (!start_date)
-            
-        {
-            
-                log_warn("%s::%s(%d) : Cannot get start date of the certificate", 
-                         LOG_INF);
-            
-                break;
-            
-        } 
-            
-            log_trace("%s::%s(%d) : Getting certificate end date", LOG_INF);
-        
-            end_date = wolfSSL_X509_notAfter(x509);
-        
-            if (!end_date)
-            
-        {
-            
-                log_warn("%s::%s(%d) : Cannot get end date of the certificate", 
-                         LOG_INF);
-            
-                break;
-            
-        } 
-            
-            if (start_date && end_date)
-            
-        {
-            
-                log_verbose("%s::%s(%d) : Certificate is valid from " 
-                            "20%c%c-%c%c-%c%c %c%c:%c%c:%c%c GMT to " 
-                            "20%c%c-%c%c-%c%c %c%c:%c%c:%c%c GMT", 
-                            LOG_INF, 
-                            (char)start_date[2], (char)start_date[3], 
-                            (char)start_date[4], (char)start_date[5], 
-                            (char)start_date[6], (char)start_date[7], 
-                            (char)start_date[8], (char)start_date[9], 
-                            (char)start_date[10], (char)start_date[11], 
-                            (char)start_date[12], (char)start_date[13], 
-                            (char)end_date[2], (char)end_date[3], 
-                            (char)end_date[4], (char)end_date[5], 
-                            (char)end_date[6], (char)end_date[7], 
-                            (char)end_date[8], (char)end_date[9], 
-                            (char)end_date[10], (char)end_date[11], 
-                            (char)end_date[12], (char)end_date[13]);
-            
-        } 
-            
-            log_trace("%s::%s(%d) : Converting start date to a time_t structure", 
-                      LOG_INF);
-        
-            string_to_time_t(start_date, &start_time);
-        
-            if ((time_t) - 1 == start_time)
-            
-        {
-            
-                log_error("%s::%s(%d) : Failed to convert start date structure" 
-                          " to time_t", LOG_INF);
-            
-                break;
-            
-        } 
-            
-            log_trace("%s::%s(%d) : Converting end date to a time_t structure", 
-                      LOG_INF);
-        
-            string_to_time_t(end_date, &end_time);
-        
-            if ((time_t) - 1 == end_time)
-            
-        {
-            
-                log_error("%s::%s(%d) Failed to convert end date to a time_t " 
-                          "structure", LOG_INF);
-            
-                break;
-            
-        } 
-            
-            log_trace("%s::%s(%d) : Getting curent GMT time", LOG_INF);
-        
-            now = time(&now);
-        
-            if ((time_t) - 1 == now)
-            
-        {
-            
-                log_error("%s::%s(%d) : Failed to get local time", LOG_INF);
-            
-                break;
-            
-        } 
-            now = mktime(gmtime(&now));
-        
-            if ((time_t) - 1 == now)
-            
-        {
-            
-                log_error("%s::%s(%d) : Failed to convert local time to GMT", LOG_INF);
-            
-                break;
-            
-        } 
-            
-            log_trace("%s::%s(%d) : Current GMT time %ld", LOG_INF, now);
-        
-            log_trace("%s::%s(%d) : %s", LOG_INF, ctime(&now));
-        
-            log_verbose("%s::%s(%d) : Comparing start time of %ld to " 
-                        "current time of %ld", LOG_INF, start_time, now);
-        
-            
-            if (now < start_time)
-            
-        {
-            
-                log_error("%s::%s(%d) : Error certificate is NOT active yet", LOG_INF);
-            
-                break;
-            
-        } 
-            
-            log_verbose("%s::%s(%d) : Comparing end time of %ld to " 
-                        "current time of %ld", LOG_INF, end_time, now);
-        
-            
-            if (now > end_time)
-            
-        {
-            
-                log_error("%s::%s(%d) : Error certificate is EXPIRED", LOG_INF);
-            
-                break;
-            
-        } 
-            
-            log_info("%s::%s(%d) : Certificate dates are ok", LOG_INF);
-        
-            bResult = true;
+    log_info("%s::%s(%d) : Certificate dates are ok", LOG_INF);
+    bResult = true;
         
     } while (false);
     
-        
-        if (!bResult)
+    if (!bResult)
         
     {
-        
-            log_info("%s::%s(%d) : Certificate dates are not ok", LOG_INF);
-        
+    log_info("%s::%s(%d) : Certificate dates are not ok", LOG_INF);
     } 
-        if (x509)
-        wolfSSL_X509_free(x509);
-    
-        return bResult;
+    if (x509)
+    wolfSSL_X509_free(x509);
+    return bResult;
     
 } /* ssl_isCertActive */ 
 
@@ -4155,53 +3110,39 @@ bool ssl_is_cert_active(char *certFile)
  /* */ 
 bool ssl_init(void)
 {
+    int errNum = 0;
+    log_trace("%s::%s(%d) : Initializing wolfssl and wolfcrypt", LOG_INF);
     
-        int errNum = 0;
-    
-        log_trace("%s::%s(%d) : Initializing wolfssl and wolfcrypt", LOG_INF);
-    
-        
-        errNum = wolfSSL_Init();
-    
-        if (WOLFSSL_SUCCESS != errNum)
+    errNum = wolfSSL_Init();
+    if (WOLFSSL_SUCCESS != errNum)
         
     {
-        
-            log_trace("%s::%s(%d) : wolfSSL_Init failed with code = %d", 
-                      LOG_INF, errNum);
-        
-            return false;
-        
+    log_trace("%s::%s(%d) : wolfSSL_Init failed with code = %d", 
+    LOG_INF, errNum);
+    return false;
     } 
         
-        errNum = wolfCrypt_Init();
+    errNum = wolfCrypt_Init();
     
          /* wolfCrypt returns 0 on success not WOLFSSL_SUCCESS */ 
-        if (0 != errNum)
+    if (0 != errNum)
         
     {
-        
-            log_error("%s::%s(%d) : wolfCrypt_Init() failed with code = %d", 
-                      LOG_INF, errNum);
-        
-            return false;
-        
+    log_error("%s::%s(%d) : wolfCrypt_Init() failed with code = %d", 
+    LOG_INF, errNum);
+    return false;
     } 
         
          /* Initialize the entropy blob */ 
-        ES.entropy_blob = NULL; /* If we seed this, we will allocate memory */
+    ES.entropy_blob = NULL; /* If we seed this, we will allocate memory */
     
-        ES.has_entropy_loaded = false;
+    ES.has_entropy_loaded = false;
+    ES.current_byte_ptr = 0;
+    ES.entropy_size = 0;
     
-        ES.current_byte_ptr = 0;
-    
-        ES.entropy_size = 0;
-    
-        
          /* Seed the pseudo-random number generator on the OS */ 
-        srandom(time(NULL));
-    
-        return true;
+    srandom(time(NULL));
+    return true;
     
 } /* ssl_init */ 
 
@@ -4214,68 +3155,44 @@ bool ssl_init(void)
  /* */ 
 bool ssl_cleanup(void)
 {
+    int errNum = 0;
+    bool bResult = true;
+    log_trace("%s::%s(%d) : Cleaning up local key structures", LOG_INF);
+    free_local_keys();
     
-        int errNum = 0;
-    
-        bool bResult = true;
-    
-        log_trace("%s::%s(%d) : Cleaning up local key structures", LOG_INF);
-    
-        free_local_keys();
-    
-        
-        if (ES.entropy_blob)
+    if (ES.entropy_blob)
         
     {
-        
-            log_trace("%s::%s(%d) : Freeing entropy_blob", LOG_INF);
-        
-            free(ES.entropy_blob);
-        
-            ES.entropy_blob = NULL;
-        
-            ES.has_entropy_loaded = false;
-        
-            ES.current_byte_ptr = 0;
-        
-            ES.entropy_size = 0;
-        
+    log_trace("%s::%s(%d) : Freeing entropy_blob", LOG_INF);
+    free(ES.entropy_blob);
+    ES.entropy_blob = NULL;
+    ES.has_entropy_loaded = false;
+    ES.current_byte_ptr = 0;
+    ES.entropy_size = 0;
     } 
         
-        log_trace("%s::%s(%d) : Freeing RNG", LOG_INF);
+    log_trace("%s::%s(%d) : Freeing RNG", LOG_INF);
+    wc_FreeRng(&rng);
     
-        wc_FreeRng(&rng);
-    
-        
-        log_trace("%s::%s(%d) : Cleaning up wolfcrypt", LOG_INF);
-    
-        errNum = wolfCrypt_Cleanup();
-    
-        if (0 != errNum)
+    log_trace("%s::%s(%d) : Cleaning up wolfcrypt", LOG_INF);
+    errNum = wolfCrypt_Cleanup();
+    if (0 != errNum)
         
     {
-        
-            log_error("%s::%s(%d) : wolfCrypt_Cleanup failed with code = %d", 
-                      LOG_INF, errNum);
-        
-            bResult = false;
-        
+    log_error("%s::%s(%d) : wolfCrypt_Cleanup failed with code = %d", 
+    LOG_INF, errNum);
+    bResult = false;
     } 
-        log_trace("%s::%s(%d) : Cleaning up wolfssl", LOG_INF);
-    
-        errNum = wolfSSL_Cleanup();
-    
-        if (WOLFSSL_SUCCESS != errNum)
+    log_trace("%s::%s(%d) : Cleaning up wolfssl", LOG_INF);
+    errNum = wolfSSL_Cleanup();
+    if (WOLFSSL_SUCCESS != errNum)
         
     {
-        
-            log_error("%s::%s(%d) : wolfSSL_Cleanup failed with code = %d", 
-                      LOG_INF, errNum);
-        
-            bResult = false;
-        
+    log_error("%s::%s(%d) : wolfSSL_Cleanup failed with code = %d", 
+    LOG_INF, errNum);
+    bResult = false;
     } 
-        return bResult;
+    return bResult;
     
 } /* ssl_cleanup */ 
 

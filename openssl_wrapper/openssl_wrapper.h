@@ -74,7 +74,7 @@ unsigned long ssl_save_cert_key(const char* storePath, const char* keyPath,
 	const char* password, const char* cert, char** pMessage);
 
 int ssl_read_store_inventory(const char* path, const char* password, 
-	PemInventoryList** pPemList);
+	PemInventoryList** ppPemList);
 
 bool ssl_PemInventoryItem_create(struct PemInventoryItem** pem, 
 	const char* certASCII);
