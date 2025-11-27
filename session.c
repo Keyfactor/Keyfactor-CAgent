@@ -52,7 +52,7 @@
 /******************************************************************************/
 /************************ LOCAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
-/**                                                                           */
+/*                                                                            */
 /* Add any customer specific client parameters to the session request         */
 /*                                                                            */
 /* @param  [Output] : sessionReq = The request structure to add data into     */
@@ -67,7 +67,7 @@ static void add_custom_client_parameters(SessionRegisterReq_t * sessionReq) {
     return;
 } /* add_custom_client_parameters */
 
-/**                                                                           */
+/*                                                                            */
 /* Modify the config.json file with the AgentId if EnrollOnStartup is true.   */
 /* The AgentId is assigned by the platform during the inital call-in.         */
 /* This should get set only once.                                             */
@@ -114,7 +114,7 @@ static bool update_agentid_from_session(SessionRegisterResp_t * sessionResp) {
     return true;
 } /* update_agentid_from_session */
 
-/**                                                                           */
+/*                                                                            */
 /* Modify the config.json file when the session returns.                      */
 /* The config.json file holds both configuration parameters and persistent    */
 /* variables.  That is variables that must exist beyond the Agent's instance. */
@@ -143,7 +143,7 @@ static void update_config_from_session(SessionRegisterResp_t * sessionResp) {
     return;
 } /* update_config_from_session */
 
-/**                                                                           */
+/*                                                                            */
 /* Configure the registration request to ask for Agent Registration           */
 /*                                                                            */
 /* @param  - [Output] : sessionReq = the session where we need to add the     */
@@ -152,9 +152,9 @@ static void update_config_from_session(SessionRegisterResp_t * sessionResp) {
 /* - failure : anything else but 1                                            */
 /*                                                                            */
 static bool register_agent(SessionRegisterReq_t * sessionReq) {
-    bool            bResult = false;
-    size_t          csrLen = 0;
-    char           *message = strdup("");
+    bool bResult = false;
+    size_t csrLen = 0;
+    char *message = strdup("");
     enum AgentApiResultStatus status = STAT_SUCCESS;
 
     log_info("%s::%s(%d) : Registering agent with the platform for the first time", LOG_INF);
@@ -190,7 +190,7 @@ exit:
     return bResult;
 }                               /* register_agent */
 
-/**                                                                           */
+/*                                                                            */
 /* Take a session register response & parse the list of jobs.                 */
 /* Schedule those jobs based on the following priorities:                     */
 /* 1.) Store management ADD jobs (highest priority)                           */
@@ -206,8 +206,8 @@ exit:
 /*                                                                            */
 static void prioritize_jobs(ScheduledJob_t * *pJobList,
                             SessionRegisterResp_t * response) {
-    int             i;
-    SessionJob_t   *job_to_schedule = NULL;
+    int i;
+    SessionJob_t *job_to_schedule = NULL;
 
     log_verbose("%s::%s(%d) : Prioritizing jobs", LOG_INF);
 
@@ -259,7 +259,7 @@ static void prioritize_jobs(ScheduledJob_t * *pJobList,
     return;
 }                               /* prioritize_jobs */
 
-/**                                                                           */
+/*                                                                            */
 /* Add the capabilities allowed in this version of the agent by               */
 /* capability GUID defined in Keyfactor                                       */
 /*                                                                            */
@@ -283,7 +283,7 @@ static bool register_add_capabilities(SessionRegisterReq_t * sessionReq) {
     return bResult;
 }                               /* register_add_capabilities */
 
-/**                                                                           */
+/*                                                                            */
 /* Set up the registration parameters associated with a /Session/Request POST */
 /*                                                                            */
 /* @param  [Input] : sessionReq = a session request structure to fill         */
@@ -315,7 +315,7 @@ static void set_registration_parameters(SessionRegisterReq_t * sessionReq) {
     return;
 }                               /* set_registration_parameters */
 
-/**                                                                           */
+/*                                                                            */
 /* Check a certificate's expiry date                                          */
 /*                                                                            */
 /* @param  - [Input] certFile = path & filename of certificate to inspect     */
@@ -339,7 +339,7 @@ exit:
     return bResult;
 } /* is_cert_active */
 
-/**                                                                           */
+/*                                                                            */
 /* Reset the agent as a new one.  The next run of the agent will then         */
 /* go through the re-provisioning process.                                    */
 /*                                                                            */
@@ -370,8 +370,8 @@ static void reset_agent(void) {
     }
     /* get the datetime */
     struct tm      *tm = NULL;
-    time_t          t;
-    char            tBuf[DATE_TIME_LEN + 1];
+    time_t t;
+    char tBuf[DATE_TIME_LEN + 1];
     log_verbose("%s::%s(%d) : Retrieving time from OS", LOG_INF);
     if (!time(&t)) {
         log_error("%s::%s(%d) : Error getting time from OS", LOG_INF);
@@ -385,7 +385,7 @@ static void reset_agent(void) {
         free(ConfigData->AgentName);
         ConfigData->AgentName = NULL;
     }
-    int  correctBytes = (strlen(tempName) + DATE_TIME_LEN + 2);
+    int correctBytes = (strlen(tempName) + DATE_TIME_LEN + 2);
     ConfigData->AgentName = calloc(correctBytes, sizeof(char));
     if (0 >= snprintf(ConfigData->AgentName, correctBytes, "%s_%s", tempName, tBuf)) {
         log_error("%s::%s(%d) : Fatal error rewriting agent name, not changing name or ID", LOG_INF);
@@ -418,7 +418,7 @@ cleanup:
     return;
 }                               /* reset_agent */
 
-/**                                                                           */
+/*                                                                            */
 /* We need to hit the /Session/Register a second time to get the platform to  */
 /* assign store re-enrollment jobs the first time the agent calls in.         */
 /* This can't be done via a blueprint, but can be done via a call to          */
@@ -439,13 +439,13 @@ cleanup:
 static int do_second_registration(SessionInfo_t * session,
                           ScheduledJob_t * *pJobList, uint64_t agentVersion)
 {
-    char           *url = NULL;
-    char           *reqString = NULL;
-    char           *respString = NULL;
-    int             httpRes = 998;
+    char *url = NULL;
+    char *reqString = NULL;
+    char *respString = NULL;
+    int httpRes = 998;
     SessionRegisterResp_t *resp = NULL;
-    char           *status;
-    char            schedule[10];
+    char *status;
+    char schedule[10];
     SessionRegisterReq_t *sessionReq;
     sessionReq = SessionRegisterReq_new(ConfigData->ClientParameterPath);
 
@@ -501,7 +501,7 @@ static int do_second_registration(SessionInfo_t * session,
         if (resp->Session.Token) {
             log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF, resp->Session.Token, resp->Session.Jobs_count);
 
-            size_t          l = strlen(resp->Session.Token);
+            size_t l = strlen(resp->Session.Token);
             if (0 < l) {
                 strcpy(session->Token, resp->Session.Token);
             } else {
@@ -541,7 +541,7 @@ exit:
     return httpRes;
 }                               /* do_second_registration */
 
-/**                                                                           */
+/*                                                                            */
 /* Re-register the agent's cert with the platform..                           */
 /*                                                                            */
 /* @param  [Output] : session (allocated before calling) a session data       */
@@ -557,14 +557,14 @@ exit:
 static int re_register_agent(SessionInfo_t * session, ScheduledJob_t * *pJobList, uint64_t agentVersion,
                              bool needNewAgentName)
 {
-    char           *url = NULL;
-    char           *reqString = NULL;
-    char           *respString = NULL;
-    int             httpRes = 998;
+    char *url = NULL;
+    char *reqString = NULL;
+    char *respString = NULL;
+    int httpRes = 998;
     SessionRegisterResp_t *resp = NULL;
-    char           *status;
+    char *status;
     enum AgentApiResultStatus statusCode;
-    char            schedule[10];
+    char schedule[10];
     SessionRegisterReq_t *sessionReq = SessionRegisterReq_new(ConfigData->ClientParameterPath);
     if (!sessionReq) {
         log_error("%s::%s(%d) : Error getting a new session request buffer", LOG_INF);
@@ -634,7 +634,7 @@ static int re_register_agent(SessionInfo_t * session, ScheduledJob_t * *pJobList
             /* download & shcedule jobs */
             log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF, resp->Session.Token, resp->Session.Jobs_count);
 
-            size_t          l = strlen(resp->Session.AgentId);
+            size_t l = strlen(resp->Session.AgentId);
             if (0 < l) {
                 strcpy(session->AgentId, resp->Session.AgentId);
             } else {
@@ -675,7 +675,7 @@ exit:
     return httpRes;
 }                               /* re_register_agent */
 
-/**                                                                           */
+/*                                                                            */
 /* Process the first registration response, which should include the Agent's  */
 /* signed certificate (from the CA).                                          */
 /* OR if we are not using agent certs, then make sure we got an Agent Id      */
@@ -694,8 +694,8 @@ static bool do_first_registration_response(SessionRegisterResp_t * resp, char **
         log_error("%s::%s(%d) : Error, response to parse is null", LOG_INF);
         return false;
     }
-    bool            bResult = false;
-    bool            bIdOk = false;
+    bool bResult = false;
+    bool bIdOk = false;
     log_trace("%s::%s(%d): Updating config from session", LOG_INF);
     bIdOk = update_agentid_from_session(resp);
 
@@ -720,7 +720,7 @@ static bool do_first_registration_response(SessionRegisterResp_t * resp, char **
     return bResult;
 }                               /* do_first_registration_response */
 
-/**                                                                           */
+/*                                                                            */
 /* Schedule the jobs associated with the /Session/Register response           */
 /*                                                                            */
 /* @param  [Input] : resp = the platform response to parse                    */
@@ -737,7 +737,7 @@ static void do_normal_registration_response(SessionRegisterResp_t * resp,
 
     log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF, resp->Session.Token, resp->Session.Jobs_count);
 
-    size_t          l = strlen((resp->Session.AgentId));
+    size_t l = strlen((resp->Session.AgentId));
     if (l > 0) {
         strcpy(session->AgentId, resp->Session.AgentId);
     } else {
@@ -764,7 +764,7 @@ static void do_normal_registration_response(SessionRegisterResp_t * resp,
 /*********************** GLOBAL FUNCTION DEFINITIONS***************************/
 /******************************************************************************/
 
-/**                                                                           */
+/*                                                                            */
 /* Register a session with the Keyfactor Platform.  If this is the first time */
 /* the agent connects to the platform, then generate a keyPair and CSR to     */
 /* send up to the platform.                                                   */
@@ -780,21 +780,21 @@ static void do_normal_registration_response(SessionRegisterResp_t * resp,
 /*                                                                            */
 int register_session(SessionInfo_t * session, ScheduledJob_t * *pJobList, uint64_t agentVersion)
 {
-    char           *url = NULL;
-    char           *reqString = NULL;
-    char           *respString = NULL;
-    int             httpRes = 998;
+    char *url = NULL;
+    char *reqString = NULL;
+    char *respString = NULL;
+    int httpRes = 998;
     SessionRegisterResp_t *resp = NULL;
-    char           *status;
+    char *status;
     enum AgentApiResultStatus statusCode;
-    char            schedule[10];
+    char schedule[10];
     SessionRegisterReq_t *sessionReq = SessionRegisterReq_new(ConfigData->ClientParameterPath);
     if (NULL == sessionReq) {
         log_error("%s::%s(%d) : Error setting registration parameters", LOG_INF);
         goto exit;
     }
-    bool            firstAgentRegistration = false;
-    bool            bFirstRegistrationSuccess = false;
+    bool firstAgentRegistration = false;
+    bool bFirstRegistrationSuccess = false;
 
     log_info("%s::%s(%d): Registering new session", LOG_INF);
 

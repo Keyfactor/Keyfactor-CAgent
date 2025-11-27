@@ -23,15 +23,15 @@
 #include "config.h"
 
 #ifdef __WOLF_SSL__
-	#include "wolfssl_wrapper/wolfssl_wrapper.h"
+#include "wolfssl_wrapper/wolfssl_wrapper.h"
 #else
-	#ifdef __OPEN_SSL__
-		#include "openssl_wrapper/openssl_wrapper.h"
-	#else
-		#ifdef __TPM__
-		#else
-		#endif
-	#endif
+#ifdef __OPEN_SSL__
+#include "openssl_wrapper/openssl_wrapper.h"
+#else
+#ifdef __TPM__
+#else
+#endif
+#endif
 #endif
 
 /******************************************************************************/
@@ -49,194 +49,190 @@
 /******************************************************************************/
 /************************ LOCAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
-static int get_inventory_config(const char* sessionToken, const char* jobId, 
-	const char* endpoint, InventoryConfigResp_t** pInvConf)
+static int get_inventory_config(const char *sessionToken, const char *jobId,
+                    const char *endpoint, InventoryConfigResp_t * *pInvConf)
 {
-	char* url = NULL;
+    char *url = NULL;
 
-	log_verbose("%s::%s(%d) : Sending inventory config request: %s", 
-		LOG_INF, jobId);
-	CommonConfigReq_t* req = CommonConfigReq_new();
-	if ( NULL == req )
-	{
-		log_error("%s::%s(%d) : Out of memory in CommonConfigReq_new()", 
-			LOG_INF);
-		return -1;
-	}
+    log_verbose("%s::%s(%d) : Sending inventory config request: %s",
+                LOG_INF, jobId);
+    CommonConfigReq_t *req = CommonConfigReq_new();
+    if (NULL == req) {
+        log_error("%s::%s(%d) : Out of memory in CommonConfigReq_new()",
+                  LOG_INF);
+        return -1;
+    }
 
-	req->JobId = strdup(jobId);
-	log_trace("%s::%s(%d) : Set job ID to %s", LOG_INF, jobId);
-	req->SessionToken = strdup(sessionToken);
-	log_trace("%s::%s(%d) : Set session token to %s", LOG_INF, sessionToken);
+    req->JobId = strdup(jobId);
+    log_trace("%s::%s(%d) : Set job ID to %s", LOG_INF, jobId);
+    req->SessionToken = strdup(sessionToken);
+    log_trace("%s::%s(%d) : Set session token to %s", LOG_INF, sessionToken);
 
-	char* jsonReq = CommonConfigReq_toJson(req);
-	log_trace("%s::%s(%d) : Set Common Config Request to %s", LOG_INF, jsonReq);
-	
-	char* jsonResp = NULL;
+    char *jsonReq = CommonConfigReq_toJson(req);
+    log_trace("%s::%s(%d) : Set Common Config Request to %s", LOG_INF, jsonReq);
 
-	url = config_build_url(endpoint, true);
-	log_trace("%s::%s(%d) : Attempting a POST to %s", LOG_INF, url);
+    char *jsonResp = NULL;
 
-	int res = http_post_json(url, ConfigData->Username, ConfigData->Password, 
-		ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey, 
-		ConfigData->AgentKeyPassword, jsonReq, &jsonResp 
-		,ConfigData->httpRetries,ConfigData->retryInterval); 
+    url = config_build_url(endpoint, true);
+    log_trace("%s::%s(%d) : Attempting a POST to %s", LOG_INF, url);
 
-	if(res == 0)
-	{
-		*pInvConf = InventoryConfigResp_fromJson(jsonResp);
-	}
-	else
-	{
-		log_error("%s::%s(%d) : Config retrieval failed with error code %d", 
-			LOG_INF, res);
-	}
-	
-	free(jsonReq);
-	free(jsonResp);
-	free(url);
-	CommonConfigReq_free(req);
+    int res = http_post_json(url, ConfigData->Username, ConfigData->Password,
+        ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey,
+                            ConfigData->AgentKeyPassword, jsonReq, &jsonResp
+                       ,ConfigData->httpRetries, ConfigData->retryInterval);
 
-	return res;
-} /* get_inventory_config */
+    if (res == 0) {
+        *pInvConf = InventoryConfigResp_fromJson(jsonResp);
+    } else {
+        log_error("%s::%s(%d) : Config retrieval failed with error code %d",
+                  LOG_INF, res);
+    }
 
-static int send_inventory_update(const char* sessionToken, const char* jobId, 
-	const char* endpoint, InventoryUpdateList_t* newInv, 
-	InventoryUpdateResp_t** pUpdResp)
+    free(jsonReq);
+    free(jsonResp);
+    free(url);
+    CommonConfigReq_free(req);
+
+    return res;
+}                               /* get_inventory_config */
+
+static int send_inventory_update(const char *sessionToken, const char *jobId,
+                       const char *endpoint, InventoryUpdateList_t * newInv,
+                                 InventoryUpdateResp_t * *pUpdResp)
 {
-	char* url = NULL;
+    char *url = NULL;
 
-	log_verbose("%s::%s(%d) : Sending inventory update request: %s", LOG_INF, jobId);
-	InventoryUpdateReq_t* updReq = calloc(1, sizeof(*updReq));
+    log_verbose("%s::%s(%d) : Sending inventory update request: %s", LOG_INF, jobId);
+    InventoryUpdateReq_t *updReq = calloc(1, sizeof(*updReq));
     if (!updReq) {
         log_error("%s::%s(%d) : Error couldn't allocate update request structure", LOG_INF);
         return 999;
     }
 
-	updReq->SessionToken = strdup(sessionToken);
-	updReq->JobId = strdup(jobId);
-	updReq->Inventory = *newInv;
-	char* jsonReq = InventoryUpdateReq_toJson(updReq);
-    char* jsonResp = NULL;
-	url = config_build_url(endpoint, true);
+    updReq->SessionToken = strdup(sessionToken);
+    updReq->JobId = strdup(jobId);
+    updReq->Inventory = *newInv;
+    char *jsonReq = InventoryUpdateReq_toJson(updReq);
+    char *jsonResp = NULL;
+    url = config_build_url(endpoint, true);
 
-	int res = http_post_json(url, ConfigData->Username, ConfigData->Password, 
-		ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey, 
-		ConfigData->AgentKeyPassword, jsonReq, &jsonResp 
-		,ConfigData->httpRetries,ConfigData->retryInterval); 
+    int res = http_post_json(url, ConfigData->Username, ConfigData->Password,
+        ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey,
+                            ConfigData->AgentKeyPassword, jsonReq, &jsonResp
+                       ,ConfigData->httpRetries, ConfigData->retryInterval);
 
-	if(res == 0) {
-		*pUpdResp = InventoryUpdateResp_fromJson(jsonResp);
-	} else {
-		log_error("%s::%s(%d) : Update submission failed with error code %d", LOG_INF, res);
-	}
-	
-	if (jsonReq) free(jsonReq);
-	if (jsonResp) free(jsonResp);
-	if (url) free(url);
-	if (updReq) InventoryUpdateReq_free(updReq);
-	
-	return res;
-} /* send_inventory_update */
+    if (res == 0) {
+        *pUpdResp = InventoryUpdateResp_fromJson(jsonResp);
+    } else {
+        log_error("%s::%s(%d) : Update submission failed with error code %d", LOG_INF, res);
+    }
 
-static int send_inventory_job_complete(const char* sessionToken, 
-	const char* jobId, const char* endpoint, int jobStatus, long auditId, 
-	const char* message, CommonCompleteResp_t** pInvComp)
+    if (jsonReq)
+        free(jsonReq);
+    if (jsonResp)
+        free(jsonResp);
+    if (url)
+        free(url);
+    if (updReq)
+        InventoryUpdateReq_free(updReq);
+
+    return res;
+}                               /* send_inventory_update */
+
+static int send_inventory_job_complete(const char *sessionToken,
+       const char *jobId, const char *endpoint, int jobStatus, long auditId,
+                      const char *message, CommonCompleteResp_t * *pInvComp)
 {
-	char* url = NULL;
+    char *url = NULL;
 
-	log_verbose("%s::%s(%d) : Sending inventory complete request: %ld for"
-		" session: %s",	LOG_INF, auditId, sessionToken);
+    log_verbose("%s::%s(%d) : Sending inventory complete request: %ld for"
+                " session: %s", LOG_INF, auditId, sessionToken);
 
-	CommonCompleteReq_t* req = CommonCompleteReq_new();
+    CommonCompleteReq_t *req = CommonCompleteReq_new();
     if (!req) {
         log_error("%s::%s(%d) : Error allocating request structure", LOG_INF);
         return 999;
     }
 
-	req->SessionToken = strdup(sessionToken);
-	req->JobId = strdup(jobId);
-	req->Status = jobStatus;
-	req->AuditId = auditId;
-	req->Message = strdup(message);
-	char* jsonReq = CommonCompleteReq_toJson(req);
-	char* jsonResp = NULL;
-	url = config_build_url(endpoint, true);
+    req->SessionToken = strdup(sessionToken);
+    req->JobId = strdup(jobId);
+    req->Status = jobStatus;
+    req->AuditId = auditId;
+    req->Message = strdup(message);
+    char *jsonReq = CommonCompleteReq_toJson(req);
+    char *jsonResp = NULL;
+    url = config_build_url(endpoint, true);
 
-	int res = http_post_json(url, ConfigData->Username, ConfigData->Password, 
-		ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey, 
-		ConfigData->AgentKeyPassword, jsonReq, &jsonResp 
-		,ConfigData->httpRetries,ConfigData->retryInterval); 
+    int res = http_post_json(url, ConfigData->Username, ConfigData->Password,
+        ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey,
+                            ConfigData->AgentKeyPassword, jsonReq, &jsonResp
+                       ,ConfigData->httpRetries, ConfigData->retryInterval);
 
-	if(res == 0) {
-		*pInvComp = CommonCompleteResp_fromJson(jsonResp);
-	} else {
-		log_error("%s::%s(%d) : Job completion failed with error code %d",	LOG_INF, res);
-	}
-	
-	if (jsonReq) free(jsonReq);
-	if (jsonResp) free(jsonResp);
-	if (url) free(url);
-	if (req) CommonCompleteReq_free(req);
+    if (res == 0) {
+        *pInvComp = CommonCompleteResp_fromJson(jsonResp);
+    } else {
+        log_error("%s::%s(%d) : Job completion failed with error code %d", LOG_INF, res);
+    }
 
-	return res;
-} /* send_inventory_job_complete */
+    if (jsonReq)
+        free(jsonReq);
+    if (jsonResp)
+        free(jsonResp);
+    if (url)
+        free(url);
+    if (req)
+        CommonCompleteReq_free(req);
 
-static void InventoryUpdateList_add(InventoryUpdateList_t* list, 
-	InventoryUpdateItem_t* item)
+    return res;
+}                               /* send_inventory_job_complete */
+
+static void InventoryUpdateList_add(InventoryUpdateList_t * list,
+                                    InventoryUpdateItem_t * item)
 {
-	if(list && item)
-	{
-		list->items = realloc(list->items, 
-			(list->count + 1) * sizeof(InventoryUpdateItem_t*));
-		if (list->items)
-		{
-			list->items[list->count] = item;
-			list->count++;
-		}
-		else
-		{
-			log_error("%s::%s(%d) : Out of memory", LOG_INF);
-		}
-	}
-	return;
-} /* InventoryUpdateList_add */
+    if (list && item) {
+        list->items = realloc(list->items,
+                       (list->count + 1) * sizeof(InventoryUpdateItem_t *));
+        if (list->items) {
+            list->items[list->count] = item;
+            list->count++;
+        } else {
+            log_error("%s::%s(%d) : Out of memory", LOG_INF);
+        }
+    }
+    return;
+}                               /* InventoryUpdateList_add */
 
-/**                                                                           */
+/*                                                                            */
 /* Free an inventory item list                                                */
 /*                                                                            */
 /* @param  - [Input] : list = the list to free                                */
 /* @return - none                                                             */
 /*                                                                            */
-static void InventoryUpdateList_free(InventoryUpdateList_t* list)
+static void InventoryUpdateList_free(InventoryUpdateList_t * list)
 {
-	if (list)
-	{
-		for(int i = 0; i < list->count; i++)
-		{
-			if (list->items[i])
-			{
-				if(list->items[i]->Alias) free (list->items[i]->Alias);
-				if(list->items[i]->Certificates)
-				{
-					for(int j = 0; j < list->items[i]->Certificates_count; j++)
-					{
-						if (list->items[i]->Certificates[j]) 
-						{
-							free(list->items[i]->Certificates[j]);
-						}
-					}
-				}
-				free(list->items[i]);
-			}
-		}
-		if (list->items) free(list->items);
-		free(list);
-	}
-	return;
-} /* InventoryUpdateList_free */
+    if (list) {
+        for (int i = 0; i < list->count; i++) {
+            if (list->items[i]) {
+                if (list->items[i]->Alias)
+                    free(list->items[i]->Alias);
+                if (list->items[i]->Certificates) {
+                    for (int j = 0; j < list->items[i]->Certificates_count; j++) {
+                        if (list->items[i]->Certificates[j]) {
+                            free(list->items[i]->Certificates[j]);
+                        }
+                    }
+                }
+                free(list->items[i]);
+            }
+        }
+        if (list->items)
+            free(list->items);
+        free(list);
+    }
+    return;
+}                               /* InventoryUpdateList_free */
 
-/**                                                                           */
+/*                                                                            */
 /* The the inventory job configuration returned a list of inventory items the */
 /* platform knows about.  The inventory item contains an "Alias" which is the */
 /* sha1 hash (aka: thumbprint) of the certificate.  It also passes this same  */
@@ -253,41 +249,39 @@ static void InventoryUpdateList_free(InventoryUpdateList_t* list)
 /* this store.                                                                */
 /*                                                                            */
 /* NOTE: updateList is allocated in this function and must be freed by the    */
-/*       calling function                                                     */
+/* calling function                                                           */
 /*                                                                            */
 /* @param  - [Input] cmsItems - a list of all items the Platform knows about  */
-/*                              in this data store                            */
+/* in this data store                                                         */
 /* @param  - [Input] cmsItemCount - The # of items in the list cmsItems       */
 /* @param  - [Input] fileItemList - a list of all items the Agent knows about */
-/*                                  in this data store                        */
+/* in this data store                                                         */
 /* @param  - [Output] updateList - The list of items to ADD or DELETE from    */
-/*                                  the platform                              */
+/* the platform                                                               */
 /* @return - success : 0                                                      */
-/*           failure : 0                                                      */
+/* failure : 0                                                                */
 /*                                                                            */
 /*                                                                            */
-static int compute_inventory_update(InventoryCurrentItem_t** cmsItems, 
-	int cmsItemCount, struct PemInventoryList* fileItemList, 
-	InventoryUpdateList_t** updateList)
+static int compute_inventory_update(InventoryCurrentItem_t * *cmsItems,
+                    int cmsItemCount, struct PemInventoryList *fileItemList,
+                                    InventoryUpdateList_t * *updateList)
 {
-	*updateList = calloc(1, sizeof(InventoryUpdateList_t));
-	InventoryUpdateItem_t* updateItem = NULL;
-	PemInventoryItem* currentPem = NULL;
-	bool inFile = false;
-	bool inCms = false;
+    *updateList = calloc(1, sizeof(InventoryUpdateList_t));
+    InventoryUpdateItem_t *updateItem = NULL;
+    PemInventoryItem *currentPem = NULL;
+    bool inFile = false;
+    bool inCms = false;
 
-	for(int i = 0; i < fileItemList->item_count; ++i)
-	{
-		currentPem = fileItemList->items[i];
-		inCms = false;
-		for(int j = 0; j < cmsItemCount; ++j)
-		{
-			/* if the thumbprints match, we don't have to do anything */
-			if(0 == strcasecmp(currentPem->thumbprint_string, cmsItems[j]->Alias)) {
-				log_verbose("%s::%s(%d) : Alias %s is UNCHANGED", LOG_INF, currentPem->thumbprint_string);
-				inCms = true;
+    for (int i = 0; i < fileItemList->item_count; ++i) {
+        currentPem = fileItemList->items[i];
+        inCms = false;
+        for (int j = 0; j < cmsItemCount; ++j) {
+            /* if the thumbprints match, we don't have to do anything */
+            if (0 == strcasecmp(currentPem->thumbprint_string, cmsItems[j]->Alias)) {
+                log_verbose("%s::%s(%d) : Alias %s is UNCHANGED", LOG_INF, currentPem->thumbprint_string);
+                inCms = true;
 
-				InventoryUpdateItem_t* updateItem = calloc(1, sizeof(*updateItem));
+                InventoryUpdateItem_t *updateItem = calloc(1, sizeof(*updateItem));
                 if (!updateItem) {
                     log_error("%s::%s(%d) : Out of memory", LOG_INF);
                     break;
@@ -302,15 +296,16 @@ static int compute_inventory_update(InventoryCurrentItem_t** cmsItems,
                     updateItem->UseChainLevel = false;
                 }
 
-				InventoryUpdateList_add(*updateList, updateItem);
-				break;
-			} /* parasoft-suppress BD-RES-LEAKS "Freed by calling function" */
-		}
+                InventoryUpdateList_add(*updateList, updateItem);
+                break;
+            }                   /* parasoft-suppress BD-RES-LEAKS "Freed by
+                                 * calling function" */
+        }
 
-		if(!inCms) {
-			log_verbose("%s::%s(%d) : Alias %s is ADDED", LOG_INF, currentPem->thumbprint_string);
+        if (!inCms) {
+            log_verbose("%s::%s(%d) : Alias %s is ADDED", LOG_INF, currentPem->thumbprint_string);
 
-			updateItem = calloc(1, sizeof(*updateItem));
+            updateItem = calloc(1, sizeof(*updateItem));
             if (!updateItem) {
                 log_error("%s::%s(%d) : Out of memory", LOG_INF);
                 break;
@@ -329,25 +324,26 @@ static int compute_inventory_update(InventoryCurrentItem_t** cmsItems,
 
                 InventoryUpdateList_add(*updateList, updateItem);
             }
-		}
-	}
+        }
+    }
 
-	for(int m = 0; m < cmsItemCount; ++m)
-	{
-		inFile = false;
-		for(int n = 0; n < fileItemList->item_count; ++n) {
-			currentPem = fileItemList->items[n];
+    for (int m = 0; m < cmsItemCount; ++m) {
+        inFile = false;
+        for (int n = 0; n < fileItemList->item_count; ++n) {
+            currentPem = fileItemList->items[n];
 
-			if(0 == strcasecmp(currentPem->thumbprint_string, cmsItems[m]->Alias)) {
-				inFile = true;
-				break;
-			}
-		}
+            if (0 == strcasecmp(currentPem->thumbprint_string, cmsItems[m]->Alias)) {
+                inFile = true;
+                break;
+            }
+        }
 
-		if(!inFile) {
-			log_verbose("%s::%s(%d) : Alias %s is DELETED", LOG_INF, cmsItems[m]->Alias);
+        if (!inFile) {
+            log_verbose("%s::%s(%d) : Alias %s is DELETED", LOG_INF, cmsItems[m]->Alias);
 
-			updateItem = calloc(1, sizeof(InventoryUpdateItem_t)); /* parasoft-suppress BD-RES-LEAKS "Freed by calling function" */
+            updateItem = calloc(1, sizeof(InventoryUpdateItem_t));      /* parasoft-suppress
+                                                                         * BD-RES-LEAKS "Freed
+                                                                         * by calling function" */
             if (!updateItem) {
                 log_error("%s::%s(%d) : Out of Memory", LOG_INF);
                 break;
@@ -359,198 +355,172 @@ static int compute_inventory_update(InventoryCurrentItem_t** cmsItems,
 
                 InventoryUpdateList_add(*updateList, updateItem);
             }
-		}
-	}
+        }
+    }
 
-	return 0;
-} /* compute_inventory_update */ /* parasoft-suppress BD-RES-LEAKS "Freed by calling function" */
+    return 0;
+}                               /* compute_inventory_update *//* parasoft-suppress
+                                 * BD-RES-LEAKS "Freed by calling function" */
 
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
-/**                                                                           */
+/*                                                                            */
 /* Run the control flow for an inventory job.                                 */
 /* The control flow is:                                                       */
-/*		1.) Ask the platform for the Inventory Job details (aka config)       */
-/*      2.) Read the PEM inventory from the store requested.                  */
-/*      3.) Compare the thumbprints in #2 to the thumbprints downloaded in    */
-/*          #1.                                                               */
-/*      4.) Inform the platform if:                                           */
-/*               a.) The thumbprint is not found (Platform Deletes its cert)  */
-/*               b.) A new thumbprint is found (Platform adds the cert)       */
+/* 1.) Ask the platform for the Inventory Job details (aka config)            */
+/* 2.) Read the PEM inventory from the store requested.                       */
+/* 3.) Compare the thumbprints in #2 to the thumbprints downloaded in         */
+/* #1.                                                                        */
+/* 4.) Inform the platform if:                                                */
+/* a.) The thumbprint is not found (Platform Deletes its cert)                */
+/* b.) A new thumbprint is found (Platform adds the cert)                     */
 /* For 4b) the cert is uploaded to the platform as a naked PEM                */
 /*                                                                            */
 /* @param  - [Input] : sessionToken = the session token for the Platform      */
 /* @return - job not canceled by platform : 0                                 */
-/*           job was canceled by platform : 1                                 */
+/* job was canceled by platform : 1                                           */
 /*                                                                            */
-int cms_job_inventory(SessionJob_t* jobInfo, char* sessionToken)
+int cms_job_inventory(SessionJob_t * jobInfo, char *sessionToken)
 {
-	int res = 0;
-	InventoryConfigResp_t* invConf = NULL;
-	char* statusMessage = strdup("");
-	enum AgentApiResultStatus status = STAT_UNK;
-	
-	int returnable = 0;
-	log_info("%s::%s(%d) : Starting inventory job %s", LOG_INF, jobInfo->JobId);
+    int res = 0;
+    InventoryConfigResp_t *invConf = NULL;
+    char *statusMessage = strdup("");
+    enum AgentApiResultStatus status = STAT_UNK;
 
-	res = get_inventory_config(sessionToken, jobInfo->JobId, 
-		jobInfo->ConfigurationEndpoint, &invConf);
+    int returnable = 0;
+    log_info("%s::%s(%d) : Starting inventory job %s", LOG_INF, jobInfo->JobId);
 
-	/* Validate inputs */
-	if (invConf)
-	{
-		bool failed = false;
-		if (invConf->Job.StorePath)
-		{		
-			/* Verify the target store isn't a directory */
-			if (is_directory(invConf->Job.StorePath))
-			{
-				log_error("%s::%s(%d) : The store path must be a file and "
-					"not a directory.", LOG_INF);
-				append_linef(&statusMessage, "The store path must be a file "
-					"and not a directory.");
-				failed = true;
-			}
+    res = get_inventory_config(sessionToken, jobInfo->JobId,
+                               jobInfo->ConfigurationEndpoint, &invConf);
 
-			if (ConfigData->UseAgentCert) {
-				/* Verify the target store isn't the Agent store */
-				if (0 == strcasecmp(ConfigData->AgentCert, invConf->Job.StorePath))
-				{
+    /* Validate inputs */
+    if (invConf) {
+        bool failed = false;
+        if (invConf->Job.StorePath) {
 
-					log_warn("%s::%s(%d) : Attempting to inventory the agent"
-						" cert store is not allowed.", LOG_INF);
-					append_linef(&statusMessage, "Attempting to inventory the "
-						"agent cert store is not allowed.");
-					failed = true;
-				}
-			}
+            /* Verify the target store isn't a directory */
+            if (is_directory(invConf->Job.StorePath)) {
+                log_error("%s::%s(%d) : The store path must be a file and "
+                          "not a directory.", LOG_INF);
+                append_linef(&statusMessage, "The store path must be a file "
+                             "and not a directory.");
+                failed = true;
+            }
 
-			/* Verify the target store exists */
-			if (!file_exists(invConf->Job.StorePath))
-			{
-				log_warn("%s::%s(%d) : Attempting to inventory a certificate"
-					" store that does not exist yet.", LOG_INF);
-				append_linef(&statusMessage, "Attempting to inventory a "
-					"certificate store that does not exist yet.");
-				failed = true;
-			}
-		}
-		else
-		{
-			log_error("%s::%s(%d) : Job doesn't contain a store to inventory.", LOG_INF);
-			append_linef(&statusMessage, "Job doesn't contain a store to inventory.");
-			failed = true;
-		}
-		/* If we failed any test above, then let the platform know about it */			
-		if(failed)
-		{
-			CommonCompleteResp_t* invComp = NULL;
-			send_inventory_job_complete(sessionToken, jobInfo->JobId, 
-				jobInfo->CompletionEndpoint, STAT_ERR, invConf->AuditId, 
-				statusMessage, &invComp);
-			CommonCompleteResp_free(invComp);
-			goto exit;
-		}
-	}
-	else
-	{
-		log_error("%s::%s(%d) : No inventory configuration was returned "
-			"from the platform", LOG_INF);
-		goto exit;
-	}
+            if (ConfigData->UseAgentCert) {
+                /* Verify the target store isn't the Agent store */
+                if (0 == strcasecmp(ConfigData->AgentCert, invConf->Job.StorePath)) {
 
-	if( (res == 0) && 
-		AgentApiResult_log(invConf->Result, &statusMessage, &status) )
-	{
-		if(invConf->JobCancelled)
-		{
-			log_info("%s::%s(%d) : Job has been cancelled and will "
-				"not be run", LOG_INF);
-			returnable = 1;
-		}
-		else
-		{
-			long auditId = invConf->AuditId;
-			log_verbose("%s::%s(%d) : Audit Id: %ld", LOG_INF, auditId);
+                    log_warn("%s::%s(%d) : Attempting to inventory the agent"
+                             " cert store is not allowed.", LOG_INF);
+                    append_linef(&statusMessage, "Attempting to inventory the "
+                                 "agent cert store is not allowed.");
+                    failed = true;
+                }
+            }
 
-			PemInventoryList* pemList = NULL;
-			log_trace("%s::%s(%d) : Reading inventory store located at %s",	
-				LOG_INF, invConf->Job.StorePath);
-			res = ssl_read_store_inventory(invConf->Job.StorePath, 
-				invConf->Job.StorePassword, &pemList);
+            /* Verify the target store exists */
+            if (!file_exists(invConf->Job.StorePath)) {
+                log_warn("%s::%s(%d) : Attempting to inventory a certificate"
+                         " store that does not exist yet.", LOG_INF);
+                append_linef(&statusMessage, "Attempting to inventory a "
+                             "certificate store that does not exist yet.");
+                failed = true;
+            }
+        } else {
+            log_error("%s::%s(%d) : Job doesn't contain a store to inventory.", LOG_INF);
+            append_linef(&statusMessage, "Job doesn't contain a store to inventory.");
+            failed = true;
+        }
+        /* If we failed any test above, then let the platform know about it */
+        if (failed) {
+            CommonCompleteResp_t *invComp = NULL;
+            send_inventory_job_complete(sessionToken, jobInfo->JobId,
+                    jobInfo->CompletionEndpoint, STAT_ERR, invConf->AuditId,
+                                        statusMessage, &invComp);
+            CommonCompleteResp_free(invComp);
+            goto exit;
+        }
+    } else {
+        log_error("%s::%s(%d) : No inventory configuration was returned "
+                  "from the platform", LOG_INF);
+        goto exit;
+    }
 
-			if(res == 0)
-			{
-				InventoryUpdateList_t* updateList = NULL;
-				compute_inventory_update(invConf->Job.Inventory, 
-					invConf->Job.Inventory_count, pemList, &updateList);
+    if ((res == 0) &&
+        AgentApiResult_log(invConf->Result, &statusMessage, &status)) {
+        if (invConf->JobCancelled) {
+            log_info("%s::%s(%d) : Job has been cancelled and will "
+                     "not be run", LOG_INF);
+            returnable = 1;
+        } else {
+            long auditId = invConf->AuditId;
+            log_verbose("%s::%s(%d) : Audit Id: %ld", LOG_INF, auditId);
 
-				InventoryUpdateResp_t* updResp = NULL;
-				res = send_inventory_update(sessionToken, jobInfo->JobId, 
-					invConf->InventoryEndpoint, updateList, &updResp);
-				if(res == 0 && updResp)
-				{
-				   AgentApiResult_log(updResp->Result, &statusMessage, &status);
-				}
+            PemInventoryList *pemList = NULL;
+            log_trace("%s::%s(%d) : Reading inventory store located at %s",
+                      LOG_INF, invConf->Job.StorePath);
+            res = ssl_read_store_inventory(invConf->Job.StorePath,
+                                      invConf->Job.StorePassword, &pemList);
 
-				if (updateList) 
-				{
-					InventoryUpdateList_free(updateList);
-				}
-				if (updResp)
-				{
-					InventoryUpdateResp_free(updResp);
-				}
-			}
-			else
-			{
-				status = STAT_ERR;
-				append_line(&statusMessage, strerror(res));
-			}
+            if (res == 0) {
+                InventoryUpdateList_t *updateList = NULL;
+                compute_inventory_update(invConf->Job.Inventory,
+                        invConf->Job.Inventory_count, pemList, &updateList);
 
-			if (pemList) 
-			{
-				log_trace("%s::%s(%d) : Freeing pemList containing %d items", 
-					LOG_INF, pemList->item_count);
-				PemInventoryList_free(pemList);
-			}
+                InventoryUpdateResp_t *updResp = NULL;
+                res = send_inventory_update(sessionToken, jobInfo->JobId,
+                          invConf->InventoryEndpoint, updateList, &updResp);
+                if (res == 0 && updResp) {
+                    AgentApiResult_log(updResp->Result, &statusMessage, &status);
+                }
 
-			CommonCompleteResp_t* invComp = NULL;
-			res = send_inventory_job_complete(sessionToken, jobInfo->JobId, 
-				jobInfo->CompletionEndpoint, (status + 1), auditId, 
-				statusMessage, &invComp);
-			if(res == 0 && invComp)
-			{
-				AgentApiResult_log(invComp->Result, NULL, NULL);
-			}
+                if (updateList) {
+                    InventoryUpdateList_free(updateList);
+                }
+                if (updResp) {
+                    InventoryUpdateResp_free(updResp);
+                }
+            } else {
+                status = STAT_ERR;
+                append_line(&statusMessage, strerror(res));
+            }
 
-			if(status >= STAT_ERR)
-			{
-				log_error("%s::%s(%d) : Inventory job %s failed with error: %s",
-					LOG_INF, jobInfo->JobId, statusMessage);
-			}
-			else if(status == STAT_WARN)
-			{
-				log_warn("%s::%s(%d) : Inventory job %s completed with "
-					"warning: %s", LOG_INF, jobInfo->JobId, statusMessage);
-			}
-			else
-			{
-				log_info("%s::%s(%d) : Inventory job %s completed successfully",
-					LOG_INF, jobInfo->JobId);
-			}
+            if (pemList) {
+                log_trace("%s::%s(%d) : Freeing pemList containing %d items",
+                          LOG_INF, pemList->item_count);
+                PemInventoryList_free(pemList);
+            }
 
-			CommonCompleteResp_free(invComp);
-		}
-	}
+            CommonCompleteResp_t *invComp = NULL;
+            res = send_inventory_job_complete(sessionToken, jobInfo->JobId,
+                         jobInfo->CompletionEndpoint, (status + 1), auditId,
+                                              statusMessage, &invComp);
+            if (res == 0 && invComp) {
+                AgentApiResult_log(invComp->Result, NULL, NULL);
+            }
+
+            if (status >= STAT_ERR) {
+                log_error("%s::%s(%d) : Inventory job %s failed with error: %s",
+                          LOG_INF, jobInfo->JobId, statusMessage);
+            } else if (status == STAT_WARN) {
+                log_warn("%s::%s(%d) : Inventory job %s completed with "
+                     "warning: %s", LOG_INF, jobInfo->JobId, statusMessage);
+            } else {
+                log_info("%s::%s(%d) : Inventory job %s completed successfully",
+                         LOG_INF, jobInfo->JobId);
+            }
+
+            CommonCompleteResp_free(invComp);
+        }
+    }
 
 exit:
-	InventoryConfigResp_free(invConf);
-	free(statusMessage);
-	
-	return returnable;
-} /* cms_job_inventory */
+    InventoryConfigResp_free(invConf);
+    free(statusMessage);
+
+    return returnable;
+}                               /* cms_job_inventory */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/
-/******************************************************************************/
