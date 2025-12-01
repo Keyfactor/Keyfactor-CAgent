@@ -480,29 +480,32 @@ bool release_platform(void)
 } /* release_platform */
 
 /*                                                                            */
-/* Runs a single loop agent (ON by default)                                   */
+/* Runs a single loop agent                                                   */
 /* @param  - none                                                             */
 /* @return - none                                                             */
 /*                                                                            */
-static void main_loop(void)
+static bool main_loop(void)
 {
     time_t now = 0;
-    /* First establish a session with the platform; the session registration */
-    /* gets all of the jobs from the platform.  (Unless EnrollOnStartup is */
-    //*true in the config file.If EnrollOnStartup is true, the agent * /
-    /* makes a keypair & a CSR to send up to the platform for the agent)    */
-        log_verbose("%s::%s(%d) : Connecting to platform for session & job list", LOG_INF);
+    bool error_status = false;
+    /* First establish a session with the platform; the session registration  */
+    /* gets all of the jobs from the platform.  (Unless EnrollOnStartup is    */
+    /*true in the config file.If EnrollOnStartup is true, the agent           */
+    /* makes a keypair & a CSR to send up to the platform for the agent)      */
+    log_verbose("%s::%s(%d) : Connecting to platform for session & job list", LOG_INF);
     register_session(&SessionData, &JobList, AGENT_VERSION);
     currentJob = JobList;
 
     /**************************************************************************/
-    /* The main loop, run all the jobs in the list, one at a time          */
-    /* based on the priority defined in session.c                          */
+    /* The main loop, run all the jobs in the list, one at a time             */
+    /* based on the priority defined in session.c                             */
     /**************************************************************************/
     while (NULL != currentJob) {
         //Run the jobs based on the time queue
-            now = time(NULL);
-        int status = run_job(currentJob->Job);
+        now = time(NULL);
+        if (0 != run_job(currentJob->Job)) {
+            error_status = true;
+        }
         log_info("%s::%s(%d) : Advancing to job number %s", LOG_INF,
                  NULL == currentJob->NextJob ? "NULL" : currentJob->NextJob->Job->JobId);
         currentJob = currentJob->NextJob;
@@ -510,7 +513,7 @@ static void main_loop(void)
 
     log_info("%s::%s(%d) : No jobs to run -- Begin Agent Shutdown & Memory Release", LOG_INF);
 
-    return;
+    return error_status;
 } /* main_loop */
 
 /*                                                                            */
@@ -527,6 +530,7 @@ int main(int argc, char *argv[])
 #endif
 {
     time_t now = 0;
+    bool error_status = false;
     /**************************************************************************/
     /* 1. Initialize items based on command line, config.json, and #defines   */
     /**************************************************************************/
@@ -538,7 +542,9 @@ int main(int argc, char *argv[])
     /**************************************************************************/
     /* 2. Run the main loop (selected based on the defines in the makefile)   */
     /**************************************************************************/
-    main_loop();
+    if (false == main_loop()) {
+        goto error_exit;
+    }
 
     /**************************************************************************/
     /* Finalize & exit -- successful                                          */

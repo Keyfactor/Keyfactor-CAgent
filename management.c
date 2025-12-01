@@ -310,6 +310,50 @@ static int remove_cert_from_store(const char *storePath,
     return ret;
 } /* remove_cert_from_store */
 
+/**
+ * @brief Validates the management store configuration from the platform
+ *
+ * Performs validation checks on the management job configuration including:
+ * - Verifying the store path is a file and not a directory
+ * - Ensuring the target store is not the agent's certificate store
+ * - Confirming the target store exists
+ * - Validating that a store path was provided
+ *
+ * @param[in] manConf The management configuration response from the platform
+ * @param[out] statusMessage String array to append validation error messages
+ * @return false if validation failed, false if validation passed
+ */
+static bool validate_management_store_configuration(ManagementConfigResp_t* manConf, char** statusMessage)
+{
+    bool failed = false;
+    if (manConf->Job.StorePath) {
+        /* Is the target store a directory and not a file? */
+        if (is_directory(manConf->Job.StorePath)) {
+            log_error("%s::%s(%d) : The store path must be a file and "
+                      "not a directory.", LOG_INF);
+            append_linef(statusMessage, "The store path must be a file and not a directory.");
+            failed = true;
+        }
+        /* Is the target store the Agent store? */
+        if (0 == strcasecmp(ConfigData->AgentCert, manConf->Job.StorePath)) {
+            log_warn("%s::%s(%d) : Attempting a Management job on the agent cert store is not allowed.", LOG_INF);
+            append_linef(statusMessage, "Attempting a Management job the agent cert store is not allowed.");
+            failed = true;
+        }
+        /* Verify the target store exists */
+        if (!file_exists(manConf->Job.StorePath)) {
+            log_warn("%s::%s(%d) : Attempting to manage a certificate store that does not exist yet.", LOG_INF);
+            append_linef(statusMessage, "Attempting to manage a certificate store that does not exist yet.");
+            failed = true;
+        }
+    } else {
+      log_error("%s::%s(%d) : Job doesn't contain a target store to manage.", LOG_INF);
+      append_linef(statusMessage, "Job doesn't contain a target store to manage.");
+      failed = true;
+    }
+    return failed;
+} /* validate_management_store_configuration */
+
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
@@ -327,13 +371,13 @@ static int remove_cert_from_store(const char *storePath,
 /* @param  - [Input] : chainJob = any additional jobs required to run after   */
 /* this one -- typically an Inventory job                                     */
 /* @return - job was run : 0                                                  */
-/* - job was canceled : 1                                                     */
+/*         - job was canceled : 1                                             */
 /*                                                                            */
 int cms_job_manage(SessionJob_t * jobInfo, char *sessionToken,
                    char **chainJob)
 {
     int res = 0;
-    ManagementConfigResp_t *manConf = NULL;
+    ManagementConfigResp_t* manConf = NULL;
     char *statusMessage = strdup("");
     enum AgentApiResultStatus status = STAT_UNK;
     int returnable = 0;
@@ -342,55 +386,26 @@ int cms_job_manage(SessionJob_t * jobInfo, char *sessionToken,
 
     res = get_management_config(sessionToken, jobInfo->JobId,
                                 jobInfo->ConfigurationEndpoint, &manConf);
+    if (res != 0) {
+        log_error("%s::%s(%d) : Failed to get management config", LOG_INF);
+        return res;
+    }
 
     /* Validate data */
     if (manConf) {
-        bool failed = false;
-        if (manConf->Job.StorePath) {
-            /* Is the target store a directory and not a file? */
-            if (is_directory(manConf->Job.StorePath)) {
-                log_error("%s::%s(%d) : The store path must be a file and "
-                          "not a directory.", LOG_INF);
-                append_linef(&statusMessage, "The store path must be a file "
-                             "and not a directory.");
-                failed = true;
-            }
-            /* Is the target store the Agent store? */
-            if (0 == strcasecmp(ConfigData->AgentCert, manConf->Job.StorePath)) {
-
-                log_warn("%s::%s(%d) : Attempting a Management job on the "
-                         "agent cert store is not allowed.", LOG_INF);
-                append_linef(&statusMessage, "Attempting a Management job the"
-                             " agent cert store is not allowed.");
-                failed = true;
-            }
-            /* Verify the target store exists */
-            if (!file_exists(manConf->Job.StorePath)) {
-                log_warn("%s::%s(%d) : Attempting to manage a certificate"
-                         " store that does not exist yet.", LOG_INF);
-                append_linef(&statusMessage, "Attempting to manage a "
-                             "certificate store that does not exist yet.");
-                failed = true;
-            }
-        } else {
-            log_error("%s::%s(%d) : Job doesn't contain a target store "
-                      "to manage.", LOG_INF);
-            append_linef(&statusMessage, "Job doesn't contain a target "
-                         "store to manage.");
-            failed = true;
-        }
         /* if any test failed, then let the platform know about it. */
-        if (failed) {
+        if (false == validate_management_store_configuration(manConf, &statusMessage)) {
             ManagementCompleteResp_t *manComp = NULL;
             send_management_job_complete(sessionToken, jobInfo->JobId,
                     jobInfo->CompletionEndpoint, STAT_ERR, manConf->AuditId,
-                                         statusMessage, &manComp);
+                    statusMessage, &manComp);
             ManagementCompleteResp_free(manComp);
+            res = 999;
             goto exit;
         }
     } else {
-        log_error("%s::%s(%d) : No managment configuration was returned"
-                  " from the platform.", LOG_INF);
+        log_error("%s::%s(%d) : No management configuration was returned from the platform.", LOG_INF);
+        res = 999;
         goto exit;
     }
 
@@ -398,45 +413,53 @@ int cms_job_manage(SessionJob_t * jobInfo, char *sessionToken,
     if (res == 0 && AgentApiResult_log(manConf->Result, &statusMessage, &status)) {
         if (manConf->JobCancelled) {
             returnable = 1;
-            log_info("%s::%s(%d) : Job has been cancelled and will not be run",
-                     LOG_INF);
+            log_info("%s::%s(%d) : Job has been cancelled and will not be run", LOG_INF);
         } else {
             long auditId = manConf->AuditId;
             log_verbose("%s::%s(%d) : Audit Id: %ld", LOG_INF, auditId);
 
             int opType = manConf->Job.OperationType;
             switch (opType) {
-            case OP_ADD:
-                log_verbose("%s::%s(%d) : Add certificate operation", LOG_INF);
+                case OP_ADD:
+                    log_verbose("%s::%s(%d) : Add certificate operation", LOG_INF);
 
-                if (manConf->Job.PrivateKeyEntry) {
-                    const char     *msg = "Adding a PFX is not supported at"
-                    " this time";
-                    log_info("%s::%s(%d) :  %s", LOG_INF, msg);
+                    if (manConf->Job.PrivateKeyEntry) {
+                        const char* msg = "Adding a PFX is not supported at this time";
+                        log_info("%s::%s(%d) :  %s", LOG_INF, msg);
+                        status = STAT_ERR;
+                        res = 999;
+                        append_line(&statusMessage, msg);
+                    } else {
+                        log_info("%s::%s(%d) : Attempting to add certificate to the store:\n%s", LOG_INF,
+                                 manConf->Job.EntryContents);
+                        res = add_cert_to_store(manConf->Job.StorePath,
+                           manConf->Job.EntryContents, &statusMessage, &status);
+                        if (res != 0) {
+                            log_error("%s::%s(%d) : Failed to add certificate to the store", LOG_INF);
+                            res = 999;
+                        }
+                    }
+                    break;
+                case OP_REM:
+                    log_verbose("%s::%s(%d) : Remove certificate operation",
+                                LOG_INF);
+                    res = remove_cert_from_store(manConf->Job.StorePath,
+                                manConf->Job.Alias, manConf->Job.PrivateKeyPath,
+                           manConf->Job.StorePassword, &statusMessage, &status);
+                    if (res != 0) {
+                      log_error("%s::%s(%d) : Failed to add certificate to the store", LOG_INF);
+                      res = 999;
+                    }
+                    break;
+                default:
+                    log_error("%s::%s(%d) : Unsupported operation type: %d", LOG_INF, opType);
+                    append_linef(&statusMessage, "Unsupported operation type: %d", opType);
                     status = STAT_ERR;
-                    append_line(&statusMessage, msg);
-                } else {
-                    log_info("%s::%s(%d) : Attempting to add certificate"
-                             " to the store:\n%s", LOG_INF,
-                             manConf->Job.EntryContents);
-                    res = add_cert_to_store(manConf->Job.StorePath,
-                       manConf->Job.EntryContents, &statusMessage, &status);
-                }
-                break;
-            case OP_REM:
-                log_verbose("%s::%s(%d) : Remove certificate operation",
-                            LOG_INF);
-                res = remove_cert_from_store(manConf->Job.StorePath,
-                            manConf->Job.Alias, manConf->Job.PrivateKeyPath,
-                       manConf->Job.StorePassword, &statusMessage, &status);
-                break;
-            default:
-                log_error("%s::%s(%d) : Unsupported operation type: %d",
-                          LOG_INF, opType);
-                append_linef(&statusMessage, "Unsupported operation type: %d",
-                             opType);
-                status = STAT_ERR;
-                break;
+                    break;
+            }
+
+            if (res != 0) {
+                log_error("%s::%s(%d) : Failed to add or remove certificate", LOG_INF);
             }
 
             ManagementCompleteResp_t *manComp = NULL;
@@ -444,6 +467,11 @@ int cms_job_manage(SessionJob_t * jobInfo, char *sessionToken,
                     jobInfo->JobId, jobInfo->CompletionEndpoint, status + 1,
                                           auditId, statusMessage, &manComp);
             /* NOTE: Removed chain job due to inventory job running twice */
+
+            if (res != 0) {
+                log_error("%s::%s(%d) : Failed to send management job complete", LOG_INF);
+                goto exit;
+            }
 
             if (status >= STAT_ERR) {
                 log_error("%s::%s(%d) : Management job %s failed with "
