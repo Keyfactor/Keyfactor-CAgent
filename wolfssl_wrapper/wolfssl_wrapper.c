@@ -760,7 +760,11 @@ static bool is_cert_key_match(WOLFSSL_X509* cert, WOLFSSL_EVP_PKEY* key)
 	if(cert && key)
 	{
 		/* Get the public key from cert */
-		certPubKey = wolfSSL_X509_get_pubkey(cert);	
+		certPubKey = wolfSSL_X509_get_pubkey(cert);
+		if (NULL == certPubKey) {
+			log_error("%s::%s(%d) : Failed to get public key from certificate", LOG_INF);
+			return false;
+		}
 		/* Get the type of the public key */	
 		certBaseId = wolfSSL_EVP_PKEY_base_id(certPubKey); 
 		/* Get the type of the private key passed */
@@ -822,12 +826,23 @@ static bool is_cert_key_match(WOLFSSL_X509* cert, WOLFSSL_EVP_PKEY* key)
 					/*                                                        */
 					privPubBytes = wolfSSL_EC_POINT_point2hex(privGroup, 
 						privPoint, POINT_CONVERSION_UNCOMPRESSED, NULL);
+					if (NULL == privPubBytes) {
+						log_error("%s::%s(%d) : Failed to convert private key EC_POINT to hex", LOG_INF);
+						ret = false;
+						break;
+					}
 					/* get EC_POINT public key */
 					certPoint = wolfSSL_EC_KEY_get0_public_key(ecCert); 
 					/* get EC_GROUP */
 					certGroup = wolfSSL_EC_KEY_get0_group(ecCert); 
 					certPubBytes = wolfSSL_EC_POINT_point2hex(certGroup, 
 						certPoint, POINT_CONVERSION_UNCOMPRESSED, NULL);
+					if (NULL == certPubBytes) {
+						log_error("%s::%s(%d) : Failed to convert certificate EC_POINT to hex", LOG_INF);
+						wolfSSL_OPENSSL_free(privPubBytes);
+						ret = false;
+						break;
+					}
 
 					/* Now that we have the point on the curve compare them, 
 					 * they should be equal if the keys match */

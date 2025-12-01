@@ -376,6 +376,11 @@ static PrivKeyList* PrivKeyList_new(void)
 /*                                                                            */
 static void PrivKeyList_free(PrivKeyList* pList)
 {
+	if (NULL == pList) {
+		log_error("%s::%s(%d) : pList is NULL", LOG_INF);
+		return;
+	}
+
 	if (0 < pList->key_count) 
 	{
 		for(int i = 0; pList->key_count > i; i++) 
@@ -460,6 +465,11 @@ static PEMx509List* PEMx509List_new(void)
 /*                                                                            */
 static void PEMx509List_free(PEMx509List* pList)
 {
+	if (NULL == pList) {
+		log_error("%s::%s(%d) : pList is NULL", LOG_INF);
+		return;
+	}
+
 	if (0 < pList->item_count)
 	{
 		for(int i = 0; pList->item_count > i; i++)
@@ -665,8 +675,11 @@ static bool PemInventoryItem_populate(PemInventoryItem* pem, X509* cert)
 	if (pem && cert)
 	{
 		thumb = compute_thumbprint(cert);
-		log_verbose("%s::%s(%d) : Thumbprint: %s", LOG_INF, 
-			NULL == thumb ? "" : thumb);
+		if (NULL == thumb) {
+			log_error("%s::%s(%d) : Failed to compute thumbprint", LOG_INF);
+			return false;
+		}
+		log_verbose("%s::%s(%d) : Thumbprint: %s", LOG_INF, thumb);
 		contLen = i2d_X509(cert, &certContent);
 		log_trace("%s::%s(%d) : contLen = %d", LOG_INF, contLen);
 
@@ -729,7 +742,11 @@ static bool is_cert_key_match(X509* cert, EVP_PKEY* key)
 
 	if(cert && key)
 	{
-		certPubKey = X509_get_pubkey(cert); 
+		certPubKey = X509_get_pubkey(cert);
+		if (NULL == certPubKey) {
+			log_error("%s::%s(%d) : Failed to get public key from certificate", LOG_INF);
+			return false;
+		}
 		certBaseId = EVP_PKEY_base_id(certPubKey); /* Get the key type */
 		keyBaseId = EVP_PKEY_base_id(key);  /* Get the priv key type */
 
@@ -792,11 +809,22 @@ static bool is_cert_key_match(X509* cert, EVP_PKEY* key)
 					/*                                                        */
 					privPubBytes = EC_POINT_point2hex(privGroup, privPoint, 
 						POINT_CONVERSION_UNCOMPRESSED, NULL);
+					if (NULL == privPubBytes) {
+						log_error("%s::%s(%d) : Failed to convert private key EC_POINT to hex", LOG_INF);
+						ret = false;
+						break;
+					}
 					/* get EC_POINT public key */
 					certPoint = EC_KEY_get0_public_key(ecCert); 
 					certGroup = EC_KEY_get0_group(ecCert); /* get EC_GROUP */
 					certPubBytes = EC_POINT_point2hex(certGroup, certPoint, 
 						POINT_CONVERSION_UNCOMPRESSED, NULL);
+					if (NULL == certPubBytes) {
+						log_error("%s::%s(%d) : Failed to convert certificate EC_POINT to hex", LOG_INF);
+						OPENSSL_free(privPubBytes);
+						ret = false;
+						break;
+					}
 
 					/* Now that we have the point on the curve compare them, */
 					/* they should be equal if the keys match */
