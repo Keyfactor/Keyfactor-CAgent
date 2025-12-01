@@ -169,6 +169,10 @@ static int parse_parameters(int argc, char *argv[])
             printf("%s::%s(%d) : Turning on add client cert to HTTP header flag\n", LOG_INF);
             break;
         case 'c':
+            if (!optarg) {
+                printf("%s::%s(%d) : Null pointer dereference - optarg is NULL\n", LOG_INF);
+                break;
+            }
             if (0 < strlen(optarg)) {
                 config_location = calloc(strlen(optarg) + 1, sizeof(*config_location));
                 if (NULL == config_location) {

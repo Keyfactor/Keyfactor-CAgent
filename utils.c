@@ -49,6 +49,11 @@ int file_exists(const char *file)
 {
     int retval = 0;
 
+    if (!file) {
+        log_error("%s::%s(%d) : Null pointer dereference - file is NULL", LOG_INF);
+        return 0;
+    }
+
     if (-1 != access(file, F_OK))
         retval = 1;
 
@@ -64,6 +69,12 @@ int create_file(const char *file)
 {
     int retval = 0;
     FILE *fd;
+
+    if (!file) {
+        log_error("%s::%s(%d) : Null pointer dereference - file is NULL", LOG_INF);
+        return 0;
+    }
+
     fd = fopen(file, "w");
     if (fd) {
         fclose(fd);
@@ -74,6 +85,11 @@ int create_file(const char *file)
 
 char *hex_encode(unsigned char *inBuf, int len)
 {
+    if (!inBuf) {
+        log_error("%s::%s(%d) : Null pointer dereference - inBuf is NULL", LOG_INF);
+        return NULL;
+    }
+
     char *thumbBuf = malloc(2 * len + 1);
     if (!thumbBuf) {
         log_error("%s::%s(%d) : Out of memory", LOG_INF);
@@ -95,6 +111,10 @@ int append_line(char **msg, const char *line)
     int ret = 0;
 
     if (msg && line) {
+        if (!*msg) {
+            log_error("%s::%s(%d) : Null pointer dereference - *msg is NULL", LOG_INF);
+            return EINVAL;
+        }
         int len = strlen(*msg) + strlen(line) + 2;
         char *tmp = realloc(*msg, len);
         if (tmp) {
@@ -116,6 +136,10 @@ int append_linef(char **msg, const char *fmt,...)
     int ret = 0;
 
     if (msg && fmt) {
+        if (!*msg) {
+            log_error("%s::%s(%d) : Null pointer dereference - *msg is NULL", LOG_INF);
+            return EINVAL;
+        }
         va_list args;
         va_start(args, fmt);
         int len = vsnprintf(NULL, 0, fmt, args);
@@ -407,6 +431,11 @@ char *merge_strings(const char *string1, const char *string2)
     size_t result_size = 0;
     char *resultString = NULL;
 
+    if (!string1 || !string2) {
+        log_error("%s::%s(%d) : Null pointer dereference - string1 or string2 is NULL", LOG_INF);
+        return NULL;
+    }
+
     do {
         string1_size = strlen(string1); /* Note: Doesn't include the \0 char */
         string2_size = strlen(string2); /* Note: Doesn't include the \0 char */
@@ -446,6 +475,11 @@ char *merge_strings(const char *string1, const char *string2)
 char *get_prefix_substring(const char *string, const char find)
 {
     char *subString = NULL;
+
+    if (!string) {
+        log_error("%s::%s(%d) : Null pointer dereference - string is NULL", LOG_INF);
+        return NULL;
+    }
 
     log_trace("%s::%s(%d) : Find character %c in string %s",
               LOG_INF, find, string);

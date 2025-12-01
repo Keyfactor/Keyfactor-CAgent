@@ -100,6 +100,11 @@ static bool minimum_config_requirements(void)
 {
     bool bResult = false;
 
+    if (!ConfigData) {
+        log_error("%s::%s(%d) : Null pointer dereference - ConfigData is NULL", LOG_INF);
+        return false;
+    }
+
     do {
         if (!ConfigData->AgentName) {
             log_error("%s::%s(%d) : Agent name is required in config file", LOG_INF);
@@ -236,6 +241,11 @@ static bool agent_directory_exists(void)
 static bool keypair_sanity_check(void)
 {
     bool bResult = false;
+
+    if (!ConfigData || !ConfigData->CSRKeyType) {
+        log_error("%s::%s(%d) : Null pointer dereference - ConfigData or CSRKeyType is NULL", LOG_INF);
+        return false;
+    }
 
     if (0 == strcasecmp("ecc", ConfigData->CSRKeyType) ||
         0 == strcasecmp("ecdsa", ConfigData->CSRKeyType)) {
@@ -567,7 +577,17 @@ char           *config_to_json(void)
 bool config_save(void)
 {
     bool bResult = false;
+
+    if (!config_location) {
+        log_error("%s::%s(%d) : Null pointer dereference - config_location is NULL", LOG_INF);
+        return false;
+    }
+
     char *confString = config_to_json();
+    if (!confString) {
+        log_error("%s::%s(%d) : Null pointer dereference - config_to_json returned NULL", LOG_INF);
+        return false;
+    }
 
     char eol[1] = {'\n'};
     FILE *fp = fopen(config_location, "w");

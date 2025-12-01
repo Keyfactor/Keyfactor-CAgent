@@ -63,6 +63,11 @@ bool generate_keypair(const char *keyType, int keySize)
 {
     bool bResult = false;
 
+    if (!keyType) {
+        log_error("%s::%s(%d) : Null pointer dereference - keyType is NULL", LOG_INF);
+        return false;
+    }
+
     log_verbose("%s::%s(%d) : Generating key pair with type %s and length %d",
                 LOG_INF, keyType, keySize);
 
@@ -107,6 +112,12 @@ char           *generate_csr(const char *asciiSubject, size_t * csrLen, char **p
                              enum AgentApiResultStatus *pStatus)
 {
     char *csrString = NULL;
+
+    if (!csrLen || !pStatus) {
+        log_error("%s::%s(%d) : Null pointer dereference - csrLen or pStatus is NULL", LOG_INF);
+        return NULL;
+    }
+
     *pStatus = STAT_UNK;
     csrString = ssl_generate_csr(asciiSubject, csrLen, pMessage);
     if (NULL != csrString) {
@@ -138,6 +149,12 @@ unsigned long save_cert_key(const char *storePath, const char *keyPath,
                         char **pMessage, enum AgentApiResultStatus *pStatus)
 {
     unsigned long   err = 0;
+
+    if (!pStatus) {
+        log_error("%s::%s(%d) : Null pointer dereference - pStatus is NULL", LOG_INF);
+        return 1;
+    }
+
     err = ssl_save_cert_key(storePath, keyPath, password, cert, pMessage);
     if (0 != err) {
         *pStatus = STAT_ERR;
