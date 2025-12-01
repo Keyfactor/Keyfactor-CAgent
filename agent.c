@@ -46,7 +46,6 @@
 #include "config.h"
 #include "session.h"
 #include "global.h"
-#include "fetchlogs.h"
 #include "utils.h"
 
 /******************************************************************************/
@@ -64,7 +63,6 @@ ScheduledJob_t *JobList;
 const char     *cap_pem_inventory = "CertStores.PEM.Inventory";
 const char     *cap_pem_management = "CertStores.PEM.Management";
 const char     *cap_pem_reenrollment = "CertStores.PEM.Reenrollment";
-const char     *cap_fetch_logs = "Custom.FetchLogs";
 
 #if defined(__OPEN_SSL__)
 char            engine_id[21];  /* 20 Characters should be enough */
@@ -337,8 +335,6 @@ int run_job(SessionJob_t * job)
         status = cms_job_manage(job, SessionData.Token, &chainJobId);
     } else if (0 == strcasecmp(job->JobTypeId, CAP_PEM_REENROLLMENT)) {
         status = cms_job_enroll(job, SessionData.Token, &chainJobId);
-    } else if (0 == strcasecmp(job->JobTypeId, CAP_FETCH_LOGS)) {
-        status = cms_job_fetchLogs(job, SessionData.Token);
     } else {
         log_error("%s::%s(%d) : Unimplemented support for job type %s. Ignoring job request", LOG_INF, job->JobTypeId);
     }

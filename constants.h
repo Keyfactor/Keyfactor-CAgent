@@ -17,13 +17,11 @@
 #define CAP_PEM_INVENTORY "a809ce1f-1eea-4738-a38e-15708c89c981"
 #define CAP_PEM_MANAGEMENT "1d411b36-ae72-433f-9f3f-8593e836a1af"
 #define CAP_PEM_REENROLLMENT "aa015d10-cffc-41f7-a9a4-c9615f6f3bdf"
-#define CAP_FETCH_LOGS "0D8CF0C8-56CA-4B8A-B16A-C062018E170D"
 
 /* KF v9 adds in text Capabilities - they are defined in agent.c */
 extern const char* cap_pem_inventory;
 extern const char* cap_pem_management;
 extern const char* cap_pem_reenrollment;
-extern const char* cap_fetch_logs;
 
 /* The following capabilities are not implemented in the C-Agent */
 #define CAP_AWS_INVENTORY "afb8c78d-1436-4c93-a8e7-0218c2cb6955"

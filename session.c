@@ -283,18 +283,6 @@ static void prioritize_jobs(ScheduledJob_t * *pJobList,
             schedule_job(pJobList, job_to_schedule, time(NULL));
         }
     }
-    /* Log file retrieval jobs */
-    for (i = 0; response->Session.Jobs_count > i; i++) {
-        job_to_schedule = response->Session.Jobs[i];
-        if (!job_to_schedule || !job_to_schedule->JobTypeId) {
-            log_warn("%s::%s(%d) : Null job or JobTypeId at index %d", LOG_INF, i);
-            continue;
-        }
-        if (0 == strcasecmp(CAP_FETCH_LOGS, job_to_schedule->JobTypeId)) {
-            log_trace("%s::%s(%d) : Adding log retrieval job %s", LOG_INF, job_to_schedule->JobId);
-            schedule_job(pJobList, job_to_schedule, time(NULL));
-        }
-    }
     return;
 } /* prioritize_jobs */
 
@@ -314,15 +302,14 @@ static bool register_add_capabilities(SessionRegisterReq_t * sessionReq) {
         return false;
     }
 
-    sessionReq->Capabilities_count = 4;
+    sessionReq->Capabilities_count = 3;
     sessionReq->Capabilities = calloc(sessionReq->Capabilities_count, sizeof(char *));
     if (sessionReq->Capabilities) {
         sessionReq->Capabilities[0] = strdup(cap_pem_inventory);
         sessionReq->Capabilities[1] = strdup(cap_pem_management);
         sessionReq->Capabilities[2] = strdup(cap_pem_reenrollment);
-        sessionReq->Capabilities[3] = strdup(cap_fetch_logs);
         if (!sessionReq->Capabilities[0] || !sessionReq->Capabilities[1] ||
-            !sessionReq->Capabilities[2] || !sessionReq->Capabilities[3]) {
+            !sessionReq->Capabilities[2]) {
             log_error("%s::%s(%d) : Null pointer dereference - failed to allocate capabilities", LOG_INF);
             return false;
         }
