@@ -56,15 +56,21 @@ static AgentApiResult_t AgentApiResult_fromJsonNode(JsonNode * jsonResult) {
         result.Status = json_get_member_number(jsonResult, "Status", 0);
 
         jsonError = json_find_member(jsonResult, "Error");
-        result.Error.Code = json_get_member_number(jsonError, "Code", 0);
-        tempString = json_get_member_string(jsonError, "CodeString");
-        if (NULL == tempString) {
-            result.Error.CodeString =
-                json_get_member_string(jsonError, "HResult");
+        if (jsonError) {
+            result.Error.Code = json_get_member_number(jsonError, "Code", 0);
+            tempString = json_get_member_string(jsonError, "CodeString");
+            if (NULL == tempString) {
+                result.Error.CodeString =
+                    json_get_member_string(jsonError, "HResult");
+            } else {
+                result.Error.CodeString = tempString;
+            }
+            result.Error.Message = json_get_member_string(jsonError, "Message");
         } else {
-            result.Error.CodeString = tempString;
+            result.Error.Code = 0;
+            result.Error.CodeString = NULL;
+            result.Error.Message = NULL;
         }
-        result.Error.Message = json_get_member_string(jsonError, "Message");
     } else {
         result.Status = STAT_ERR;
         result.Error.Code = 999;
@@ -100,14 +106,20 @@ bool AgentApiResult_log(AgentApiResult_t result,
         }
 
         snprintf(buf, (size_t) messageLen, "%s: %s (%s)\n",
-                 introBuf, result.Error.Message, result.Error.CodeString);
+                 introBuf ? introBuf : "Unknown",
+                 result.Error.Message ? result.Error.Message : "No message",
+                 result.Error.CodeString ? result.Error.CodeString : "No code");
         log_error("%s::%s(%d) : %s", LOG_INF, buf);
 
-        if (pMessage) {
-            log_trace("%s::%s(%d) : reallocating pMessage",
-                      LOG_INF);
-            *pMessage = realloc(*pMessage, strlen(*pMessage) + messageLen);
-            strcat(*pMessage, buf);
+        if (pMessage && *pMessage) {
+            log_trace("%s::%s(%d) : reallocating pMessage", LOG_INF);
+            char *newMessage = realloc(*pMessage, strlen(*pMessage) + messageLen);
+            if (newMessage) {
+                *pMessage = newMessage;
+                strcat(*pMessage, buf);
+            } else {
+                log_error("%s::%s(%d) : Failed to reallocate pMessage", LOG_INF);
+            }
         }
     }
 
@@ -129,8 +141,27 @@ static ClientParameter_t * ClientParameter_new(const char *key,
         log_error("%s::%s(%d) : Out of memory", LOG_INF);
         return NULL;
     }
-    cp->Key = strdup(key);
-    cp->Value = strdup(value);
+    if (key) {
+        cp->Key = strdup(key);
+        if (!cp->Key) {
+            log_error("%s::%s(%d) : Failed to allocate Key", LOG_INF);
+            free(cp);
+            return NULL;
+        }
+    } else {
+        cp->Key = NULL;
+    }
+    if (value) {
+        cp->Value = strdup(value);
+        if (!cp->Value) {
+            log_error("%s::%s(%d) : Failed to allocate Value", LOG_INF);
+            free(cp->Key);
+            free(cp);
+            return NULL;
+        }
+    } else {
+        cp->Value = NULL;
+    }
 
     return cp;
 } /* ClientParameter_new */
@@ -166,7 +197,14 @@ bool SessionRegisterReq_addNewClientParameter(SessionRegisterReq_t * req,
                                          const char *key, const char *value)
 {
     bool bResult = false;
-    int index = req->ClientParameters_count;
+    int index;
+
+    if (!req) {
+        log_error("%s::%s(%d) : Null pointer dereference - req is NULL", LOG_INF);
+        return false;
+    }
+
+    index = req->ClientParameters_count;
 
     req->ClientParameters_count++;
     log_trace("%s::%s(%d) Increasing parameter count to %d",
@@ -374,7 +412,7 @@ char *SessionRegisterReq_toJson(SessionRegisterReq_t * req)
     }
 
     return jsonString;
-}
+} /* SessionRegisterReq_toJson */
 
 
 void SessionJob_free(SessionJob_t * job)
@@ -411,11 +449,20 @@ void SessionJob_free(SessionJob_t * job)
 void SessionRegisterResp_freeJobs(SessionRegisterResp_t * resp)
 {
     int lp = 0;
+
+    if (!resp) {
+        log_error("%s::%s(%d) : Null pointer dereference - resp is NULL", LOG_INF);
+        return;
+    }
+
     while (lp < resp->Session.Jobs_count) {
-        log_info("%s::%s(%d) : Freeing job # %s", LOG_INF,
-                 resp->Session.Jobs[lp]->JobId);
-        SessionJob_free(resp->Session.Jobs[lp]);
-        resp->Session.Jobs[lp++] = NULL;
+        if (resp->Session.Jobs[lp]) {
+            log_info("%s::%s(%d) : Freeing job # %s", LOG_INF,
+                     resp->Session.Jobs[lp]->JobId ? resp->Session.Jobs[lp]->JobId : "(null)");
+            SessionJob_free(resp->Session.Jobs[lp]);
+            resp->Session.Jobs[lp] = NULL;
+        }
+        lp++;
     }
 
     if (resp->Session.Jobs) {
@@ -476,12 +523,16 @@ void SessionRegisterResp_free(SessionRegisterResp_t * resp)
         }
         free(resp);
     }
-}
+} /* SessionRegisterResp_free */
 
-static SessionJob_t * SessionJob_fromJsonNode(JsonNode * jsonJob) {
+static SessionJob_t* SessionJob_fromJsonNode(JsonNode * jsonJob) {
     SessionJob_t *job = NULL;
     if (jsonJob) {
         job = calloc(1, sizeof(SessionJob_t));
+        if (!job) {
+            log_error("%s::%s(%d) : Null pointer dereference - failed to allocate SessionJob_t", LOG_INF);
+            return NULL;
+        }
         job->CompletionEndpoint = json_get_member_string(jsonJob,
                                                       "CompletionEndpoint");
         job->ConfigurationEndpoint = json_get_member_string(jsonJob,
@@ -719,6 +770,11 @@ CommonCompleteResp_t *CommonCompleteResp_fromJson(char *jsonString)
         JsonNode *jsonRoot = json_decode(jsonString);
         if (jsonRoot) {
             resp = calloc(1, sizeof(CommonCompleteResp_t));
+            if (!resp) {
+                log_error("%s::%s(%d) : Null pointer dereference - failed to allocate CommonCompleteResp_t", LOG_INF);
+                json_delete(jsonRoot);
+                return NULL;
+            }
 
             JsonNode *jsonResult = json_find_member(jsonRoot, "Result");
             if (jsonResult) {
@@ -783,6 +839,11 @@ ManagementConfigResp_t *ManagementConfigResp_fromJson(char *jsonString)
         JsonNode *jsonRoot = json_decode(jsonString);
         if (jsonRoot) {
             resp = calloc(1, sizeof(ManagementConfigResp_t));
+            if (!resp) {
+                log_error("%s::%s(%d) : Null pointer dereference - failed to allocate ManagementConfigResp_t", LOG_INF);
+                json_delete(jsonRoot);
+                return NULL;
+            }
 
             resp->AuditId = json_get_member_number(jsonRoot, "AuditId", 0);
             resp->JobCancelled =
@@ -860,6 +921,11 @@ ManagementCompleteResp_t *ManagementCompleteResp_fromJson(char *jsonString)
         JsonNode *jsonRoot = json_decode(jsonString);
         if (jsonRoot) {
             resp = calloc(1, sizeof(ManagementCompleteResp_t));
+            if (!resp) {
+                log_error("%s::%s(%d) : Null pointer dereference - failed to allocate ManagementCompleteResp_t", LOG_INF);
+                json_delete(jsonRoot);
+                return NULL;
+            }
 
             JsonNode *jsonResult = json_find_member(jsonRoot, "Result");
             if (jsonResult) {
@@ -901,6 +967,10 @@ InventoryCurrentItem_fromJsonNode(JsonNode * node) {
 
     if (node) {
         result = calloc(1, sizeof(InventoryCurrentItem_t));
+        if (!result) {
+            log_error("%s::%s(%d) : Null pointer dereference - failed to allocate InventoryCurrentItem_t", LOG_INF);
+            return NULL;
+        }
 
         result->Alias = json_get_member_string(node, "Alias");
         result->PrivateKeyEntry =
@@ -962,6 +1032,11 @@ InventoryConfigResp_t *InventoryConfigResp_fromJson(char *jsonString)
         JsonNode *jsonRoot = json_decode(jsonString);
         if (jsonRoot) {
             resp = calloc(1, sizeof(InventoryConfigResp_t));
+            if (!resp) {
+                log_error("%s::%s(%d) : Null pointer dereference - failed to allocate InventoryConfigResp_t", LOG_INF);
+                json_delete(jsonRoot);
+                return NULL;
+            }
 
             resp->AuditId = json_get_member_number(jsonRoot, "AuditId", 0);
             resp->JobCancelled =
@@ -990,6 +1065,12 @@ InventoryConfigResp_t *InventoryConfigResp_fromJson(char *jsonString)
                     resp->Job.Inventory_count = invCount;
                     resp->Job.Inventory = calloc(invCount,
                                           sizeof(InventoryCurrentItem_t *));
+                    if (!resp->Job.Inventory) {
+                        log_error("%s::%s(%d) : Null pointer dereference - failed to allocate Inventory array", LOG_INF);
+                        json_delete(jsonRoot);
+                        InventoryConfigResp_free(resp);
+                        return NULL;
+                    }
 
                     JsonNode *jsonTmp;
                     int current = 0;
@@ -1126,6 +1207,11 @@ InventoryUpdateResp_t *InventoryUpdateResp_fromJson(char *jsonString)
         JsonNode *jsonRoot = json_decode(jsonString);
         if (jsonRoot) {
             resp = calloc(1, sizeof(InventoryUpdateResp_t));
+            if (!resp) {
+                log_error("%s::%s(%d) : Null pointer dereference - failed to allocate InventoryUpdateResp_t", LOG_INF);
+                json_delete(jsonRoot);
+                return NULL;
+            }
 
             JsonNode *jsonResult = json_find_member(jsonRoot, "Result");
             if (jsonResult) {
@@ -1191,6 +1277,11 @@ EnrollmentConfigResp_t *EnrollmentConfigResp_fromJson(char *jsonString)
         JsonNode *jsonRoot = json_decode(jsonString);
         if (jsonRoot) {
             resp = calloc(1, sizeof(EnrollmentConfigResp_t));
+            if (!resp) {
+                log_error("%s::%s(%d) : Null pointer dereference - failed to allocate EnrollmentConfigResp_t", LOG_INF);
+                json_delete(jsonRoot);
+                return NULL;
+            }
 
             JsonNode *jsonResult = json_find_member(jsonRoot, "Result");
             if (jsonResult) {
@@ -1249,10 +1340,12 @@ EnrollmentConfigResp_t *EnrollmentConfigResp_fromJson(char *jsonString)
                 bool theBool = false;
                 char *theBoolString =
                 json_get_member_string(jsonProps, "separatePrivateKey");
-                if (0 == strcasecmp("TRUE", theBoolString)) {
+                if (theBoolString && 0 == strcasecmp("TRUE", theBoolString)) {
                     theBool = true;
                 }
-                free(theBoolString);
+                if (theBoolString) {
+                    free(theBoolString);
+                }
 #endif
 
                 log_verbose("%s::%s(%d) : Separate Private Key = %s",
@@ -1349,6 +1442,11 @@ EnrollmentEnrollResp_t *EnrollmentEnrollResp_fromJson(char *jsonString)
         JsonNode *jsonRoot = json_decode(jsonString);
         if (jsonRoot) {
             resp = calloc(1, sizeof(EnrollmentEnrollResp_t));
+            if (!resp) {
+                log_error("%s::%s(%d) : Null pointer dereference - failed to allocate EnrollmentEnrollResp_t", LOG_INF);
+                json_delete(jsonRoot);
+                return NULL;
+            }
 
             JsonNode *jsonResult = json_find_member(jsonRoot, "Result");
             if (jsonResult) {
@@ -1385,6 +1483,11 @@ EnrollmentCompleteResp_t *EnrollmentCompleteResp_fromJson(char *jsonString)
         JsonNode *jsonRoot = json_decode(jsonString);
         if (jsonRoot) {
             resp = calloc(1, sizeof(EnrollmentCompleteResp_t));
+            if (!resp) {
+                log_error("%s::%s(%d) : Null pointer dereference - failed to allocate EnrollmentCompleteResp_t", LOG_INF);
+                json_delete(jsonRoot);
+                return NULL;
+            }
 
             JsonNode *jsonResult = json_find_member(jsonRoot, "Result");
             if (jsonResult) {
@@ -1420,6 +1523,11 @@ FetchLogsConfigResp_t *FetchLogsConfigResp_fromJson(char *jsonString)
         JsonNode *jsonRoot = json_decode(jsonString);
         if (jsonRoot) {
             resp = calloc(1, sizeof(FetchLogsConfigResp_t));
+            if (!resp) {
+                log_error("%s::%s(%d) : Null pointer dereference - failed to allocate FetchLogsConfigResp_t", LOG_INF);
+                json_delete(jsonRoot);
+                return NULL;
+            }
 
             JsonNode *jsonResult = json_find_member(jsonRoot, "Result");
             if (jsonResult) {
@@ -1429,10 +1537,8 @@ FetchLogsConfigResp_t *FetchLogsConfigResp_fromJson(char *jsonString)
             resp->MaxCharactersToReturn =
                 json_get_member_number(jsonRoot, "MaxCharactersToReturn", 0);
 
-            json_delete(jsonResult);
+            json_delete(jsonRoot);
         }
-
-        json_delete(jsonRoot);
     }
 
     return resp;
