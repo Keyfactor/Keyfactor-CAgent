@@ -25,8 +25,7 @@ CFLAGS += -Wno-ignored-qualifiers
           
 DEBUG_FLAGS = -g0 -O0
 DEFINES = 
-#DEFINES += -D__RUN_CHAIN_JOBS__
-#DEFINES += -D__INFINITE_AGENT__
+DEFINES += -D__RUN_CHAIN_JOBS__
 
 WOLFLIBS = -I ./ -I/usr/local/include/wolfssl -I/usr/local/include/curl \
            -L/usr/local/lib -L/usr/local/include/wolfssl/wolfcrypt \

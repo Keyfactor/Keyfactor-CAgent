@@ -33,11 +33,6 @@ typedef struct {
 int register_session(SessionInfo_t* session, 
 	ScheduledJob_t** pJobList, uint64_t agentVersion);
 
-#if defined(__INFINITE_AGENT__)
-int heartbeat_session(SessionInfo_t* session, 
-	ScheduledJob_t** pJobList, uint64_t agentVersion);
-#endif
-
 #endif /* CSS_SESSION_H */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/

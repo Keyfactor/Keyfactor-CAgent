@@ -479,65 +479,6 @@ bool release_platform(void)
     return bResult;
 } /* release_platform */
 
-#if defined(__INFINITE_AGENT__)
-/*                                                                            */
-/* @fn _loop                                                                  */
-/* Runs the infinite loop agent (OFF by default)                              */
-/* @param  - none                                                             */
-/* @return - none                                                             */
-/*                                                                            */
-static void main_loop(void)
-{
-    time_t now = 0;
-    /**************************************************************************/
-    /* 1. Prepare for the first time through the while loop; force immediate  */
-    /* session generation.                                                 */
-    /**************************************************************************/
-    SessionData.UnreachableCount = 0;
-    SessionData.Interval = 30;
-    SessionData.NextExecution = time(NULL);
-    int firstPass = 1;
-
-    /**************************************************************************/
-    /* The main loop                                                          */
-    /**************************************************************************/
-    while (true) {
-        log_verbose("%s::%s(%d) : Waking up to look for work", LOG_INF);
-        now = time(NULL);
-
-        if ((SessionData.NextExecution <= now) || (1 == firstPass)) {
-            if (0 == strcmp(SessionData.Token, "")) {
-                log_verbose("%s::%s(%d) : Need a session", LOG_INF);
-                register_session(&SessionData, &JobList, AGENT_VERSION);
-            } else {
-                log_verbose("%s::%s(%d) : Need to heartbeat", LOG_INF);
-                heartbeat_session(&SessionData, &JobList, AGENT_VERSION);
-                write_log_file();
-            }
-            firstPass = 0;
-        }
-
-        /* Get current time again to deal with immediate jobs */
-        now = time(NULL);
-
-        SessionJob_t *job;
-        while (NULL != (job = get_runnable_job(&JobList, now))) {
-            int status = run_job(job);
-            if (1 == status) {
-                strcpy(SessionData.Token, "");
-                clear_job_schedules(&JobList);
-                register_session(&SessionData, &JobList, AGENT_VERSION);
-            } else {
-                schedule_job(&JobList, job, now);
-            }
-        }
-
-        sleep(JOB_CHECK_SECONDS);
-    }
-
-    return;
-} /* main_loop */
-#else
 /*                                                                            */
 /* Runs a single loop agent (ON by default)                                   */
 /* @param  - none                                                             */
@@ -571,7 +512,6 @@ static void main_loop(void)
 
     return;
 } /* main_loop */
-#endif
 
 /*                                                                            */
 /* Main program entry point.  This controls all flow.                         */
