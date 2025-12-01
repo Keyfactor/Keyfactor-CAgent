@@ -45,7 +45,7 @@ static void AgentApiResult_free(AgentApiResult_t result)
         free(result.Error.CodeString);
         result.Error.CodeString = NULL;
     }
-}
+} /* AgentApiResult_free */
 
 static AgentApiResult_t AgentApiResult_fromJsonNode(JsonNode * jsonResult) {
     AgentApiResult_t result;
@@ -73,7 +73,7 @@ static AgentApiResult_t AgentApiResult_fromJsonNode(JsonNode * jsonResult) {
     }
 
     return result;
-}
+} /* AgentApiResult_fromJsonNode */
 
 bool AgentApiResult_log(AgentApiResult_t result,
                         char **pMessage, enum AgentApiResultStatus *pStatus)
@@ -120,7 +120,7 @@ bool AgentApiResult_log(AgentApiResult_t result,
     } else {
         return true;
     }
-}
+} /* AgentApiResult_log */
 
 static ClientParameter_t * ClientParameter_new(const char *key,
                                                const char *value){
@@ -133,7 +133,7 @@ static ClientParameter_t * ClientParameter_new(const char *key,
     cp->Value = strdup(value);
 
     return cp;
-}
+} /* ClientParameter_new */
 
 static void ClientParameter_free(ClientParameter_t * cliParam)
 {
@@ -148,7 +148,7 @@ static void ClientParameter_free(ClientParameter_t * cliParam)
         }
         free(cliParam);
     }
-}
+} /* ClientParameter_free */
 
 /*                                                                            */
 /* Add an additional ClientParameter to the session after the                 */
@@ -194,12 +194,10 @@ bool SessionRegisterReq_addNewClientParameter(SessionRegisterReq_t * req,
     }
 
     return bResult;
-}                               /* SessionRegisterReq_addNewClientParameter */
+} /* SessionRegisterReq_addNewClientParameter */
 
 SessionRegisterReq_t *SessionRegisterReq_new(char *clientParamPath)
 {
-#undef FUNCTION
-#define FUNCTION "SessionHeartbeatReq_new-"
     SessionRegisterReq_t *req = calloc(1, sizeof(*req));
     if (!req) {
         log_error("%s::%s(%d) : Out of memory", LOG_INF);
@@ -261,7 +259,7 @@ SessionRegisterReq_t *SessionRegisterReq_new(char *clientParamPath)
     }
 
     return req;
-}
+} /* SessionRegisterReq_new */
 
 void SessionRegisterReq_free(SessionRegisterReq_t * req)
 {
@@ -306,7 +304,7 @@ void SessionRegisterReq_free(SessionRegisterReq_t * req)
         free(req);
         req = NULL;
     }
-}                               /* SessionRegisterReq_free */
+} /* SessionRegisterReq_free */
 
 char *SessionRegisterReq_toJson(SessionRegisterReq_t * req)
 {
@@ -408,7 +406,7 @@ void SessionJob_free(SessionJob_t * job)
         }
         free(job);
     }
-}
+} /* SessionJob_free */
 
 void SessionRegisterResp_freeJobs(SessionRegisterResp_t * resp)
 {
@@ -426,7 +424,7 @@ void SessionRegisterResp_freeJobs(SessionRegisterResp_t * resp)
     }
 
     return;
-}
+} /* SessionRegisterResp_freeJobs */
 
 void SessionRegisterResp_free(SessionRegisterResp_t * resp)
 {
@@ -496,7 +494,7 @@ static SessionJob_t * SessionJob_fromJsonNode(JsonNode * jsonJob) {
     }
 
     return job;
-}
+} /* SessionJob_fromJsonNode */
 
 SessionRegisterResp_t *SessionRegisterResp_fromJson(char *jsonString)
 {
@@ -599,12 +597,12 @@ SessionRegisterResp_t *SessionRegisterResp_fromJson(char *jsonString)
     }
 
     return resp;
-}
+} /* SessionRegisterResp_fromJson */
 
 CommonConfigReq_t *CommonConfigReq_new()
 {
     return calloc(1, sizeof(CommonConfigReq_t));
-}
+} /* CommonConfigReq_new */
 
 void CommonConfigReq_free(CommonConfigReq_t * req)
 {
@@ -619,7 +617,7 @@ void CommonConfigReq_free(CommonConfigReq_t * req)
         }
         free(req);
     }
-}
+} /* CommonConfigReq_free */
 
 char *CommonConfigReq_toJson(CommonConfigReq_t * req)
 {
@@ -644,12 +642,12 @@ char *CommonConfigReq_toJson(CommonConfigReq_t * req)
     }
 
     return jsonString;
-}
+} /* CommonConfigReq_toJson */
 
 CommonCompleteReq_t *CommonCompleteReq_new()
 {
     return calloc(1, sizeof(CommonCompleteReq_t));
-}
+} /* CommonCompleteReq_new */
 
 void CommonCompleteReq_free(CommonCompleteReq_t * req)
 {
@@ -668,7 +666,7 @@ void CommonCompleteReq_free(CommonCompleteReq_t * req)
         }
         free(req);
     }
-}
+} /* CommonCompleteReq_free */
 
 char *CommonCompleteReq_toJson(CommonCompleteReq_t * req)
 {
@@ -704,7 +702,7 @@ char *CommonCompleteReq_toJson(CommonCompleteReq_t * req)
     }
 
     return jsonString;
-}
+} /* CommonCompleteReq_toJson */
 
 void CommonCompleteResp_free(CommonCompleteResp_t * resp)
 {
@@ -712,7 +710,7 @@ void CommonCompleteResp_free(CommonCompleteResp_t * resp)
         AgentApiResult_free(resp->Result);
         free(resp);
     }
-}
+} /* CommonCompleteResp_free */
 
 CommonCompleteResp_t *CommonCompleteResp_fromJson(char *jsonString)
 {
@@ -732,7 +730,7 @@ CommonCompleteResp_t *CommonCompleteResp_fromJson(char *jsonString)
     }
 
     return resp;
-}
+} /* CommonCompleteResp_fromJson */
 
 void ManagementConfigResp_free(ManagementConfigResp_t * resp)
 {
@@ -776,7 +774,7 @@ void ManagementConfigResp_free(ManagementConfigResp_t * resp)
         }
         free(resp);
     }
-}
+} /* ManagementConfigResp_free */
 
 ManagementConfigResp_t *ManagementConfigResp_fromJson(char *jsonString)
 {
@@ -839,7 +837,7 @@ ManagementConfigResp_t *ManagementConfigResp_fromJson(char *jsonString)
     }
 
     return resp;
-}
+} /* ManagementConfigResp_fromJson */
 
 void ManagementCompleteResp_free(ManagementCompleteResp_t * resp)
 {
@@ -853,7 +851,7 @@ void ManagementCompleteResp_free(ManagementCompleteResp_t * resp)
 
         free(resp);
     }
-}
+} /* ManagementCompleteResp_free */
 
 ManagementCompleteResp_t *ManagementCompleteResp_fromJson(char *jsonString)
 {
@@ -876,7 +874,7 @@ ManagementCompleteResp_t *ManagementCompleteResp_fromJson(char *jsonString)
     }
 
     return resp;
-}
+} /* ManagementCompleteResp_fromJson */
 
 static void InventoryCurrentItem_free(InventoryCurrentItem_t * item)
 {
@@ -895,7 +893,7 @@ static void InventoryCurrentItem_free(InventoryCurrentItem_t * item)
         }
         free(item);
     }
-}
+} /* InventoryCurrentItem_free */
 
 static InventoryCurrentItem_t *
 InventoryCurrentItem_fromJsonNode(JsonNode * node) {
@@ -923,7 +921,7 @@ InventoryCurrentItem_fromJsonNode(JsonNode * node) {
     }
 
     return result;
-}
+} /* InventoryCurrentItem_fromJsonNode */
 
 void InventoryConfigResp_free(InventoryConfigResp_t * resp)
 {
@@ -955,7 +953,7 @@ void InventoryConfigResp_free(InventoryConfigResp_t * resp)
         }
         free(resp);
     }
-}
+} /* InventoryConfigResp_free */
 
 InventoryConfigResp_t *InventoryConfigResp_fromJson(char *jsonString)
 {
@@ -1007,7 +1005,7 @@ InventoryConfigResp_t *InventoryConfigResp_fromJson(char *jsonString)
     }
 
     return resp;
-}
+} /* InventoryConfigResp_fromJson */
 
 static void InventoryUpdateItem_free(InventoryUpdateItem_t * item)
 {
@@ -1026,7 +1024,7 @@ static void InventoryUpdateItem_free(InventoryUpdateItem_t * item)
         }
         free(item);
     }
-}
+} /* InventoryUpdateItem_free */
 
 static JsonNode *
 InventoryUpdateItem_toJsonNode(InventoryUpdateItem_t * updateItem) {
@@ -1058,7 +1056,7 @@ InventoryUpdateItem_toJsonNode(InventoryUpdateItem_t * updateItem) {
     }
 
     return result;
-}
+} /* InventoryUpdateItem_toJsonNode */
 
 void InventoryUpdateReq_free(InventoryUpdateReq_t * req)
 {
@@ -1078,7 +1076,7 @@ void InventoryUpdateReq_free(InventoryUpdateReq_t * req)
         }
         free(req);
     }
-}
+} /* InventoryUpdateReq_free */
 
 char           *InventoryUpdateReq_toJson(InventoryUpdateReq_t * req)
 {
@@ -1111,7 +1109,7 @@ char           *InventoryUpdateReq_toJson(InventoryUpdateReq_t * req)
     }
 
     return jsonString;
-}
+} /* InventoryUpdateReq_toJson */
 
 void InventoryUpdateResp_free(InventoryUpdateResp_t * resp)
 {
@@ -1119,7 +1117,7 @@ void InventoryUpdateResp_free(InventoryUpdateResp_t * resp)
         AgentApiResult_free(resp->Result);
         free(resp);
     }
-}
+} /* InventoryUpdateResp_free */
 
 InventoryUpdateResp_t *InventoryUpdateResp_fromJson(char *jsonString)
 {
@@ -1139,7 +1137,7 @@ InventoryUpdateResp_t *InventoryUpdateResp_fromJson(char *jsonString)
     }
 
     return resp;
-}
+} /* InventoryUpdateResp_fromJson */
 
 void EnrollmentConfigResp_free(EnrollmentConfigResp_t * resp)
 {
@@ -1184,7 +1182,7 @@ void EnrollmentConfigResp_free(EnrollmentConfigResp_t * resp)
         }
         free(resp);
     }
-}
+} /* EnrollmentConfigResp_free */
 
 EnrollmentConfigResp_t *EnrollmentConfigResp_fromJson(char *jsonString)
 {
@@ -1274,7 +1272,7 @@ EnrollmentConfigResp_t *EnrollmentConfigResp_fromJson(char *jsonString)
     }
 
     return resp;
-}
+} /* EnrollmentConfigResp_fromJson */
 
 void EnrollmentEnrollReq_free(EnrollmentEnrollReq_t * req)
 {
@@ -1296,7 +1294,7 @@ void EnrollmentEnrollReq_free(EnrollmentEnrollReq_t * req)
 
         free(req);
     }
-}
+} /* EnrollmentEnrollReq_free */
 
 char           *EnrollmentEnrollReq_toJson(EnrollmentEnrollReq_t * req)
 {
@@ -1328,7 +1326,7 @@ char           *EnrollmentEnrollReq_toJson(EnrollmentEnrollReq_t * req)
     }
 
     return jsonString;
-}
+} /* EnrollmentEnrollReq_toJson */
 
 void EnrollmentEnrollResp_free(EnrollmentEnrollResp_t * resp)
 {
@@ -1342,7 +1340,7 @@ void EnrollmentEnrollResp_free(EnrollmentEnrollResp_t * resp)
 
         free(resp);
     }
-}
+} /* EnrollmentEnrollResp_free */
 
 EnrollmentEnrollResp_t *EnrollmentEnrollResp_fromJson(char *jsonString)
 {
@@ -1364,7 +1362,7 @@ EnrollmentEnrollResp_t *EnrollmentEnrollResp_fromJson(char *jsonString)
     }
 
     return resp;
-}
+} /* EnrollmentEnrollResp_fromJson */
 
 void EnrollmentCompleteResp_free(EnrollmentCompleteResp_t * resp)
 {
@@ -1378,7 +1376,7 @@ void EnrollmentCompleteResp_free(EnrollmentCompleteResp_t * resp)
 
         free(resp);
     }
-}
+} /* EnrollmentCompleteResp_free */
 
 EnrollmentCompleteResp_t *EnrollmentCompleteResp_fromJson(char *jsonString)
 {
@@ -1401,7 +1399,7 @@ EnrollmentCompleteResp_t *EnrollmentCompleteResp_fromJson(char *jsonString)
     }
 
     return resp;
-}
+} /* EnrollmentCompleteResp_fromJson */
 
 void FetchLogsConfigResp_free(FetchLogsConfigResp_t * resp)
 {
@@ -1410,7 +1408,7 @@ void FetchLogsConfigResp_free(FetchLogsConfigResp_t * resp)
 
         free(resp);
     }
-}
+} /* FetchLogsConfigResp_free */
 
 FetchLogsConfigResp_t *FetchLogsConfigResp_fromJson(char *jsonString)
 {
@@ -1438,7 +1436,7 @@ FetchLogsConfigResp_t *FetchLogsConfigResp_fromJson(char *jsonString)
     }
 
     return resp;
-}
+} /* FetchLogsConfigResp_fromJson */
 
 void FetchLogsCompleteReq_free(FetchLogsCompleteReq_t * req)
 {
@@ -1461,7 +1459,7 @@ void FetchLogsCompleteReq_free(FetchLogsCompleteReq_t * req)
         }
         free(req);
     }
-}
+} /* FetchLogsCompleteReq_free */
 
 char           *FetchLogsCompleteReq_toJson(FetchLogsCompleteReq_t * req)
 {
@@ -1503,11 +1501,11 @@ char           *FetchLogsCompleteReq_toJson(FetchLogsCompleteReq_t * req)
     }
 
     return jsonString;
-}
+} /* FetchLogsCompleteReq_toJson */
 
 FetchLogsCompleteReq_t *FetchLogsCompleteReq_new()
 {
     return calloc(1, sizeof(FetchLogsCompleteReq_t));
-}
+} /* FetchLogsCompleteReq_new */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/
