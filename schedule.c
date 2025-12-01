@@ -48,7 +48,7 @@ static time_t get_utc_offset(void){
     time_t rt = mktime(&tmp);
 
     return (start - rt);
-}                               /* get_utc_offset */
+} /* get_utc_offset */
 
 /*                                                                            */
 /* Add the number of minutes to a time.                                       */
@@ -66,7 +66,7 @@ static time_t next_interval(char *intSch, time_t prev){
         log_error("%s::%s(%d) : Invalid interval: %s", LOG_INF, intSch);
         return prev;
     }
-}                               /* next_interval */
+} /* next_interval */
 
 /*                                                                            */
 /* Add the number of days to a time                                           */
@@ -103,7 +103,7 @@ static time_t next_daily(char *dailySch, time_t prev){
         log_error("%s::%s(%d) : Invalid daily: %s", LOG_INF, dailySch);
         return prev;
     }
-}                               /* next_daily */
+} /* next_daily */
 
 /*                                                                            */
 /* Add the number of weeks to a time                                          */
@@ -156,7 +156,7 @@ static time_t next_weekly(char *weeklySch, time_t prev){
         log_error("%s::%s(%d) : Invalid weekly: %s", LOG_INF, weeklySch);
         return prev;
     }
-}                               /* next_weekly */
+} /* next_weekly */
 
 /*                                                                            */
 /* Add the number of months to a time                                         */
@@ -220,7 +220,7 @@ static time_t next_monthly(char *monthSch, time_t prev){
         log_error("%s::%s(%d) : Invalid monthly: %s", LOG_INF, monthSch);
         return prev;
     }
-}                               /* next_monthly */
+} /* next_monthly */
 
 /*                                                                            */
 /* Decode a scheduled datetime into a time_t structure.                       */
@@ -265,7 +265,7 @@ static time_t next_one_time(char *oneTimeSch){
         log_error("%s::%s(%d) : Invalid one-time: %s", LOG_INF, oneTimeSch);
         return time(NULL);
     }
-}                               /* next_one_time */
+} /* next_one_time */
 
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
@@ -328,7 +328,7 @@ time_t next_execution(char *sch, time_t prev)
     }
 
     return next;
-}                               /* next_execution */
+} /* next_execution */
 
 /*                                                                            */
 /* Go through the job list and see if it is time to run a job.                */
@@ -379,7 +379,7 @@ SessionJob_t   *get_job_by_id(ScheduledJob_t * *pList, const char *jobId)
 
     log_verbose("%s::%s(%d) : -Job %s not found", LOG_INF, jobId);
     return NULL;
-}                               /* get_job_by_id */
+} /* get_job_by_id */
 
 /*                                                                            */
 /* Clear all scheduled jobs (also free data structures)                       */
@@ -405,7 +405,7 @@ void clear_job_schedules(ScheduledJob_t * *pList)
         current = temp;
     }
 
-}                               /* clear_job_schedules */
+} /* clear_job_schedules */
 
 /*                                                                            */
 /* Add a job to a scheduled job list                                          */
@@ -473,6 +473,6 @@ void schedule_job(ScheduledJob_t * *pList, SessionJob_t * job,
 
         prev->NextJob = newSchJob;
     }
-}                               /* schedule_job */
+} /* schedule_job */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/

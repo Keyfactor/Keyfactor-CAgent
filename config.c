@@ -86,7 +86,7 @@ static void print_config(ConfigData_t * ConfigData)
     printf("          retryInterval = %d\n", ConfigData->retryInterval);
     printf("\n\n");
     return;
-}                               /* print_config */
+} /* print_config */
 
 /*                                                                            */
 /* Check that the minimum fields are populated & exist in the config.json     */
@@ -167,7 +167,7 @@ static bool minimum_config_requirements(void)
     } while (false);
 
     return bResult;
-}                               /* minimum_config_requirements */
+} /* minimum_config_requirements */
 
 /*                                                                            */
 /* Check that the agent cert & agent key directories exist                    */
@@ -223,7 +223,7 @@ static bool agent_directory_exists(void)
     } while (false);
 
     return bResult;
-}                               /* agent_directory_exits */
+} /* agent_directory_exits */
 
 /*                                                                            */
 /* Check the keypair type & if it is an ecc, make sure we implemented         */
@@ -259,7 +259,7 @@ static bool keypair_sanity_check(void)
 
 exit:
     return bResult;
-}                               /* keypair_sanity_check */
+} /* keypair_sanity_check */
 
 /*                                                                            */
 /* Get the agent name and CN from the $HOSTNAME and datetime instead of the   */
@@ -344,7 +344,7 @@ static void set_agent_name(ConfigData_t * config)
 
 cleanup:
     return;
-}                               /* set_agent_name */
+} /* set_agent_name */
 
 
 /******************************************************************************/
@@ -436,7 +436,7 @@ ConfigData_t *config_decode(const char *buf)
     }
 
     return config;
-}                               /* config_decode */
+} /* config_decode */
 
 /*                                                                            */
 /* Load data from the configuration file into the configuration data          */
@@ -468,7 +468,7 @@ ConfigData_t   *config_load(void)
     }
 
     return config_decode(buf);
-}                               /* config_load */
+} /* config_load */
 
 /*                                                                            */
 /* Convert the configuration data structure into a json string. Call          */
@@ -556,7 +556,7 @@ char           *config_to_json(void)
     json_delete(jsonRoot);
 
     return confString;
-}                               /* config_to_json */
+} /* config_to_json */
 
 /**
  * Save the configuration structure to "config.json" on the file system
@@ -583,7 +583,7 @@ bool config_save(void)
     }
 
     return bResult;
-}                               /* config_save */
+} /* config_save */
 
 /*                                                                            */
 /* Sanity check on the configuration file to check for errors before          */
@@ -634,7 +634,7 @@ bool validate_configuration(void)
     } while (false);
 
     return bResult;
-}                               /* validate_configuration */
+} /* validate_configuration */
 
 /*                                                                            */
 /* Build the url from information in the config data and the relative         */
@@ -712,7 +712,7 @@ char* config_build_url(const char *relPath, bool vdirFromConfig)
     }
     log_trace("%s::%s(%d) : url = %s", LOG_INF, url);
     return url;
-}                               /* config_build_url */
+} /* config_build_url */
 
 /*                                                                            */
 /* Release memory associated with the ConfigData element                      */
@@ -795,7 +795,7 @@ void ConfigData_free(void)
     }
     config_loaded = false;
     return;
-}                               /* ConfigData_free */
+} /* ConfigData_free */
 
 /******************************************************************************/
 /******************************* END OF FILE **********************************/

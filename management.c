@@ -100,7 +100,7 @@ static int get_management_config(const char *sessionToken, const char *jobId,
         CommonConfigReq_free(req);
 
     return res;
-}                               /* get_management_config */
+} /* get_management_config */
 
 /*                                                                            */
 /* Send the job status (success/failure) and any associated data to the       */
@@ -158,7 +158,7 @@ static int send_management_job_complete(const char *sessionToken,
         CommonCompleteReq_free(req);
 
     return res;
-}                               /* send_management_job_complete */
+} /* send_management_job_complete */
 
 /*                                                                            */
 /* Perform the management job to add the certificate downloaded from the      */
@@ -276,7 +276,7 @@ static int add_cert_to_store(const char *storePath, const char *certASCII,
         PemInventoryList_free(pemList);
 
     return ret;
-}                               /* add_cert_to_store */
+} /* add_cert_to_store */
 
 /*                                                                            */
 /* Remove a certificate (and any associated stored key) from a store          */
@@ -308,7 +308,7 @@ static int remove_cert_from_store(const char *storePath,
         *pStatus = STAT_ERR;
     }
     return ret;
-}                               /* remove_cert_from_store */
+} /* remove_cert_from_store */
 
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
@@ -465,7 +465,7 @@ exit:
     free(statusMessage);
 
     return returnable;
-}                               /* cms_job_manage */
+} /* cms_job_manage */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/
 /******************************************************************************/

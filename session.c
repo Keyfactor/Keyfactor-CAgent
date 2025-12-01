@@ -97,6 +97,10 @@ static bool update_agentid_from_session(SessionRegisterResp_t * sessionResp) {
                 log_info("%s::%s(%d) : Received new AgentId. Updating AgentId in configuration", LOG_INF);
                 free(ConfigData->AgentId);
                 ConfigData->AgentId = strdup(sessionResp->Session.AgentId);
+                if (!ConfigData->AgentId) {
+                    log_error("%s::%s(%d) : Null pointer dereference - failed to allocate AgentId", LOG_INF);
+                    return false;
+                }
                 log_verbose("%s::%s(%d) : Saving configuration to file system", LOG_INF);
                 config_save();
                 return true;
@@ -157,6 +161,16 @@ static bool register_agent(SessionRegisterReq_t * sessionReq) {
     char *message = strdup("");
     enum AgentApiResultStatus status = STAT_SUCCESS;
 
+    if (!sessionReq) {
+        log_error("%s::%s(%d) : Null pointer dereference - sessionReq is NULL", LOG_INF);
+        if (message) free(message);
+        return false;
+    }
+    if (!message) {
+        log_error("%s::%s(%d) : Null pointer dereference - failed to allocate message", LOG_INF);
+        return false;
+    }
+
     log_info("%s::%s(%d) : Registering agent with the platform for the first time", LOG_INF);
 
     /* Generate the temporary keypair & store it in the ssl wrapper layer */
@@ -188,7 +202,7 @@ static bool register_agent(SessionRegisterReq_t * sessionReq) {
 
 exit:
     return bResult;
-}                               /* register_agent */
+} /* register_agent */
 
 /*                                                                            */
 /* Take a session register response & parse the list of jobs.                 */
@@ -209,11 +223,20 @@ static void prioritize_jobs(ScheduledJob_t * *pJobList,
     int i;
     SessionJob_t *job_to_schedule = NULL;
 
+    if (!pJobList || !response) {
+        log_error("%s::%s(%d) : Null pointer dereference - pJobList or response is NULL", LOG_INF);
+        return;
+    }
+
     log_verbose("%s::%s(%d) : Prioritizing jobs", LOG_INF);
 
     /* Store management ADD jobs */
     for (i = 0; response->Session.Jobs_count > i; i++) {
         job_to_schedule = response->Session.Jobs[i];
+        if (!job_to_schedule || !job_to_schedule->JobTypeId) {
+            log_warn("%s::%s(%d) : Null job or JobTypeId at index %d", LOG_INF, i);
+            continue;
+        }
         if (0 == strcasecmp(CAP_PEM_MANAGEMENT, job_to_schedule->JobTypeId)) {
             if (MANAGEMENT_ADD_PRIORITY == job_to_schedule->Priority) {
                 log_trace("%s::%s(%d) : Adding management ADD job %s", LOG_INF,
@@ -225,6 +248,10 @@ static void prioritize_jobs(ScheduledJob_t * *pJobList,
     /* Reenrollment jobs */
     for (i = 0; response->Session.Jobs_count > i; i++) {
         job_to_schedule = response->Session.Jobs[i];
+        if (!job_to_schedule || !job_to_schedule->JobTypeId) {
+            log_warn("%s::%s(%d) : Null job or JobTypeId at index %d", LOG_INF, i);
+            continue;
+        }
         if (0 == strcasecmp(CAP_PEM_REENROLLMENT, job_to_schedule->JobTypeId)) {
             log_trace("%s::%s(%d) : Adding reenrollment job %s", LOG_INF, job_to_schedule->JobId);
             schedule_job(pJobList, job_to_schedule, time(NULL));
@@ -233,6 +260,10 @@ static void prioritize_jobs(ScheduledJob_t * *pJobList,
     /* Store management non-ADD jobs */
     for (i = 0; response->Session.Jobs_count > i; i++) {
         job_to_schedule = response->Session.Jobs[i];
+        if (!job_to_schedule || !job_to_schedule->JobTypeId) {
+            log_warn("%s::%s(%d) : Null job or JobTypeId at index %d", LOG_INF, i);
+            continue;
+        }
         if (0 == strcasecmp(CAP_PEM_MANAGEMENT, job_to_schedule->JobTypeId)) {
             if (MANAGEMENT_ADD_PRIORITY != job_to_schedule->Priority) {
                 log_trace("%s::%s(%d) : Adding management non-ADD job %s", LOG_INF, job_to_schedule->JobId);
@@ -243,6 +274,10 @@ static void prioritize_jobs(ScheduledJob_t * *pJobList,
     /* Inventory jobs */
     for (i = 0; response->Session.Jobs_count > i; i++) {
         job_to_schedule = response->Session.Jobs[i];
+        if (!job_to_schedule || !job_to_schedule->JobTypeId) {
+            log_warn("%s::%s(%d) : Null job or JobTypeId at index %d", LOG_INF, i);
+            continue;
+        }
         if (0 == strcasecmp(CAP_PEM_INVENTORY, job_to_schedule->JobTypeId)) {
             log_trace("%s::%s(%d) : Adding inventory job %s", LOG_INF, job_to_schedule->JobId);
             schedule_job(pJobList, job_to_schedule, time(NULL));
@@ -251,13 +286,17 @@ static void prioritize_jobs(ScheduledJob_t * *pJobList,
     /* Log file retrieval jobs */
     for (i = 0; response->Session.Jobs_count > i; i++) {
         job_to_schedule = response->Session.Jobs[i];
+        if (!job_to_schedule || !job_to_schedule->JobTypeId) {
+            log_warn("%s::%s(%d) : Null job or JobTypeId at index %d", LOG_INF, i);
+            continue;
+        }
         if (0 == strcasecmp(CAP_FETCH_LOGS, job_to_schedule->JobTypeId)) {
             log_trace("%s::%s(%d) : Adding log retrieval job %s", LOG_INF, job_to_schedule->JobId);
             schedule_job(pJobList, job_to_schedule, time(NULL));
         }
     }
     return;
-}                               /* prioritize_jobs */
+} /* prioritize_jobs */
 
 /*                                                                            */
 /* Add the capabilities allowed in this version of the agent by               */
@@ -269,6 +308,12 @@ static void prioritize_jobs(ScheduledJob_t * *pJobList,
 /*                                                                            */
 static bool register_add_capabilities(SessionRegisterReq_t * sessionReq) {
     bool bResult = false;
+
+    if (!sessionReq) {
+        log_error("%s::%s(%d) : Null pointer dereference - sessionReq is NULL", LOG_INF);
+        return false;
+    }
+
     sessionReq->Capabilities_count = 4;
     sessionReq->Capabilities = calloc(sessionReq->Capabilities_count, sizeof(char *));
     if (sessionReq->Capabilities) {
@@ -276,12 +321,17 @@ static bool register_add_capabilities(SessionRegisterReq_t * sessionReq) {
         sessionReq->Capabilities[1] = strdup(cap_pem_management);
         sessionReq->Capabilities[2] = strdup(cap_pem_reenrollment);
         sessionReq->Capabilities[3] = strdup(cap_fetch_logs);
+        if (!sessionReq->Capabilities[0] || !sessionReq->Capabilities[1] ||
+            !sessionReq->Capabilities[2] || !sessionReq->Capabilities[3]) {
+            log_error("%s::%s(%d) : Null pointer dereference - failed to allocate capabilities", LOG_INF);
+            return false;
+        }
         bResult = true;
     } else {
         log_error("%s::%s(%d) : Out of memory", LOG_INF);
     }
     return bResult;
-}                               /* register_add_capabilities */
+} /* register_add_capabilities */
 
 /*                                                                            */
 /* Set up the registration parameters associated with a /Session/Request POST */
@@ -290,18 +340,39 @@ static bool register_add_capabilities(SessionRegisterReq_t * sessionReq) {
 /* @return : void                                                             */
 /*                                                                            */
 static void set_registration_parameters(SessionRegisterReq_t * sessionReq) {
+    if (!sessionReq) {
+        log_error("%s::%s(%d) : Null pointer dereference - sessionReq is NULL", LOG_INF);
+        return;
+    }
+
     if (ConfigData->AgentName) {
         sessionReq->ClientMachine = strdup(ConfigData->AgentName);
+        if (!sessionReq->ClientMachine) {
+            log_error("%s::%s(%d) : Null pointer dereference - failed to allocate ClientMachine", LOG_INF);
+            return;
+        }
     } else {
         sessionReq->ClientMachine = strdup("");
+        if (!sessionReq->ClientMachine) {
+            log_error("%s::%s(%d) : Null pointer dereference - failed to allocate ClientMachine", LOG_INF);
+            return;
+        }
     }
 
     if ((ConfigData->EnrollOnStartup) || !(ConfigData->AgentId)) {
         /* Never send an Agent GUID to the platform when registering the */
         /* Agent or if the Id was not defined in the config */
         sessionReq->AgentId = strdup("");
+        if (!sessionReq->AgentId) {
+            log_error("%s::%s(%d) : Null pointer dereference - failed to allocate AgentId", LOG_INF);
+            return;
+        }
     } else {
         sessionReq->AgentId = strdup(ConfigData->AgentId);
+        if (!sessionReq->AgentId) {
+            log_error("%s::%s(%d) : Null pointer dereference - failed to allocate AgentId", LOG_INF);
+            return;
+        }
     }
 
     sessionReq->AgentPlatform = PLAT_NATIVE;
@@ -313,7 +384,7 @@ static void set_registration_parameters(SessionRegisterReq_t * sessionReq) {
     add_custom_client_parameters(sessionReq);
 
     return;
-}                               /* set_registration_parameters */
+} /* set_registration_parameters */
 
 /*                                                                            */
 /* Check a certificate's expiry date                                          */
@@ -324,6 +395,11 @@ static void set_registration_parameters(SessionRegisterReq_t * sessionReq) {
 /*                                                                            */
 static bool is_cert_active(char *certFile) {
     bool bResult = false;
+
+    if (!certFile) {
+        log_error("%s::%s(%d) : Null pointer dereference - certFile is NULL", LOG_INF);
+        return false;
+    }
 
     log_trace("%s::%s(%d) : Does cert file exist at %s?", LOG_INF, certFile);
     if (0 == file_exists(certFile)) {
@@ -351,6 +427,12 @@ static void reset_agent(void) {
     char *savedId = NULL;
     savedName = strdup(ConfigData->AgentName);
     savedId = strdup(ConfigData->AgentId);
+    if (!savedName || !savedId) {
+        log_error("%s::%s(%d) : Null pointer dereference - failed to allocate saved names", LOG_INF);
+        if (savedName) free(savedName);
+        if (savedId) free(savedId);
+        return;
+    }
     /* save current name */
     /* Reset the agent id */
     if (0 < strlen(ConfigData->AgentId)) {
@@ -378,6 +460,10 @@ static void reset_agent(void) {
         goto cleanup;
     }
     tm = gmtime(&t);
+    if (!tm) {
+        log_error("%s::%s(%d) : Null pointer dereference - gmtime failed", LOG_INF);
+        goto cleanup;
+    }
     (void)strftime(tBuf, DATE_TIME_LEN + 1, "%Y%m%d%H%M%S", tm);
     log_verbose("%s::%s(%d) : Date time is %s", LOG_INF, tBuf);
     /* Now we can adjust the Agent's Name */
@@ -387,6 +473,10 @@ static void reset_agent(void) {
     }
     int correctBytes = (strlen(tempName) + DATE_TIME_LEN + 2);
     ConfigData->AgentName = calloc(correctBytes, sizeof(char));
+    if (!ConfigData->AgentName) {
+        log_error("%s::%s(%d) : Null pointer dereference - failed to allocate AgentName", LOG_INF);
+        goto cleanup;
+    }
     if (0 >= snprintf(ConfigData->AgentName, correctBytes, "%s_%s", tempName, tBuf)) {
         log_error("%s::%s(%d) : Fatal error rewriting agent name, not changing name or ID", LOG_INF);
         ConfigData->AgentName = strdup(savedName);
@@ -416,7 +506,7 @@ cleanup:
     config_save();
 
     return;
-}                               /* reset_agent */
+} /* reset_agent */
 
 /*                                                                            */
 /* We need to hit the /Session/Register a second time to get the platform to  */
@@ -448,13 +538,29 @@ static int do_second_registration(SessionInfo_t * session,
     char schedule[10];
     SessionRegisterReq_t *sessionReq;
     sessionReq = SessionRegisterReq_new(ConfigData->ClientParameterPath);
+    if (!sessionReq) {
+        log_error("%s::%s(%d) : Null pointer dereference - failed to allocate sessionReq", LOG_INF);
+        return 998;
+    }
 
     log_info("%s::%s(%d): Register 2nd Session, ask for enrollment jobs", LOG_INF);
 
-    if (ConfigData->AgentName)
+    if (ConfigData->AgentName) {
         sessionReq->ClientMachine = strdup(ConfigData->AgentName);
-    if (ConfigData->AgentId)
+        if (!sessionReq->ClientMachine) {
+            log_error("%s::%s(%d) : Null pointer dereference - failed to allocate ClientMachine", LOG_INF);
+            SessionRegisterReq_free(sessionReq);
+            return 998;
+        }
+    }
+    if (ConfigData->AgentId) {
         sessionReq->AgentId = strdup(ConfigData->AgentId);
+        if (!sessionReq->AgentId) {
+            log_error("%s::%s(%d) : Null pointer dereference - failed to allocate AgentId", LOG_INF);
+            SessionRegisterReq_free(sessionReq);
+            return 998;
+        }
+    }
 
     sessionReq->AgentPlatform = PLAT_NATIVE;
     sessionReq->AgentVersion = agentVersion;
@@ -472,7 +578,17 @@ static int do_second_registration(SessionInfo_t * session,
 
     reqString = SessionRegisterReq_toJson(sessionReq);
     SessionRegisterReq_free(sessionReq);
+    if (!reqString) {
+        log_error("%s::%s(%d) : Null pointer dereference - failed to create JSON request", LOG_INF);
+        httpRes = 998;
+        goto exit;
+    }
     url = config_build_url("/Session/Register", true);
+    if (!url) {
+        log_error("%s::%s(%d) : Null pointer dereference - failed to build URL", LOG_INF);
+        httpRes = 998;
+        goto exit;
+    }
     httpRes = http_post_json(url, ConfigData->Username, ConfigData->Password,
         ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey,
                        ConfigData->AgentKeyPassword, reqString, &respString,
@@ -501,7 +617,7 @@ static int do_second_registration(SessionInfo_t * session,
         if (resp->Session.Token) {
             log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF, resp->Session.Token, resp->Session.Jobs_count);
 
-            size_t l = strlen(resp->Session.Token);
+            size_t l = resp->Session.Token ? strlen(resp->Session.Token) : 0;
             if (0 < l) {
                 strcpy(session->Token, resp->Session.Token);
             } else {
@@ -509,7 +625,7 @@ static int do_second_registration(SessionInfo_t * session,
                 session->Token[0] = '\0';
             }
 
-            l = strlen(resp->Session.AgentId);
+            l = resp->Session.AgentId ? strlen(resp->Session.AgentId) : 0;
             if (0 < l) {
                 strcpy(session->AgentId, resp->Session.AgentId);
             } else {
@@ -539,7 +655,7 @@ exit:
         free(url);
 
     return httpRes;
-}                               /* do_second_registration */
+} /* do_second_registration */
 
 /*                                                                            */
 /* Re-register the agent's cert with the platform..                           */
@@ -585,6 +701,10 @@ static int re_register_agent(SessionInfo_t * session, ScheduledJob_t * *pJobList
     reqString = SessionRegisterReq_toJson(sessionReq);
     SessionRegisterReq_free(sessionReq);
     sessionReq = NULL;
+    if (!reqString) {
+        log_error("%s::%s(%d) : Null pointer dereference - failed to create JSON request", LOG_INF);
+        goto exit;
+    }
 
     log_verbose("%s::%s(%d): Session Request:", LOG_INF);
     log_verbose("%s", reqString);
@@ -626,6 +746,10 @@ static int re_register_agent(SessionInfo_t * session, ScheduledJob_t * *pJobList
                     if (ConfigData->AgentId)
                         free(ConfigData->AgentId);
                     ConfigData->AgentId = strdup(resp->Session.AgentId);
+                    if (!ConfigData->AgentId) {
+                        log_error("%s::%s(%d) : Null pointer dereference - failed to allocate AgentId", LOG_INF);
+                        goto exit;
+                    }
                     update_config_from_session(resp);
                 }
             } else {
@@ -634,7 +758,7 @@ static int re_register_agent(SessionInfo_t * session, ScheduledJob_t * *pJobList
             /* download & shcedule jobs */
             log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF, resp->Session.Token, resp->Session.Jobs_count);
 
-            size_t l = strlen(resp->Session.AgentId);
+            size_t l = resp->Session.AgentId ? strlen(resp->Session.AgentId) : 0;
             if (0 < l) {
                 strcpy(session->AgentId, resp->Session.AgentId);
             } else {
@@ -642,7 +766,7 @@ static int re_register_agent(SessionInfo_t * session, ScheduledJob_t * *pJobList
                 session->AgentId[0] = '\0';
             }
 
-            l = strlen(resp->Session.Token);
+            l = resp->Session.Token ? strlen(resp->Session.Token) : 0;
             if (0 < l) {
                 strcpy(session->Token, resp->Session.Token);
             } else {
@@ -656,7 +780,8 @@ static int re_register_agent(SessionInfo_t * session, ScheduledJob_t * *pJobList
             /* Schedule the jobs based on priority */
             prioritize_jobs(pJobList, resp);
         } else {
-            log_error("%s::%s(%d): Agent re-registration did not succeed with error %s", LOG_INF, resp->Result.Error.Message);
+            log_error("%s::%s(%d): Agent re-registration did not succeed with error %s", LOG_INF,
+                      resp->Result.Error.Message ? resp->Result.Error.Message : "(null)");
         }
     } else {
         log_error("%s::%s(%d): Agent re-registration failed with error code %d", LOG_INF, httpRes);
@@ -673,7 +798,7 @@ exit:
         free(url);
 
     return httpRes;
-}                               /* re_register_agent */
+} /* re_register_agent */
 
 /*                                                                            */
 /* Process the first registration response, which should include the Agent's  */
@@ -718,7 +843,7 @@ static bool do_first_registration_response(SessionRegisterResp_t * resp, char **
             bResult = true;
     }
     return bResult;
-}                               /* do_first_registration_response */
+} /* do_first_registration_response */
 
 /*                                                                            */
 /* Schedule the jobs associated with the /Session/Register response           */
@@ -737,7 +862,7 @@ static void do_normal_registration_response(SessionRegisterResp_t * resp,
 
     log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF, resp->Session.Token, resp->Session.Jobs_count);
 
-    size_t l = strlen((resp->Session.AgentId));
+    size_t l = resp->Session.AgentId ? strlen((resp->Session.AgentId)) : 0;
     if (l > 0) {
         strcpy(session->AgentId, resp->Session.AgentId);
     } else {
@@ -745,7 +870,7 @@ static void do_normal_registration_response(SessionRegisterResp_t * resp,
         session->AgentId[0] = '\0';
     }
 
-    l = strlen((resp->Session.Token));
+    l = resp->Session.Token ? strlen((resp->Session.Token)) : 0;
     if (l > 0) {
         strcpy(session->Token, resp->Session.Token);
     } else {
@@ -758,7 +883,7 @@ static void do_normal_registration_response(SessionRegisterResp_t * resp,
 
     /* Schedule the jobs based on priority */
     prioritize_jobs(pJobList, resp);
-}                               /* do_normal_registration_response */
+} /* do_normal_registration_response */
 
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS***************************/
@@ -833,10 +958,19 @@ int register_session(SessionInfo_t * session, ScheduledJob_t * *pJobList, uint64
     /* Send the request up to the platform */
     reqString = SessionRegisterReq_toJson(sessionReq);
     SessionRegisterReq_free(sessionReq);
+    if (!reqString) {
+        log_error("%s::%s(%d) : Null pointer dereference - failed to create JSON request", LOG_INF);
+        return 998;
+    }
 
     log_verbose("%s::%s(%d): Session Request:", LOG_INF);
     log_verbose("%s", reqString);
     url = config_build_url("/Session/Register", true);
+    if (!url) {
+        log_error("%s::%s(%d) : Null pointer dereference - failed to build URL", LOG_INF);
+        free(reqString);
+        return 998;
+    }
 
 #ifdef __DEBUG__
     log_info("%s::%s(%d): Skipping http POST command", LOG_INF);
@@ -887,9 +1021,9 @@ int register_session(SessionInfo_t * session, ScheduledJob_t * *pJobList, uint64
                 httpRes = re_register_agent(session, pJobList, agentVersion, false);
             } else {
                 log_error("%s::%s(%d): Session registration did not succeed with error %s", LOG_INF,
-                          resp->Result.Error.Message);
+                          resp->Result.Error.Message ? resp->Result.Error.Message : "(null)");
                 log_error("%s::%s(%d): Session registration provided CodeString of %s", LOG_INF,
-                          resp->Result.Error.CodeString);
+                          resp->Result.Error.CodeString ? resp->Result.Error.CodeString : "(null)");
                 sprintf(schedule, "I_%d", session->Interval);
                 session->NextExecution = next_execution(schedule, session->NextExecution);
             }

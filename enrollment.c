@@ -100,7 +100,7 @@ static int get_enroll_config(const char *sessionToken, const char *jobId,
         CommonConfigReq_free(req);
 
     return res;
-}                               /* get_enroll_config */
+} /* get_enroll_config */
 
 /*                                                                            */
 /* Send the reenrollment data to the platform.  This includes the CSR for     */
@@ -156,7 +156,7 @@ static int send_enrollment(const char *sessionToken, const char *jobId,
         EnrollmentEnrollReq_free(enrReq);
 
     return res;
-}                               /* send_enrollment */
+} /* send_enrollment */
 
 /*                                                                            */
 /* Tell the platform that the reenrollment job has completed.                 */
@@ -219,7 +219,7 @@ static int send_enroll_job_complete(const char *sessionToken, const char *jobId,
         CommonCompleteReq_free(req);
 
     return res;
-}                               /* send_enroll_job_complete */
+} /* send_enroll_job_complete */
 
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/

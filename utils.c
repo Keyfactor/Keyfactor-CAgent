@@ -53,7 +53,7 @@ int file_exists(const char *file)
         retval = 1;
 
     return retval;
-}                               /* file_exists */
+} /* file_exists */
 
 /*                                                                            */
 /* @brief creates a blank file                                                */
@@ -70,7 +70,7 @@ int create_file(const char *file)
         retval = 1;
     }
     return retval;
-}                               /* create_file */
+} /* create_file */
 
 char *hex_encode(unsigned char *inBuf, int len)
 {
@@ -388,7 +388,7 @@ exit:
     if (beforeString)
         free(beforeString);
     return returnString;
-}                               /* util_strip_string */
+} /* util_strip_string */
 
 /*                                                                            */
 /* Take two strings and merge them together.                                  */
@@ -430,7 +430,7 @@ char *merge_strings(const char *string1, const char *string2)
     } while (false);
 
     return resultString;
-}                               /* merge_strings */
+} /* merge_strings */
 
 /**
  * Return a substring that is everything up to the last character to find
@@ -468,7 +468,7 @@ char *get_prefix_substring(const char *string, const char find)
     }
 
     return subString;
-}                               /* get_prefix_substring */
+} /* get_prefix_substring */
 
 /*                                                                            */
 /* @brief checks if a string is really a directory                            */
@@ -489,6 +489,6 @@ bool is_directory(const char *file)
     if (is_dir)
         bResult = true;
     return bResult;
-}                               /* is_directory */
+} /* is_directory */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/

@@ -91,7 +91,7 @@ bool generate_keypair(const char *keyType, int keySize)
     }
 
     return bResult;
-}                               /* generate_keypair */
+} /* generate_keypair */
 
 /*                                                                            */
 /* Request the crypto layer to generate a new CSR using the subject provided. */
@@ -115,7 +115,7 @@ char           *generate_csr(const char *asciiSubject, size_t * csrLen, char **p
         *pStatus = STAT_ERR;
     }
     return csrString;
-}                               /* generate_csr */
+} /* generate_csr */
 
 /*                                                                            */
 /* Request the crypto layer to save the cert and key to the locations         */
@@ -145,7 +145,7 @@ unsigned long save_cert_key(const char *storePath, const char *keyPath,
         *pStatus = STAT_SUCCESS;
     }
     return err;
-}                               /* save_cert_key */
+} /* save_cert_key */
 
 /******************************************************************************/
 /******************************* END OF FILE **********************************/

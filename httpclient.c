@@ -123,7 +123,7 @@ static size_t WriteMemoryCallback(const void *contents, const size_t size, const
     mem->memory[mem->size] = '\0';
 
     return realsize;
-}                               /* WriteMemoryCallback */
+} /* WriteMemoryCallback */
 
 /*                                                                            */
 /* Check if a file exists                                                     */
@@ -140,7 +140,7 @@ static bool check_file_exists(const char *fileName)
     } else {
         return false;
     }
-}                               /* file_exists */
+} /* file_exists */
 
 static void stripCR(char string[])
 {
@@ -565,6 +565,6 @@ exit:
     }                           /* if curl */
 
     return toReturn;
-}                               /* http_post_json */
+} /* http_post_json */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/

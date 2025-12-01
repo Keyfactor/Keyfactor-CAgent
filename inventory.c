@@ -94,7 +94,7 @@ static int get_inventory_config(const char *sessionToken, const char *jobId,
     CommonConfigReq_free(req);
 
     return res;
-}                               /* get_inventory_config */
+} /* get_inventory_config */
 
 static int send_inventory_update(const char *sessionToken, const char *jobId,
                        const char *endpoint, InventoryUpdateList_t * newInv,
@@ -137,7 +137,7 @@ static int send_inventory_update(const char *sessionToken, const char *jobId,
         InventoryUpdateReq_free(updReq);
 
     return res;
-}                               /* send_inventory_update */
+} /* send_inventory_update */
 
 static int send_inventory_job_complete(const char *sessionToken,
        const char *jobId, const char *endpoint, int jobStatus, long auditId,
@@ -184,7 +184,7 @@ static int send_inventory_job_complete(const char *sessionToken,
         CommonCompleteReq_free(req);
 
     return res;
-}                               /* send_inventory_job_complete */
+} /* send_inventory_job_complete */
 
 static void InventoryUpdateList_add(InventoryUpdateList_t * list,
                                     InventoryUpdateItem_t * item)
@@ -200,7 +200,7 @@ static void InventoryUpdateList_add(InventoryUpdateList_t * list,
         }
     }
     return;
-}                               /* InventoryUpdateList_add */
+} /* InventoryUpdateList_add */
 
 /*                                                                            */
 /* Free an inventory item list                                                */
@@ -230,7 +230,7 @@ static void InventoryUpdateList_free(InventoryUpdateList_t * list)
         free(list);
     }
     return;
-}                               /* InventoryUpdateList_free */
+} /* InventoryUpdateList_free */
 
 /*                                                                            */
 /* The the inventory job configuration returned a list of inventory items the */
@@ -359,8 +359,8 @@ static int compute_inventory_update(InventoryCurrentItem_t * *cmsItems,
     }
 
     return 0;
-}                               /* compute_inventory_update *//* parasoft-suppress
-                                 * BD-RES-LEAKS "Freed by calling function" */
+} /* compute_inventory_update */ /* parasoft-suppress
+                                  * BD-RES-LEAKS "Freed by calling function" */
 
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
@@ -521,6 +521,6 @@ exit:
     free(statusMessage);
 
     return returnable;
-}                               /* cms_job_inventory */
+} /* cms_job_inventory */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/

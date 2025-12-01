@@ -129,7 +129,7 @@ static void usage(char *program)
             "\t%s -? \t print out usage information\n\n\n"
             ,program, program, program, program, program
         );
-}                               /* usage */
+} /* usage */
 
 /*                                                                            */
 /* Parse command line switches and set the global variables associated        */
@@ -269,7 +269,7 @@ static int parse_parameters(int argc, char *argv[])
     }
 
     return 1;
-}                               /* parse_parameters */
+} /* parse_parameters */
 
 #ifdef __TPM__
 /*                                                                            */
@@ -306,7 +306,7 @@ static ENGINE * initialize_engine(const char *engine_id){
 
     ENGINE_register_complete(e);
     return e;
-}                               /* initialize_engine */
+} /* initialize_engine */
 #endif                          /* __TPM__ */
 
 /******************************************************************************/
@@ -354,7 +354,7 @@ int run_job(SessionJob_t * job)
         free(chainJobId);
     }
     return status;
-}                               /* run_job */
+} /* run_job */
 
 /*                                                                            */
 /* Initialize the data structures, ssl, the configuration, etc.               */
@@ -429,7 +429,7 @@ int init_platform(int argc, char *argv[])
     curlLoaded = true;
 
     return 1;
-}                               /* init_platform */
+} /* init_platform */
 
 /*                                                                            */
 /* Free any dynamic memory that was allocated and not released yet.           */
@@ -477,7 +477,7 @@ bool release_platform(void)
 
     bResult = true;
     return bResult;
-}                               /* release_platform */
+} /* release_platform */
 
 #if defined(__INFINITE_AGENT__)
 /*                                                                            */
@@ -536,7 +536,7 @@ static void main_loop(void)
     }
 
     return;
-}                               /* main_loop */
+} /* main_loop */
 #else
 /*                                                                            */
 /* Runs a single loop agent (ON by default)                                   */
@@ -570,7 +570,7 @@ static void main_loop(void)
     log_info("%s::%s(%d) : No jobs to run -- Begin Agent Shutdown & Memory Release", LOG_INF);
 
     return;
-}                               /* main_loop */
+} /* main_loop */
 #endif
 
 /*                                                                            */
@@ -623,7 +623,7 @@ error_exit:
 #else
     exit(EXIT_FAILURE);
 #endif
-}                               /* main */
+} /* main */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/
 /******************************************************************************/

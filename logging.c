@@ -75,7 +75,7 @@ static inline void get_log_format(char *buf, const char *msgFormat,
         (void)strftime(timeBuf, LOG_HEAD_SIZE, "%Y-%m-%d %H:%M:%S", tm);
         (void)snprintf(buf, MAX_LOG_SIZE, "[%s] - %s - %s\n", timeBuf, logLevel, msgFormat);
     }
-}                               /* get_log_format */
+} /* get_log_format */
 
 /*                                                                            */
 /* local-only function to print a message                                     */
@@ -89,7 +89,7 @@ static void log_me(const char *fmt,...)
     va_start(args, fmt);
     (void)vprintf(logFormat, args);
     va_end(args);
-}                               /* log_me */
+} /* log_me */
 
 /*                                                                            */
 /* Write the heap data to disk & set the heap tail = heap start               */
@@ -147,7 +147,7 @@ static void write_heap_to_disk(void)
 
     } while (false);
     return;
-}                               /* write_heap_to_disk */
+} /* write_heap_to_disk */
 
 /******************************************************************************/
 /************************ GLOBAL FUNCTION DEFINITIONS *************************/
@@ -161,7 +161,7 @@ static void write_heap_to_disk(void)
 bool is_log_verbose(void)
 {
     return _verbose;
-}                               /* is_log_verbose */
+} /* is_log_verbose */
 
 /*                                                                            */
 /* @fn is_log_trace                                                           */
@@ -172,7 +172,7 @@ bool is_log_verbose(void)
 bool is_log_trace(void)
 {
     return _trace;
-}                               /* is_log_trace */
+} /* is_log_trace */
 
 /*                                                                            */
 /* @fn is_log_debug                                                           */
@@ -183,7 +183,7 @@ bool is_log_trace(void)
 bool is_log_debug(void)
 {
     return _debug;
-}                               /* is_log_debug */
+} /* is_log_debug */
 
 /*                                                                            */
 /* @fn is_log_info                                                            */
@@ -194,7 +194,7 @@ bool is_log_debug(void)
 bool is_log_info(void)
 {
     return _info;
-}                               /* is_log_info */
+} /* is_log_info */
 
 /*                                                                            */
 /* @fn is_log_warn                                                            */
@@ -205,7 +205,7 @@ bool is_log_info(void)
 bool is_log_warn(void)
 {
     return _warn;
-}                               /* is_log_warn */
+} /* is_log_warn */
 
 /*                                                                            */
 /* @fn is_log_error                                                           */
@@ -216,7 +216,7 @@ bool is_log_warn(void)
 bool is_log_error(void)
 {
     return _error;
-}                               /* is_log_error */
+} /* is_log_error */
 
 /*                                                                            */
 /* @fn is_log_off                                                             */
@@ -227,7 +227,7 @@ bool is_log_error(void)
 bool is_log_off(void)
 {
     return !_error;
-}                               /* is_log_off */
+} /* is_log_off */
 
 
 /*                                                                            */
@@ -264,7 +264,7 @@ void log_error(const char *fmt,...)
             /* End write to the log buffer, too */
         }
     }
-}                               /* log_error */
+} /* log_error */
 
 /*                                                                            */
 /* @fn log_warn                                                               */
@@ -300,7 +300,7 @@ void log_warn(const char *fmt,...)
             /* End write to the log buffer, too */
         }
     }
-}                               /* log_warn */
+} /* log_warn */
 
 /*                                                                            */
 /* @fn log_info                                                               */
@@ -336,7 +336,7 @@ void log_info(const char *fmt,...)
             /* End write to the log buffer, too */
         }
     }
-}                               /* log_info */
+} /* log_info */
 
 /*                                                                            */
 /* @fn log_verbose                                                            */
@@ -372,7 +372,7 @@ void log_verbose(const char *fmt,...)
             /* End write to the log buffer, too */
         }
     }
-}                               /* log_verbose */
+} /* log_verbose */
 
 /*                                                                            */
 /* @fn log_debug                                                              */
@@ -408,7 +408,7 @@ void log_debug(const char *fmt,...)
             /* End write to the log buffer, too */
         }
     }
-}                               /* log_debug */
+} /* log_debug */
 
 /*                                                                            */
 /* @fn log_trace                                                              */
@@ -444,7 +444,7 @@ void log_trace(const char *fmt,...)
             /* End write to the log buffer, too */
         }
     }
-}                               /* log_trace */
+} /* log_trace */
 
 /*                                                                            */
 /* @fn log_set_trace                                                          */
@@ -460,7 +460,7 @@ void log_set_trace(bool param)
     _info = param;
     _warn = param;
     _error = param;
-}                               /* log_set_trace */
+} /* log_set_trace */
 
 /*                                                                            */
 /* @fn log_set_debug                                                          */
@@ -476,7 +476,7 @@ void log_set_debug(bool param)
     _info = param;
     _warn = param;
     _error = param;
-}                               /* log_set_debug */
+} /* log_set_debug */
 
 /*                                                                            */
 /* @fn log_set_verbosity                                                      */
@@ -492,7 +492,7 @@ void log_set_verbosity(bool param)
     _info = param;
     _warn = param;
     _error = param;
-}                               /* log_set_verbosity */
+} /* log_set_verbosity */
 
 /*                                                                            */
 /* @fn log_set_info                                                           */
@@ -508,7 +508,7 @@ void log_set_info(bool param)
     _info = param;
     _warn = param;
     _error = param;
-}                               /* log_set_info */
+} /* log_set_info */
 
 /*                                                                            */
 /* @fn log_set_warn                                                           */
@@ -524,7 +524,7 @@ void log_set_warn(bool param)
     _info = !param;
     _warn = param;
     _error = param;
-}                               /* log_set_warn */
+} /* log_set_warn */
 
 /*                                                                            */
 /* @fn log_set_error                                                          */
@@ -540,7 +540,7 @@ void log_set_error(bool param)
     _info = !param;
     _warn = !param;
     _error = param;
-}                               /* log_set_error */
+} /* log_set_error */
 
 /*                                                                            */
 /* @fn log_set_off                                                            */
@@ -556,7 +556,7 @@ void log_set_off(bool param)
     _info = !param;
     _warn = !param;
     _error = !param;
-}                               /* log_set_off */
+} /* log_set_off */
 
 /*                                                                            */
 /* @fn load_log_buffer                                                        */
@@ -580,7 +580,7 @@ bool load_log_buffer(void)
     }
 
     return bResult;
-}                               /* load_log_buffer */
+} /* load_log_buffer */
 
 /*                                                                            */
 /* @fn write_log_file                                                         */
@@ -595,7 +595,7 @@ void write_log_file(void)
         printf("%s::%s(%d) : LOG is not DIRTY\n", LOG_INF);
     }
     return;
-}                               /* write_log_file */
+} /* write_log_file */
 
 /*                                                                            */
 /* Free the heap data structure                                               */
@@ -610,6 +610,6 @@ void free_log_heap(void)
     log_head = NULL;
     log_tail = NULL;
     return;
-}                               /* free_log_heap */
+} /* free_log_heap */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/
