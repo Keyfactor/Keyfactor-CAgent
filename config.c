@@ -81,7 +81,6 @@ static void print_config(ConfigData_t * ConfigData)
     printf("          BootstrapCert = %s\n", ConfigData->BootstrapCert);
     printf("          BootstrapKey = %s\n", ConfigData->BootstrapKey);
     printf("          LogFile = %s\n", ConfigData->LogFile);
-    printf("          LogFileIndex = %lu\n", ConfigData->LogFileIndex);
     printf("          httpRetries = %d\n", ConfigData->httpRetries);
     printf("          retryInterval = %d\n", ConfigData->retryInterval);
     printf("\n\n");
@@ -422,7 +421,8 @@ ConfigData_t *config_decode(const char *buf)
         config->BootstrapKey = json_get_member_string(jsonRoot, "BootstrapKey");
         config->BootstrapKeyPassword = json_get_member_string(jsonRoot, "BootstrapKeyPassword");
         config->LogFile = json_get_member_string(jsonRoot, "LogFile");
-        config->LogFileIndex = json_get_member_number(jsonRoot, "LogFileIndex", 0);
+        /* NOTE: LogFileIndex is NOT stored in config - it's managed by logging.c
+         * in a separate <LogFile>.index file for robustness */
         config->httpRetries = json_get_member_number(jsonRoot, "httpRetries", 1);
         if (1 > config->httpRetries) {  /* verify minimum value */
             config->httpRetries = 1;
@@ -553,7 +553,8 @@ char           *config_to_json(void)
     if (ConfigData->LogFile) {
         json_append_member(jsonRoot, "LogFile", json_mkstring(ConfigData->LogFile));
     }
-    json_append_member(jsonRoot, "LogFileIndex", json_mknumber(ConfigData->LogFileIndex));
+    /* NOTE: LogFileIndex is NOT saved to config - it's managed by logging.c
+     * in a separate <LogFile>.index file */
     if (ConfigData->httpRetries) {
         json_append_member(jsonRoot, "httpRetries", json_mknumber(ConfigData->httpRetries));
     }

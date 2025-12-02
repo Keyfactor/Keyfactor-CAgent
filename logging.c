@@ -15,6 +15,7 @@
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
+#include <limits.h>
 #include "logging.h"
 #include "config.h"
 #include "utils.h"
@@ -41,9 +42,10 @@
 /******************************************************************************/
 /************************** LOCAL GLOBAL VARIABLES ****************************/
 /******************************************************************************/
-static char    *log_head = NULL;
-static char    *log_tail = NULL;
+static char*    log_head = NULL;
+static char*    log_tail = NULL;
 static bool     log_is_dirty = false;
+static size_t   log_file_index = 0;  /* Current write position in log file */
 
 static bool     _trace = false;
 static bool     _debug = false;
@@ -64,8 +66,7 @@ static char     timeBuf[LOG_HEAD_SIZE];
 /* @param  const char *logLevel = the log level of the message                */
 /* @return none                                                               */
 /*                                                                            */
-static inline void get_log_format(char *buf, const char *msgFormat,
-                                  const char *logLevel)
+static inline void get_log_format(char *buf, const char *msgFormat, const char *logLevel)
 {
     time_t t = time(NULL);
     struct tm *tm = gmtime(&t);
@@ -76,6 +77,158 @@ static inline void get_log_format(char *buf, const char *msgFormat,
         (void)snprintf(buf, MAX_LOG_SIZE, "[%s] - %s - %s\n", timeBuf, logLevel, msgFormat);
     }
 } /* get_log_format */
+
+/**
+ * @brief Load the LogFileIndex from the .index file
+ *
+ * Reads the write position from a separate .index file that persists
+ * independently of the config file.
+ *
+ * @return The LogFileIndex value from the .index file, or 0 if file doesn't exist
+ */
+static size_t load_log_index(void)
+{
+    if (!ConfigData->LogFile) {
+        return 0;
+    }
+
+    char indexPath[PATH_MAX];
+    snprintf(indexPath, sizeof(indexPath), "%s.index", ConfigData->LogFile);
+
+    FILE *fp = fopen(indexPath, "r");
+    if (fp) {
+        size_t index = 0;
+        if (fscanf(fp, "%zu", &index) == 1) {
+            fclose(fp);
+            printf("%s::%s(%d) : Loaded LogFileIndex from .index file: %lu\n",
+                   LOG_INF, index);
+            return index;
+        }
+        fclose(fp);
+    }
+    return 0;
+} /* load_log_index */
+
+/**
+ * @brief Save the LogFileIndex to the .index file
+ *
+ * Persists the current write position to a separate .index file.
+ * This survives config file resets.
+ *
+ * @return None
+ */
+static void save_log_index(void)
+{
+    if (!ConfigData->LogFile) {
+        return;
+    }
+
+    char indexPath[PATH_MAX];
+    snprintf(indexPath, sizeof(indexPath), "%s.index", ConfigData->LogFile);
+
+    FILE *fp = fopen(indexPath, "w");
+    if (fp) {
+        fprintf(fp, "%zu\n", log_file_index);
+        fclose(fp);
+        printf("%s::%s(%d) : Saved LogFileIndex to .index file: %lu\n",
+               LOG_INF, log_file_index);
+    } else {
+        printf("%s::%s(%d) : WARNING: Failed to save .index file\n", LOG_INF);
+    }
+} /* save_log_index */
+
+/**
+ * @brief Validate and correct LogFileIndex based on actual file size
+ *
+ * Implements self-healing logic to recover from config resets or file
+ * truncation. Uses .index file as primary source, config as fallback,
+ * and validates against actual file size.
+ *
+ * @param[in] fp File pointer to the log file (positioned at end)
+ * @param[in] actualLogSize Actual size of the log file in bytes
+ * @return None (updates ConfigData->LogFileIndex directly)
+ */
+static void validate_and_correct_log_index(FILE *fp, size_t actualLogSize)
+{
+    size_t indexFromFile = load_log_index();
+    bool indexCorrected = false;
+
+    printf("%s::%s(%d) : Validating LogFileIndex...\n", LOG_INF);
+    printf("%s::%s(%d) :   Actual file size: %lu\n", LOG_INF, actualLogSize);
+    printf("%s::%s(%d) :   Index from .index file: %lu\n", LOG_INF, indexFromFile);
+
+    /* Use .index file if it exists and is valid */
+    if (indexFromFile > 0) {
+        if (indexFromFile > MAX_FILE_SIZE) {
+            printf("%s::%s(%d) : ERROR: .index file has invalid value (%lu > %lu), ignoring\n",
+                   LOG_INF, indexFromFile, MAX_FILE_SIZE);
+            log_file_index = 0;
+        } else {
+            printf("%s::%s(%d) : Using LogFileIndex from .index file: %lu\n",
+                   LOG_INF, indexFromFile);
+            log_file_index = indexFromFile;
+        }
+    } else {
+        /* No .index file exists - start at 0 */
+        log_file_index = 0;
+    }
+
+    /* Validate the index against actual file size */
+    if (log_file_index > MAX_FILE_SIZE) {
+        printf("%s::%s(%d) : ERROR: LogFileIndex (%lu) exceeds MAX_FILE_SIZE (%lu), resetting to 0\n",
+               LOG_INF, log_file_index, MAX_FILE_SIZE);
+        log_file_index = 0;
+        indexCorrected = true;
+    }
+    /* File hasn't wrapped yet (size < MAX_FILE_SIZE) */
+    else if (actualLogSize < MAX_FILE_SIZE) {
+        /* Index points beyond actual file - file was truncated */
+        if (log_file_index > actualLogSize) {
+            printf("%s::%s(%d) : WARNING: LogFileIndex (%lu) > file size (%lu), file may have been truncated\n",
+                   LOG_INF, log_file_index, actualLogSize);
+            printf("%s::%s(%d) :          Resetting to end of file\n", LOG_INF);
+            log_file_index = actualLogSize;
+            indexCorrected = true;
+        }
+        /* Index is 0 but file has data - .index was deleted/missing */
+        else if (log_file_index == 0 && actualLogSize > 0) {
+            printf("%s::%s(%d) : WARNING: LogFileIndex is 0 but file has %lu bytes\n",
+                   LOG_INF, actualLogSize);
+            printf("%s::%s(%d) :          .index file may be missing. Resuming at end of file\n", LOG_INF);
+            log_file_index = actualLogSize;
+            indexCorrected = true;
+        }
+        /* Valid case: 0 <= index <= actualLogSize */
+        else {
+            printf("%s::%s(%d) : LogFileIndex is valid (%lu <= %lu)\n",
+                   LOG_INF, log_file_index, actualLogSize);
+        }
+    }
+    /* File is at or above MAX_FILE_SIZE (circular buffer is active) */
+    else if (actualLogSize >= MAX_FILE_SIZE) {
+        if (log_file_index > MAX_FILE_SIZE) {
+            printf("%s::%s(%d) : ERROR: LogFileIndex (%lu) exceeds MAX_FILE_SIZE (%lu), resetting to 0\n",
+                   LOG_INF, log_file_index, MAX_FILE_SIZE);
+            log_file_index = 0;
+            indexCorrected = true;
+        } else if (log_file_index == 0 && indexFromFile == 0) {
+            printf("%s::%s(%d) : WARNING: Log file is at maximum size (%lu bytes) and LogFileIndex is 0\n",
+                   LOG_INF, actualLogSize);
+            printf("%s::%s(%d) :          Circular buffer is active. .index file may be missing.\n", LOG_INF);
+            printf("%s::%s(%d) :          Some old logs may be overwritten.\n", LOG_INF);
+            /* Keep LogFileIndex = 0, but warn user */
+        } else {
+            printf("%s::%s(%d) : Circular buffer active. Using LogFileIndex %lu in %lu byte file\n",
+                   LOG_INF, log_file_index, actualLogSize);
+        }
+    }
+
+    /* Save corrected value to .index file */
+    if (indexCorrected) {
+        printf("%s::%s(%d) : LogFileIndex corrected to %lu\n", LOG_INF, log_file_index);
+        save_log_index();
+    }
+} /* validate_and_correct_log_index */
 
 /*                                                                            */
 /* local-only function to print a message                                     */
@@ -118,27 +271,32 @@ static void write_heap_to_disk(void)
             fseek(fp, 0ul, SEEK_END);
             size_t actualLogSize = ftell(fp);
             printf("%s::%s(%d) : Opened log file with size %lu\n", LOG_INF, actualLogSize);
-            fseek(fp, ConfigData->LogFileIndex, SEEK_SET);
+            
+            /* Validate and correct LogFileIndex if needed */
+            validate_and_correct_log_index(fp, actualLogSize);
+            
+            fseek(fp, log_file_index, SEEK_SET);
             size_t writeLen = log_tail - log_head;
-            size_t logFileTest = (ConfigData->LogFileIndex + writeLen);
-            printf("%s::%s(%d) : writing %lu bytes to log at index of %lu\n", LOG_INF, writeLen, ConfigData->LogFileIndex);
+            size_t logFileTest = (log_file_index + writeLen);
+            printf("%s::%s(%d) : writing %lu bytes to log at index of %lu\n", LOG_INF, writeLen, log_file_index);
             printf("%s::%s(%d) : MAX_FILE_SIZE = %lu\n", LOG_INF, MAX_FILE_SIZE);
             if (MAX_FILE_SIZE > logFileTest) {
                 printf("%s::%s(%d) : Writing %lu bytes to disk\n", LOG_INF, writeLen);
                 size_t chars_written = fwrite((void *)log_head, sizeof(*log_head), writeLen, fp);
-                ConfigData->LogFileIndex += chars_written;
+                log_file_index += chars_written;
                 log_tail = log_head;
             } else {
                 printf("%s::%s(%d) : Log file write of %lu creates wrap of log file\n", LOG_INF, writeLen);
-                size_t toEOF = MAX_FILE_SIZE - ConfigData->LogFileIndex;
+                size_t toEOF = MAX_FILE_SIZE - log_file_index;
                 size_t chars_written = fwrite((void *)log_head, sizeof(*log_head), toEOF, fp);
                 fseek(fp, 0, SEEK_SET); /* reset to beginning of file */
                 size_t new_chars_written = fwrite((void *)(log_head + chars_written + 1), sizeof(*log_head), (writeLen - chars_written), fp);
-                ConfigData->LogFileIndex = new_chars_written;
+                log_file_index = new_chars_written;
                 log_tail = log_head;
             }
 
-            config_save();
+            /* Save to .index file only */
+            save_log_index();
             fclose(fp);
         } else {
             printf("******* Error opening log file %s\n **************", ConfigData->LogFile);

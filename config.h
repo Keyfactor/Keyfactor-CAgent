@@ -42,7 +42,6 @@ typedef struct {
 	int    httpRetries; /**< # of times to retry a failed HTTP connection */
 	int    retryInterval; /**< Interval (in seconds) between HTTP retries */
 	char*  LogFile; /**< File where agent logs are stored. */
-    size_t LogFileIndex; /**< Last byte written to the log file */
 	bool   UseAgentCert; /**< true = the agent uses a cert for mTLS authentication, false = no mTLS is used */
 } ConfigData_t;
 
