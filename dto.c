@@ -35,6 +35,13 @@
 /******************************************************************************/
 /************************ LOCAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
+
+/**
+ * @brief Free memory allocated for an AgentApiResult structure
+ *
+ * @param[in] result The AgentApiResult structure to free
+ * @return None
+ */
 static void AgentApiResult_free(AgentApiResult_t result)
 {
     if (result.Error.Message) {
@@ -47,6 +54,12 @@ static void AgentApiResult_free(AgentApiResult_t result)
     }
 } /* AgentApiResult_free */
 
+/**
+ * @brief Parse an AgentApiResult from a JSON node
+ *
+ * @param[in] jsonResult JSON node containing the result data
+ * @return AgentApiResult_t structure populated from JSON
+ */
 static AgentApiResult_t AgentApiResult_fromJsonNode(JsonNode * jsonResult) {
     AgentApiResult_t result;
     JsonNode *jsonError = NULL;
@@ -81,6 +94,14 @@ static AgentApiResult_t AgentApiResult_fromJsonNode(JsonNode * jsonResult) {
     return result;
 } /* AgentApiResult_fromJsonNode */
 
+/**
+ * @brief Log an AgentApiResult and update status/message
+ *
+ * @param[in] result The AgentApiResult to log
+ * @param[in,out] pMessage Pointer to message string to append error details
+ * @param[in,out] pStatus Pointer to status to update if result status is worse
+ * @return true if result status is success, false if error or warning
+ */
 bool AgentApiResult_log(AgentApiResult_t result,
                         char **pMessage, enum AgentApiResultStatus *pStatus)
 {
@@ -134,6 +155,13 @@ bool AgentApiResult_log(AgentApiResult_t result,
     }
 } /* AgentApiResult_log */
 
+/**
+ * @brief Allocate and initialize a new ClientParameter structure
+ *
+ * @param[in] key The parameter key string (will be duplicated)
+ * @param[in] value The parameter value string (will be duplicated)
+ * @return Pointer to newly allocated ClientParameter_t, or NULL on failure
+ */
 static ClientParameter_t * ClientParameter_new(const char *key,
                                                const char *value){
     ClientParameter_t *cp = calloc(1, sizeof(ClientParameter_t));
@@ -166,6 +194,12 @@ static ClientParameter_t * ClientParameter_new(const char *key,
     return cp;
 } /* ClientParameter_new */
 
+/**
+ * @brief Free memory allocated for a ClientParameter structure
+ *
+ * @param[in] cliParam Pointer to ClientParameter to free
+ * @return None
+ */
 static void ClientParameter_free(ClientParameter_t * cliParam)
 {
     if (cliParam) {
@@ -181,18 +215,17 @@ static void ClientParameter_free(ClientParameter_t * cliParam)
     }
 } /* ClientParameter_free */
 
-/*                                                                            */
-/* Add an additional ClientParameter to the session after the                 */
-/* ClientParameterPath has been processed.                                    */
-/*                                                                            */
-/* @param  - [Input/Output] req: A pointer to the SessionRegisterRequest      */
-/* @param  - [Input] key: The string to add to the key variable client        */
-/* parameter                                                                  */
-/* @param  - [Input] value: The string to add to the value variable client    */
-/* parameter                                                                  */
-/* @return - Success: true                                                    */
-/* Failure: false                                                             */
-/*                                                                            */
+/**
+ * @brief Add an additional ClientParameter to the session request
+ *
+ * Add a new key-value pair to the ClientParameters array after the
+ * ClientParameterPath has been processed.
+ *
+ * @param[in,out] req Pointer to the SessionRegisterRequest to modify
+ * @param[in] key The parameter key string
+ * @param[in] value The parameter value string
+ * @return true on success, false on failure
+ */
 bool SessionRegisterReq_addNewClientParameter(SessionRegisterReq_t * req,
                                          const char *key, const char *value)
 {
@@ -234,6 +267,15 @@ bool SessionRegisterReq_addNewClientParameter(SessionRegisterReq_t * req,
     return bResult;
 } /* SessionRegisterReq_addNewClientParameter */
 
+/**
+ * @brief Allocate and initialize a new SessionRegisterRequest structure
+ *
+ * Creates a new session registration request and optionally loads client
+ * parameters from a JSON file.
+ *
+ * @param[in] clientParamPath Path to JSON file containing client parameters (optional)
+ * @return Pointer to newly allocated SessionRegisterReq_t, or NULL on failure
+ */
 SessionRegisterReq_t *SessionRegisterReq_new(char *clientParamPath)
 {
     SessionRegisterReq_t *req = calloc(1, sizeof(*req));
@@ -299,6 +341,12 @@ SessionRegisterReq_t *SessionRegisterReq_new(char *clientParamPath)
     return req;
 } /* SessionRegisterReq_new */
 
+/**
+ * @brief Free memory allocated for a SessionRegisterRequest structure
+ *
+ * @param[in] req Pointer to SessionRegisterReq_t to free
+ * @return None
+ */
 void SessionRegisterReq_free(SessionRegisterReq_t * req)
 {
     if (req) {
@@ -344,6 +392,12 @@ void SessionRegisterReq_free(SessionRegisterReq_t * req)
     }
 } /* SessionRegisterReq_free */
 
+/**
+ * @brief Convert a SessionRegisterRequest to JSON string
+ *
+ * @param[in] req Pointer to SessionRegisterReq_t to serialize
+ * @return Newly allocated JSON string, or NULL on failure. Caller must free.
+ */
 char *SessionRegisterReq_toJson(SessionRegisterReq_t * req)
 {
     char *jsonString = NULL;
@@ -414,7 +468,12 @@ char *SessionRegisterReq_toJson(SessionRegisterReq_t * req)
     return jsonString;
 } /* SessionRegisterReq_toJson */
 
-
+/**
+ * @brief Free memory allocated for a SessionJob structure
+ *
+ * @param[in] job Pointer to SessionJob_t to free
+ * @return None
+ */
 void SessionJob_free(SessionJob_t * job)
 {
     if (job) {
@@ -446,6 +505,15 @@ void SessionJob_free(SessionJob_t * job)
     }
 } /* SessionJob_free */
 
+/**
+ * @brief Free all jobs in a SessionRegisterResponse
+ *
+ * Frees the Jobs array and all individual SessionJob structures within
+ * the response, but does not free the response itself.
+ *
+ * @param[in,out] resp Pointer to SessionRegisterResp_t containing jobs to free
+ * @return None
+ */
 void SessionRegisterResp_freeJobs(SessionRegisterResp_t * resp)
 {
     int lp = 0;
@@ -473,6 +541,15 @@ void SessionRegisterResp_freeJobs(SessionRegisterResp_t * resp)
     return;
 } /* SessionRegisterResp_freeJobs */
 
+/**
+ * @brief Free memory allocated for a SessionRegisterResponse structure
+ *
+ * Note: This does NOT free the Jobs array. Call SessionRegisterResp_freeJobs()
+ * first if jobs need to be freed.
+ *
+ * @param[in] resp Pointer to SessionRegisterResp_t to free
+ * @return None
+ */
 void SessionRegisterResp_free(SessionRegisterResp_t * resp)
 {
     if (resp) {
@@ -525,6 +602,12 @@ void SessionRegisterResp_free(SessionRegisterResp_t * resp)
     }
 } /* SessionRegisterResp_free */
 
+/**
+ * @brief Parse a SessionJob from a JSON node
+ *
+ * @param[in] jsonJob JSON node containing the job data
+ * @return Pointer to newly allocated SessionJob_t, or NULL on failure
+ */
 static SessionJob_t* SessionJob_fromJsonNode(JsonNode * jsonJob) {
     SessionJob_t *job = NULL;
     if (jsonJob) {
@@ -547,6 +630,12 @@ static SessionJob_t* SessionJob_fromJsonNode(JsonNode * jsonJob) {
     return job;
 } /* SessionJob_fromJsonNode */
 
+/**
+ * @brief Parse a SessionRegisterResponse from JSON string
+ *
+ * @param[in] jsonString JSON string to parse
+ * @return Pointer to newly allocated SessionRegisterResp_t, or NULL on failure
+ */
 SessionRegisterResp_t *SessionRegisterResp_fromJson(char *jsonString)
 {
     JsonNode *jsonRoot = NULL;
@@ -650,11 +739,22 @@ SessionRegisterResp_t *SessionRegisterResp_fromJson(char *jsonString)
     return resp;
 } /* SessionRegisterResp_fromJson */
 
+/**
+ * @brief Allocate and initialize a new CommonConfigRequest structure
+ *
+ * @return Pointer to newly allocated CommonConfigReq_t, or NULL on failure
+ */
 CommonConfigReq_t *CommonConfigReq_new()
 {
     return calloc(1, sizeof(CommonConfigReq_t));
 } /* CommonConfigReq_new */
 
+/**
+ * @brief Free memory allocated for a CommonConfigRequest structure
+ *
+ * @param[in] req Pointer to CommonConfigReq_t to free
+ * @return None
+ */
 void CommonConfigReq_free(CommonConfigReq_t * req)
 {
     if (req) {
@@ -670,6 +770,12 @@ void CommonConfigReq_free(CommonConfigReq_t * req)
     }
 } /* CommonConfigReq_free */
 
+/**
+ * @brief Convert a CommonConfigRequest to JSON string
+ *
+ * @param[in] req Pointer to CommonConfigReq_t to serialize
+ * @return Newly allocated JSON string, or NULL on failure. Caller must free.
+ */
 char *CommonConfigReq_toJson(CommonConfigReq_t * req)
 {
     char *jsonString = NULL;
@@ -695,11 +801,22 @@ char *CommonConfigReq_toJson(CommonConfigReq_t * req)
     return jsonString;
 } /* CommonConfigReq_toJson */
 
+/**
+ * @brief Allocate and initialize a new CommonCompleteRequest structure
+ *
+ * @return Pointer to newly allocated CommonCompleteReq_t, or NULL on failure
+ */
 CommonCompleteReq_t *CommonCompleteReq_new()
 {
     return calloc(1, sizeof(CommonCompleteReq_t));
 } /* CommonCompleteReq_new */
 
+/**
+ * @brief Free memory allocated for a CommonCompleteRequest structure
+ *
+ * @param[in] req Pointer to CommonCompleteReq_t to free
+ * @return None
+ */
 void CommonCompleteReq_free(CommonCompleteReq_t * req)
 {
     if (req) {
@@ -719,6 +836,12 @@ void CommonCompleteReq_free(CommonCompleteReq_t * req)
     }
 } /* CommonCompleteReq_free */
 
+/**
+ * @brief Convert a CommonCompleteRequest to JSON string
+ *
+ * @param[in] req Pointer to CommonCompleteReq_t to serialize
+ * @return Newly allocated JSON string, or NULL on failure. Caller must free.
+ */
 char *CommonCompleteReq_toJson(CommonCompleteReq_t * req)
 {
     char *jsonString = NULL;
@@ -755,6 +878,12 @@ char *CommonCompleteReq_toJson(CommonCompleteReq_t * req)
     return jsonString;
 } /* CommonCompleteReq_toJson */
 
+/**
+ * @brief Free memory allocated for a CommonCompleteResponse structure
+ *
+ * @param[in] resp Pointer to CommonCompleteResp_t to free
+ * @return None
+ */
 void CommonCompleteResp_free(CommonCompleteResp_t * resp)
 {
     if (resp) {
@@ -763,6 +892,12 @@ void CommonCompleteResp_free(CommonCompleteResp_t * resp)
     }
 } /* CommonCompleteResp_free */
 
+/**
+ * @brief Parse a CommonCompleteResponse from JSON string
+ *
+ * @param[in] jsonString JSON string to parse
+ * @return Pointer to newly allocated CommonCompleteResp_t, or NULL on failure
+ */
 CommonCompleteResp_t *CommonCompleteResp_fromJson(char *jsonString)
 {
     CommonCompleteResp_t *resp = NULL;
@@ -788,6 +923,12 @@ CommonCompleteResp_t *CommonCompleteResp_fromJson(char *jsonString)
     return resp;
 } /* CommonCompleteResp_fromJson */
 
+/**
+ * @brief Free memory allocated for a ManagementConfigResponse structure
+ *
+ * @param[in] resp Pointer to ManagementConfigResp_t to free
+ * @return None
+ */
 void ManagementConfigResp_free(ManagementConfigResp_t * resp)
 {
     if (resp) {
@@ -832,6 +973,12 @@ void ManagementConfigResp_free(ManagementConfigResp_t * resp)
     }
 } /* ManagementConfigResp_free */
 
+/**
+ * @brief Parse a ManagementConfigResponse from JSON string
+ *
+ * @param[in] jsonString JSON string to parse
+ * @return Pointer to newly allocated ManagementConfigResp_t, or NULL on failure
+ */
 ManagementConfigResp_t *ManagementConfigResp_fromJson(char *jsonString)
 {
     ManagementConfigResp_t *resp = NULL;
@@ -900,6 +1047,12 @@ ManagementConfigResp_t *ManagementConfigResp_fromJson(char *jsonString)
     return resp;
 } /* ManagementConfigResp_fromJson */
 
+/**
+ * @brief Free memory allocated for a ManagementCompleteResponse structure
+ *
+ * @param[in] resp Pointer to ManagementCompleteResp_t to free
+ * @return None
+ */
 void ManagementCompleteResp_free(ManagementCompleteResp_t * resp)
 {
     if (resp) {
@@ -914,6 +1067,12 @@ void ManagementCompleteResp_free(ManagementCompleteResp_t * resp)
     }
 } /* ManagementCompleteResp_free */
 
+/**
+ * @brief Parse a ManagementCompleteResponse from JSON string
+ *
+ * @param[in] jsonString JSON string to parse
+ * @return Pointer to newly allocated ManagementCompleteResp_t, or NULL on failure
+ */
 ManagementCompleteResp_t *ManagementCompleteResp_fromJson(char *jsonString)
 {
     ManagementCompleteResp_t *resp = NULL;
@@ -942,6 +1101,12 @@ ManagementCompleteResp_t *ManagementCompleteResp_fromJson(char *jsonString)
     return resp;
 } /* ManagementCompleteResp_fromJson */
 
+/**
+ * @brief Free memory allocated for an InventoryCurrentItem structure
+ *
+ * @param[in] item Pointer to InventoryCurrentItem_t to free
+ * @return None
+ */
 static void InventoryCurrentItem_free(InventoryCurrentItem_t * item)
 {
     if (item) {
@@ -961,6 +1126,12 @@ static void InventoryCurrentItem_free(InventoryCurrentItem_t * item)
     }
 } /* InventoryCurrentItem_free */
 
+/**
+ * @brief Parse an InventoryCurrentItem from a JSON node
+ *
+ * @param[in] node JSON node containing the inventory item data
+ * @return Pointer to newly allocated InventoryCurrentItem_t, or NULL on failure
+ */
 static InventoryCurrentItem_t *
 InventoryCurrentItem_fromJsonNode(JsonNode * node) {
     InventoryCurrentItem_t *result = NULL;
@@ -993,6 +1164,12 @@ InventoryCurrentItem_fromJsonNode(JsonNode * node) {
     return result;
 } /* InventoryCurrentItem_fromJsonNode */
 
+/**
+ * @brief Free memory allocated for an InventoryConfigResponse structure
+ *
+ * @param[in] resp Pointer to InventoryConfigResp_t to free
+ * @return None
+ */
 void InventoryConfigResp_free(InventoryConfigResp_t * resp)
 {
     if (resp) {
@@ -1025,6 +1202,12 @@ void InventoryConfigResp_free(InventoryConfigResp_t * resp)
     }
 } /* InventoryConfigResp_free */
 
+/**
+ * @brief Parse an InventoryConfigResponse from JSON string
+ *
+ * @param[in] jsonString JSON string to parse
+ * @return Pointer to newly allocated InventoryConfigResp_t, or NULL on failure
+ */
 InventoryConfigResp_t *InventoryConfigResp_fromJson(char *jsonString)
 {
     InventoryConfigResp_t *resp = NULL;
@@ -1088,6 +1271,12 @@ InventoryConfigResp_t *InventoryConfigResp_fromJson(char *jsonString)
     return resp;
 } /* InventoryConfigResp_fromJson */
 
+/**
+ * @brief Free memory allocated for an InventoryUpdateItem structure
+ *
+ * @param[in] item Pointer to InventoryUpdateItem_t to free
+ * @return None
+ */
 static void InventoryUpdateItem_free(InventoryUpdateItem_t * item)
 {
     if (item) {
@@ -1107,6 +1296,12 @@ static void InventoryUpdateItem_free(InventoryUpdateItem_t * item)
     }
 } /* InventoryUpdateItem_free */
 
+/**
+ * @brief Convert an InventoryUpdateItem to a JSON node
+ *
+ * @param[in] updateItem Pointer to InventoryUpdateItem_t to serialize
+ * @return Newly allocated JSON node, or NULL on failure
+ */
 static JsonNode *
 InventoryUpdateItem_toJsonNode(InventoryUpdateItem_t * updateItem) {
     JsonNode *result = NULL;
@@ -1139,6 +1334,12 @@ InventoryUpdateItem_toJsonNode(InventoryUpdateItem_t * updateItem) {
     return result;
 } /* InventoryUpdateItem_toJsonNode */
 
+/**
+ * @brief Free memory allocated for an InventoryUpdateRequest structure
+ *
+ * @param[in] req Pointer to InventoryUpdateReq_t to free
+ * @return None
+ */
 void InventoryUpdateReq_free(InventoryUpdateReq_t * req)
 {
     if (req) {
@@ -1159,6 +1360,12 @@ void InventoryUpdateReq_free(InventoryUpdateReq_t * req)
     }
 } /* InventoryUpdateReq_free */
 
+/**
+ * @brief Convert an InventoryUpdateRequest to JSON string
+ *
+ * @param[in] req Pointer to InventoryUpdateReq_t to serialize
+ * @return Newly allocated JSON string, or NULL on failure. Caller must free.
+ */
 char           *InventoryUpdateReq_toJson(InventoryUpdateReq_t * req)
 {
     char *jsonString = NULL;
@@ -1192,6 +1399,12 @@ char           *InventoryUpdateReq_toJson(InventoryUpdateReq_t * req)
     return jsonString;
 } /* InventoryUpdateReq_toJson */
 
+/**
+ * @brief Free memory allocated for an InventoryUpdateResponse structure
+ *
+ * @param[in] resp Pointer to InventoryUpdateResp_t to free
+ * @return None
+ */
 void InventoryUpdateResp_free(InventoryUpdateResp_t * resp)
 {
     if (resp) {
@@ -1200,6 +1413,12 @@ void InventoryUpdateResp_free(InventoryUpdateResp_t * resp)
     }
 } /* InventoryUpdateResp_free */
 
+/**
+ * @brief Parse an InventoryUpdateResponse from JSON string
+ *
+ * @param[in] jsonString JSON string to parse
+ * @return Pointer to newly allocated InventoryUpdateResp_t, or NULL on failure
+ */
 InventoryUpdateResp_t *InventoryUpdateResp_fromJson(char *jsonString)
 {
     InventoryUpdateResp_t *resp = NULL;
@@ -1225,6 +1444,12 @@ InventoryUpdateResp_t *InventoryUpdateResp_fromJson(char *jsonString)
     return resp;
 } /* InventoryUpdateResp_fromJson */
 
+/**
+ * @brief Free memory allocated for an EnrollmentConfigResponse structure
+ *
+ * @param[in] resp Pointer to EnrollmentConfigResp_t to free
+ * @return None
+ */
 void EnrollmentConfigResp_free(EnrollmentConfigResp_t * resp)
 {
     if (resp) {
@@ -1270,6 +1495,12 @@ void EnrollmentConfigResp_free(EnrollmentConfigResp_t * resp)
     }
 } /* EnrollmentConfigResp_free */
 
+/**
+ * @brief Parse an EnrollmentConfigResponse from JSON string
+ *
+ * @param[in] jsonString JSON string to parse
+ * @return Pointer to newly allocated EnrollmentConfigResp_t, or NULL on failure
+ */
 EnrollmentConfigResp_t *EnrollmentConfigResp_fromJson(char *jsonString)
 {
     EnrollmentConfigResp_t *resp = NULL;
@@ -1367,6 +1598,12 @@ EnrollmentConfigResp_t *EnrollmentConfigResp_fromJson(char *jsonString)
     return resp;
 } /* EnrollmentConfigResp_fromJson */
 
+/**
+ * @brief Free memory allocated for an EnrollmentEnrollRequest structure
+ *
+ * @param[in] req Pointer to EnrollmentEnrollReq_t to free
+ * @return None
+ */
 void EnrollmentEnrollReq_free(EnrollmentEnrollReq_t * req)
 {
     if (req) {
@@ -1389,6 +1626,12 @@ void EnrollmentEnrollReq_free(EnrollmentEnrollReq_t * req)
     }
 } /* EnrollmentEnrollReq_free */
 
+/**
+ * @brief Convert an EnrollmentEnrollRequest to JSON string
+ *
+ * @param[in] req Pointer to EnrollmentEnrollReq_t to serialize
+ * @return Newly allocated JSON string, or NULL on failure. Caller must free.
+ */
 char           *EnrollmentEnrollReq_toJson(EnrollmentEnrollReq_t * req)
 {
     char *jsonString = NULL;
@@ -1421,6 +1664,12 @@ char           *EnrollmentEnrollReq_toJson(EnrollmentEnrollReq_t * req)
     return jsonString;
 } /* EnrollmentEnrollReq_toJson */
 
+/**
+ * @brief Free memory allocated for an EnrollmentEnrollResponse structure
+ *
+ * @param[in] resp Pointer to EnrollmentEnrollResp_t to free
+ * @return None
+ */
 void EnrollmentEnrollResp_free(EnrollmentEnrollResp_t * resp)
 {
     if (resp) {
@@ -1435,6 +1684,12 @@ void EnrollmentEnrollResp_free(EnrollmentEnrollResp_t * resp)
     }
 } /* EnrollmentEnrollResp_free */
 
+/**
+ * @brief Parse an EnrollmentEnrollResponse from JSON string
+ *
+ * @param[in] jsonString JSON string to parse
+ * @return Pointer to newly allocated EnrollmentEnrollResp_t, or NULL on failure
+ */
 EnrollmentEnrollResp_t *EnrollmentEnrollResp_fromJson(char *jsonString)
 {
     EnrollmentEnrollResp_t *resp = NULL;
@@ -1462,6 +1717,12 @@ EnrollmentEnrollResp_t *EnrollmentEnrollResp_fromJson(char *jsonString)
     return resp;
 } /* EnrollmentEnrollResp_fromJson */
 
+/**
+ * @brief Free memory allocated for an EnrollmentCompleteResponse structure
+ *
+ * @param[in] resp Pointer to EnrollmentCompleteResp_t to free
+ * @return None
+ */
 void EnrollmentCompleteResp_free(EnrollmentCompleteResp_t * resp)
 {
     if (resp) {
@@ -1476,6 +1737,12 @@ void EnrollmentCompleteResp_free(EnrollmentCompleteResp_t * resp)
     }
 } /* EnrollmentCompleteResp_free */
 
+/**
+ * @brief Parse an EnrollmentCompleteResponse from JSON string
+ *
+ * @param[in] jsonString JSON string to parse
+ * @return Pointer to newly allocated EnrollmentCompleteResp_t, or NULL on failure
+ */
 EnrollmentCompleteResp_t *EnrollmentCompleteResp_fromJson(char *jsonString)
 {
     EnrollmentCompleteResp_t *resp = NULL;
@@ -1504,6 +1771,12 @@ EnrollmentCompleteResp_t *EnrollmentCompleteResp_fromJson(char *jsonString)
     return resp;
 } /* EnrollmentCompleteResp_fromJson */
 
+/**
+ * @brief Free memory allocated for a FetchLogsConfigResponse structure
+ *
+ * @param[in] resp Pointer to FetchLogsConfigResp_t to free
+ * @return None
+ */
 void FetchLogsConfigResp_free(FetchLogsConfigResp_t * resp)
 {
     if (resp) {
@@ -1513,6 +1786,12 @@ void FetchLogsConfigResp_free(FetchLogsConfigResp_t * resp)
     }
 } /* FetchLogsConfigResp_free */
 
+/**
+ * @brief Parse a FetchLogsConfigResponse from JSON string
+ *
+ * @param[in] jsonString JSON string to parse
+ * @return Pointer to newly allocated FetchLogsConfigResp_t, or NULL on failure
+ */
 FetchLogsConfigResp_t *FetchLogsConfigResp_fromJson(char *jsonString)
 {
     log_verbose("%s::%s(%d) : jsonString: %s",
@@ -1544,6 +1823,12 @@ FetchLogsConfigResp_t *FetchLogsConfigResp_fromJson(char *jsonString)
     return resp;
 } /* FetchLogsConfigResp_fromJson */
 
+/**
+ * @brief Free memory allocated for a FetchLogsCompleteRequest structure
+ *
+ * @param[in] req Pointer to FetchLogsCompleteReq_t to free
+ * @return None
+ */
 void FetchLogsCompleteReq_free(FetchLogsCompleteReq_t * req)
 {
     if (req) {
@@ -1567,6 +1852,12 @@ void FetchLogsCompleteReq_free(FetchLogsCompleteReq_t * req)
     }
 } /* FetchLogsCompleteReq_free */
 
+/**
+ * @brief Convert a FetchLogsCompleteRequest to JSON string
+ *
+ * @param[in] req Pointer to FetchLogsCompleteReq_t to serialize
+ * @return Newly allocated JSON string, or NULL on failure. Caller must free.
+ */
 char           *FetchLogsCompleteReq_toJson(FetchLogsCompleteReq_t * req)
 {
     char *jsonString = NULL;
@@ -1609,6 +1900,11 @@ char           *FetchLogsCompleteReq_toJson(FetchLogsCompleteReq_t * req)
     return jsonString;
 } /* FetchLogsCompleteReq_toJson */
 
+/**
+ * @brief Allocate and initialize a new FetchLogsCompleteRequest structure
+ *
+ * @return Pointer to newly allocated FetchLogsCompleteReq_t, or NULL on failure
+ */
 FetchLogsCompleteReq_t *FetchLogsCompleteReq_new()
 {
     return calloc(1, sizeof(FetchLogsCompleteReq_t));

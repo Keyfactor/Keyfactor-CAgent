@@ -108,7 +108,7 @@ bool generate_keypair(const char *keyType, int keySize)
 /* @return - success : the CSR string minus the header and footer             */
 /* failure : NULL                                                             */
 /*                                                                            */
-char           *generate_csr(const char *asciiSubject, size_t * csrLen, char **pMessage,
+char* generate_csr(const char *asciiSubject, size_t * csrLen, char **pMessage,
                              enum AgentApiResultStatus *pStatus)
 {
     char *csrString = NULL;
