@@ -218,74 +218,79 @@ exit:
 /* @param  [Input] : a session response                                       */
 /* @return none                                                               */
 /*                                                                            */
-static void prioritize_jobs(ScheduledJob_t * *pJobList,
-                            SessionRegisterResp_t * response) {
-    int i;
-    SessionJob_t *job_to_schedule = NULL;
 
-    if (!pJobList || !response) {
-        log_error("%s::%s(%d) : Null pointer dereference - pJobList or response is NULL", LOG_INF);
-        return;
-    }
+static void prioritize_jobs(ScheduledJob_t **pJobList,
+                            SessionRegisterResp_t *response) {
+  int i;
+  SessionJob_t *job_to_schedule = NULL;
 
-    log_verbose("%s::%s(%d) : Prioritizing jobs", LOG_INF);
-
-    /* Store management ADD jobs */
-    for (i = 0; response->Session.Jobs_count > i; i++) {
-        job_to_schedule = response->Session.Jobs[i];
-        if (!job_to_schedule || !job_to_schedule->JobTypeId) {
-            log_warn("%s::%s(%d) : Null job or JobTypeId at index %d", LOG_INF, i);
-            continue;
-        }
-        if (0 == strcasecmp(CAP_PEM_MANAGEMENT, job_to_schedule->JobTypeId)) {
-            if (MANAGEMENT_ADD_PRIORITY == job_to_schedule->Priority) {
-                log_trace("%s::%s(%d) : Adding management ADD job %s", LOG_INF,
-                          job_to_schedule->JobId);
-                schedule_job(pJobList, job_to_schedule, time(NULL));
-            }
-        }
-    }
-    /* Reenrollment jobs */
-    for (i = 0; response->Session.Jobs_count > i; i++) {
-        job_to_schedule = response->Session.Jobs[i];
-        if (!job_to_schedule || !job_to_schedule->JobTypeId) {
-            log_warn("%s::%s(%d) : Null job or JobTypeId at index %d", LOG_INF, i);
-            continue;
-        }
-        if (0 == strcasecmp(CAP_PEM_REENROLLMENT, job_to_schedule->JobTypeId)) {
-            log_trace("%s::%s(%d) : Adding reenrollment job %s", LOG_INF, job_to_schedule->JobId);
-            schedule_job(pJobList, job_to_schedule, time(NULL));
-        }
-    }
-    /* Store management non-ADD jobs */
-    for (i = 0; response->Session.Jobs_count > i; i++) {
-        job_to_schedule = response->Session.Jobs[i];
-        if (!job_to_schedule || !job_to_schedule->JobTypeId) {
-            log_warn("%s::%s(%d) : Null job or JobTypeId at index %d", LOG_INF, i);
-            continue;
-        }
-        if (0 == strcasecmp(CAP_PEM_MANAGEMENT, job_to_schedule->JobTypeId)) {
-            if (MANAGEMENT_ADD_PRIORITY != job_to_schedule->Priority) {
-                log_trace("%s::%s(%d) : Adding management non-ADD job %s", LOG_INF, job_to_schedule->JobId);
-                schedule_job(pJobList, job_to_schedule, time(NULL));
-            }
-        }
-    }
-    /* Inventory jobs */
-    for (i = 0; response->Session.Jobs_count > i; i++) {
-        job_to_schedule = response->Session.Jobs[i];
-        if (!job_to_schedule || !job_to_schedule->JobTypeId) {
-            log_warn("%s::%s(%d) : Null job or JobTypeId at index %d", LOG_INF, i);
-            continue;
-        }
-        if (0 == strcasecmp(CAP_PEM_INVENTORY, job_to_schedule->JobTypeId)) {
-            log_trace("%s::%s(%d) : Adding inventory job %s", LOG_INF, job_to_schedule->JobId);
-            schedule_job(pJobList, job_to_schedule, time(NULL));
-        }
-    }
+  if (!pJobList || !response) {
+    log_error(
+        "%s::%s(%d) : Null pointer dereference - pJobList or response is NULL",
+        LOG_INF);
     return;
-} /* prioritize_jobs */
+  }
 
+  log_verbose("%s::%s(%d) : Prioritizing jobs", LOG_INF);
+
+  /* Store management ADD jobs */
+  for (i = 0; response->Session.Jobs_count > i; i++) {
+    job_to_schedule = response->Session.Jobs[i];
+    if (!job_to_schedule || !job_to_schedule->JobTypeId) {
+      log_warn("%s::%s(%d) : Null job or JobTypeId at index %d", LOG_INF, i);
+      continue;
+    }
+    if (0 == strcasecmp(CAP_PEM_MANAGEMENT, job_to_schedule->JobTypeId)) {
+      if (MANAGEMENT_ADD_PRIORITY == job_to_schedule->Priority) {
+        log_trace("%s::%s(%d) : Adding management ADD job %s", LOG_INF,
+                  job_to_schedule->JobId);
+        schedule_job(pJobList, job_to_schedule, time(NULL));
+      }
+    }
+  }
+  /* Reenrollment jobs */
+  for (i = 0; response->Session.Jobs_count > i; i++) {
+    job_to_schedule = response->Session.Jobs[i];
+    if (!job_to_schedule || !job_to_schedule->JobTypeId) {
+      log_warn("%s::%s(%d) : Null job or JobTypeId at index %d", LOG_INF, i);
+      continue;
+    }
+    if (0 == strcasecmp(CAP_PEM_REENROLLMENT, job_to_schedule->JobTypeId)) {
+      log_trace("%s::%s(%d) : Adding reenrollment job %s", LOG_INF,
+                job_to_schedule->JobId);
+      schedule_job(pJobList, job_to_schedule, time(NULL));
+    }
+  }
+  /* Store management non-ADD jobs */
+  for (i = 0; response->Session.Jobs_count > i; i++) {
+    job_to_schedule = response->Session.Jobs[i];
+    if (!job_to_schedule || !job_to_schedule->JobTypeId) {
+      log_warn("%s::%s(%d) : Null job or JobTypeId at index %d", LOG_INF, i);
+      continue;
+    }
+    if (0 == strcasecmp(CAP_PEM_MANAGEMENT, job_to_schedule->JobTypeId)) {
+      if (MANAGEMENT_ADD_PRIORITY != job_to_schedule->Priority) {
+        log_trace("%s::%s(%d) : Adding management non-ADD job %s", LOG_INF,
+                  job_to_schedule->JobId);
+        schedule_job(pJobList, job_to_schedule, time(NULL));
+      }
+    }
+  }
+  /* Inventory jobs */
+  for (i = 0; response->Session.Jobs_count > i; i++) {
+    job_to_schedule = response->Session.Jobs[i];
+    if (!job_to_schedule || !job_to_schedule->JobTypeId) {
+      log_warn("%s::%s(%d) : Null job or JobTypeId at index %d", LOG_INF, i);
+      continue;
+    }
+    if (0 == strcasecmp(CAP_PEM_INVENTORY, job_to_schedule->JobTypeId)) {
+      log_trace("%s::%s(%d) : Adding inventory job %s", LOG_INF,
+                job_to_schedule->JobId);
+      schedule_job(pJobList, job_to_schedule, time(NULL));
+    }
+  }
+  return;
+} /* prioritize_jobs */
 /*                                                                            */
 /* Add the capabilities allowed in this version of the agent by               */
 /* capability GUID defined in Keyfactor                                       */
@@ -964,12 +969,12 @@ int register_session(SessionInfo_t * session, ScheduledJob_t * *pJobList, uint64
     free(url);
     free(reqString);
     return 0;
-#else                           /* __DEBUG__ */
+#else /* __DEBUG__ */
     /* Run HTTP POST if we aren't in __DEBUG__ */
     httpRes = http_post_json(url, ConfigData->Username, ConfigData->Password,
         ConfigData->TrustStore, ConfigData->AgentCert, ConfigData->AgentKey,
-                       ConfigData->AgentKeyPassword, reqString, &respString,
-                        ConfigData->httpRetries, ConfigData->retryInterval);
+        ConfigData->AgentKeyPassword, reqString, &respString,
+        ConfigData->httpRetries, ConfigData->retryInterval);
 
     if (0 == httpRes) {
         log_trace("%s::%s(%d): decoding json response", LOG_INF);

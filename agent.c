@@ -498,7 +498,10 @@ static bool main_loop(void)
     /*true in the config file.If EnrollOnStartup is true, the agent           */
     /* makes a keypair & a CSR to send up to the platform for the agent)      */
     log_verbose("%s::%s(%d) : Connecting to platform for session & job list", LOG_INF);
-    register_session(&SessionData, &JobList, AGENT_VERSION);
+    if (0 != register_session(&SessionData, &JobList, AGENT_VERSION)) {
+        log_error("%s::%s(%d) : Failed to register session with platform", LOG_INF);
+        return false;
+    }
     currentJob = JobList;
 
     /**************************************************************************/
