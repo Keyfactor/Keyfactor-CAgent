@@ -389,11 +389,12 @@ static bool PrivKeyList_add(PrivKeyList* pList, WOLFSSL_EVP_PKEY* pPrivateKey)
 
 	if( pList && pPrivateKey )
 	{
-		pList->priv_keys = realloc(pList->priv_keys, 
-			(1 + pList->key_count) * sizeof(*(pList->priv_keys)));
+		WOLFSSL_EVP_PKEY** temp = realloc(pList->priv_keys, 
+			(1 + pList->key_count) * sizeof(WOLFSSL_EVP_PKEY*));
 
-		if (pList->priv_keys)
+		if (temp)
 		{
+			pList->priv_keys = temp;
 			log_trace("%s::%s(%d) : Added EVP_PKEY #%d to PrivKeyList", 
 				LOG_INF, pList->key_count);
 			pList->priv_keys[pList->key_count] = pPrivateKey;
@@ -403,6 +404,7 @@ static bool PrivKeyList_add(PrivKeyList* pList, WOLFSSL_EVP_PKEY* pPrivateKey)
 		else
 		{
 			log_error("%s::%s(%d) : Out of memory",	LOG_INF);
+			/* Original pList->priv_keys pointer remains valid */
 		}
 	}
 	else
@@ -412,60 +414,6 @@ static bool PrivKeyList_add(PrivKeyList* pList, WOLFSSL_EVP_PKEY* pPrivateKey)
 	}
 	return bResult;
 } /* PrivKeyList_add */
-
-/**                                                                           */
-/* Allocate memory for a new PEMx509List                                      */
-/*                                                                            */
-/* NOTE: This item is linked to the PEMInventoryItemList.  For each entry in  */
-/* the PEMInventoryItemList, the index is the same into this dynamic list     */
-/*                                                                            */
-/* @param  - none                                                             */
-/* @return - success = a pointer to the newly allocated memory area           */
-/*	       - failure = NULL                                                   */
-/*                                                                            */
-static PEMx509List* PEMx509List_new(void)
-{
-	PEMx509List* pX509list = calloc(1,sizeof(*pX509list));
-	if (pX509list)
-	{
-		pX509list->item_count = 0;
-		pX509list->certs = NULL;
-	}
-	return pX509list;
-} /* PEMx509List_new */
-
-/**                                                                           */
-/* Free the PEMx509List from memory                                           */
-/*                                                                            */
-/* @param  - [Input] : list = the list to free                                */
-/* @return - none                                                             */
-/*                                                                            */
-static void PEMx509List_free(PEMx509List* pList)
-{
-    if (NULL == pList) {
-        return;
-    }
-	if (0 < pList->item_count)
-	{
-		for(int i = 0; pList->item_count > i; i++)
-		{
-			log_trace("%s::%s(%d) Freeing cert #%d from PEMx509List", 
-				LOG_INF, i);
-			wolfSSL_X509_free(pList->certs[i]);
-		}
-		pList->item_count = 0;
-	}
-
-	log_trace("%s::%s(%d) : Freeing the PEMx509List", LOG_INF);
-	if (pList ->certs) {
-        free(pList->certs);
-        pList->certs = NULL;
-    }
-	free(pList);
-	pList = NULL;
-
-	return;
-} /* PEMx509List_free */
 
 /**                                                                           */
 /* Add an X509 cert to a PEMx509List                                          */
@@ -480,10 +428,11 @@ static bool PEMx509List_add(PEMx509List* pList, WOLFSSL_X509* pCert)
 	bool bResult = false;
 	if(pList && pCert)
 	{
-		pList->certs = realloc(pList->certs, 
-			(1 + pList->item_count) * sizeof(pCert));
-		if (pList->certs)
+		WOLFSSL_X509** temp = realloc(pList->certs, 
+			(1 + pList->item_count) * sizeof(WOLFSSL_X509*));
+		if (temp)
 		{
+			pList->certs = temp;
 			log_trace("%s::%s(%d) : Adding X509 cert #%d to PEMx509List", 
 				LOG_INF, pList->item_count);
 			pList->certs[pList->item_count] = pCert;
@@ -493,6 +442,7 @@ static bool PEMx509List_add(PEMx509List* pList, WOLFSSL_X509* pCert)
 		else
 		{
 			log_error("%s::%s(%d) : Out of memory",	LOG_INF);
+			/* Original pList->certs pointer remains valid */
 		}
 	}
 	else
@@ -501,6 +451,68 @@ static bool PEMx509List_add(PEMx509List* pList, WOLFSSL_X509* pCert)
 	}
 	return bResult;
 } /* PEMx509List_add */
+
+/**                                                                           */
+/* Allocate memory for a new PEMx509List                                      */
+/*                                                                            */
+/* NOTE: This item is linked to the PEMInventoryItemList.  For each entry in  */
+/* the PEMInventoryItemList, the index is the same into this dynamic list     */
+/*                                                                            */
+/* @param  - none                                                             */
+/* @return - success = a pointer to the newly allocated memory area           */
+/*	       - failure = NULL                                                   */
+/*                                                                            */
+static PEMx509List* PEMx509List_new(void)
+{
+	PEMx509List* pList = calloc(1,sizeof(*pList));
+	if (pList)
+	{
+		pList->item_count = 0;
+		pList->certs = NULL;
+	}
+	else
+	{
+		log_error("%s::%s(%d) : Out of memory", LOG_INF);
+	}
+	return pList;
+} /* PEMx509List_new */
+
+/**                                                                           */
+/* Free the PEMx509List from memory                                           */
+/*                                                                            */
+/* @param  - [Input] : list = the list to free                                */
+/* @return - none                                                             */
+/*                                                                            */
+static void PEMx509List_free(PEMx509List* pList)
+{
+	if (NULL == pList) {
+		return;
+	}
+
+	if (0 < pList->item_count)
+	{
+		for(int i = 0; pList->item_count > i; i++)
+		{
+			log_trace("%s::%s(%d) : Freeing cert #%d from PEMx509List", 
+				LOG_INF, i);
+			if (pList->certs[i])
+			{
+				wolfSSL_X509_free(pList->certs[i]);
+			}
+		}
+		pList->item_count = 0;
+	}
+
+	log_trace("%s::%s(%d) : Freeing the PEMx509List", LOG_INF);
+	if (pList->certs) {
+		free(pList->certs);
+		pList->certs = NULL;
+	}
+	free(pList);
+	pList = NULL;
+
+	return;
+} /* PEMx509List_free */
 
 /******************************************************************************/
 /* NOTE: PemInventoryItem and list are created here, but freed in the Agent.  */
@@ -589,7 +601,17 @@ static bool PemInventoryItem_populate(PemInventoryItem* pem, WOLFSSL_X509* cert)
 			/* Store the PEM minus any header or footer in here */
 			/* Note a PEM is a DER that is base64 encoded */
 			pem->cert = base64_encode(pCertContent, contLen, false, NULL);
+			if (!pem->cert) {
+				log_error("%s::%s(%d) : Failed to base64 encode certificate", LOG_INF);
+				return false;
+			}
 			pem->thumbprint_string = strdup(pThumb);
+			if (!pem->thumbprint_string) {
+				log_error("%s::%s(%d) : Failed to allocate thumbprint string", LOG_INF);
+				free(pem->cert);
+				pem->cert = NULL;
+				return false;
+			}
 			pem->has_private_key = false;
 			bResult = true;
 			log_trace("%s::%s(%d) : Cert added to a PemInventoryItem", LOG_INF);
@@ -678,10 +700,11 @@ static bool PemInventoryList_add(PemInventoryList* list, PemInventoryItem* item)
 	bool bResult = false;
 	if(list && item)
 	{
-		list->items = realloc(list->items, 
-			(1 + list->item_count) * sizeof(item));
-		if (list->items)
+		PemInventoryItem** temp = realloc(list->items, 
+			(1 + list->item_count) * sizeof(PemInventoryItem*));
+		if (temp)
 		{
+			list->items = temp;
 			list->items[list->item_count] = item;
 			list->item_count++;
 			log_trace("%s::%s(%d) : Added cert with thumbprint %s to local "
@@ -691,6 +714,7 @@ static bool PemInventoryList_add(PemInventoryList* list, PemInventoryItem* item)
 		else
 		{
 			log_error("%s::%s(%d) : Out of memory", LOG_INF);
+			/* Original list->items pointer remains valid */
 		}
 	}
 	else
@@ -2067,6 +2091,11 @@ char* ssl_generate_csr(const char* asciiSubject, size_t* csrLen, char** pMessage
 	/*     END CERT REQUEST lines from being added to the platform's request*/
 	/************************************************************************/
     csrString = base64_encode(pDer, (size_t)derSz, false, NULL);
+	if (!csrString) {
+		log_error("%s::%s(%d) : Failed to base64 encode CSR", LOG_INF);
+		append_linef(pMessage, "Failed to base64 encode CSR");
+		goto cleanup;
+	}
 	*csrLen = strlen(csrString); 
 	log_trace("%s::%s(%d) : csrString=\n%s", LOG_INF, csrString);
 	log_trace("%s::%s(%d) : csrLen = %ld", LOG_INF, *csrLen);

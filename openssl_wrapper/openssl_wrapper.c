@@ -204,12 +204,15 @@ static bool pemify(char** pToB64, const char* header, const char* footer) {
     if (worked) {
         if (*pToB64) {
             tempSize = strlen(result) + 1;
-            *pToB64 = (char *)realloc(*pToB64,tempSize);
-            if (NULL == *pToB64) {
+            char *temp = (char *)realloc(*pToB64,tempSize);
+            if (NULL == temp) {
                 log_error("%s::%s(%d) : Out of memory in realloc", LOG_INF);
+                free(*pToB64);  /* Free original pointer to prevent leak */
+                *pToB64 = NULL;
                 worked = false;
             } else {
                 log_trace("%s::%s(%d) : Successfully reallocated memory", LOG_INF);
+                *pToB64 = temp;
                 memcpy(*pToB64,result,tempSize);
                 worked = true;
             }
@@ -317,8 +320,8 @@ static bool get_datestring_ASN1(char* buf, int bufLen, const ASN1_TIME* date) {
                 break;
             }
         } else {
-            log_error("%s::%s(%d) : Out of memory -- exiting", LOG_INF);
-            exit(EXIT_FAILURE);
+            log_error("%s::%s(%d) : Out of memory", LOG_INF);
+            break;
         }
     } while(false);
     return bResult;
@@ -415,9 +418,10 @@ static bool PrivKeyList_add(PrivKeyList* list, EVP_PKEY* key)
 	bool bResult = false;
 	if(list && key)
 	{
-		list->keys = realloc(list->keys, (1 + list->key_count) * sizeof(key));
-		if (list->keys)	
+		EVP_PKEY** temp = realloc(list->keys, (1 + list->key_count) * sizeof(EVP_PKEY*));
+		if (temp)	
 		{
+			list->keys = temp;
 			log_trace("%s::%s(%d) : Added EVP_PKEY #%d to PrivKeyList", 
 				LOG_INF, list->key_count);
 			list->keys[list->key_count] = key;
@@ -427,6 +431,7 @@ static bool PrivKeyList_add(PrivKeyList* list, EVP_PKEY* key)
 		else 
 		{
 			log_error("%s::%s(%d) : Out of memory",	LOG_INF);
+			/* Original list->keys pointer remains valid */
 		}
 	}
 	else
@@ -502,10 +507,11 @@ static bool PEMx509List_add(PEMx509List* list, X509* cert)
 	bool bResult = false;
 	if(list && cert)
 	{
-		list->certs = realloc(list->certs, \
-			(1 + list->item_count) * sizeof(cert));
-		if (list->certs)
+		X509** temp = realloc(list->certs, \
+			(1 + list->item_count) * sizeof(X509*));
+		if (temp)
 		{
+			list->certs = temp;
 			log_trace("%s::%s(%d) : Adding X509 cert #%d to PEMx509List", 
 				LOG_INF, list->item_count);
 			list->certs[list->item_count] = cert;
@@ -516,6 +522,7 @@ static bool PEMx509List_add(PEMx509List* list, X509* cert)
 		{
 			log_error("%s::%s(%d) : Out of memory",
 				LOG_INF);
+			/* Original list->certs pointer remains valid */
 		}
 	}
 	else
@@ -607,10 +614,11 @@ static bool PemInventoryList_add(PemInventoryList* list, PemInventoryItem* item)
 	bool bResult = false;
 	if(list && item)
 	{
-		list->items = realloc(list->items, 
-			(1 + list->item_count) * sizeof(item));
-		if (list->items)
+		PemInventoryItem** temp = realloc(list->items, 
+			(1 + list->item_count) * sizeof(PemInventoryItem*));
+		if (temp)
 		{
+			list->items = temp;
 			list->items[list->item_count] = item;
 			list->item_count++;
 			log_trace("%s::%s(%d) : Added cert with thumbprint %s to local "
@@ -620,6 +628,7 @@ static bool PemInventoryList_add(PemInventoryList* list, PemInventoryItem* item)
 		else
 		{
 			log_error("%s::%s(%d) : Out of memory",	LOG_INF);
+			/* Original list->items pointer remains valid */
 		}
 	}
 	else
@@ -688,7 +697,17 @@ static bool PemInventoryItem_populate(PemInventoryItem* pem, X509* cert)
 			/* Store the b64 encoded DER version of the pem in here */
 			log_trace("%s::%s(%d) : Storing certContent into PEMInventoryItem", LOG_INF);
 			pem->cert = base64_encode(certContent, contLen, false, NULL);
+			if (!pem->cert) {
+				log_error("%s::%s(%d) : Failed to base64 encode certificate", LOG_INF);
+				return false;
+			}
 			pem->thumbprint_string = strdup(thumb);
+			if (!pem->thumbprint_string) {
+				log_error("%s::%s(%d) : Failed to allocate thumbprint string", LOG_INF);
+				free(pem->cert);
+				pem->cert = NULL;
+				return false;
+			}
 			pem->has_private_key = false;
 			bResult = true;
 		}
@@ -1061,6 +1080,10 @@ static X509_NAME* parse_subject(const char* subject)
 	}
 
 	localSubjectPtr = strdup(subject);
+	if (!localSubjectPtr) {
+		log_error("%s::%s(%d) : Failed to allocate subject string", LOG_INF);
+		goto cleanup;
+	}
 	curPtr = localSubjectPtr;
 	log_debug("%s::%s(%d) : Subject \"%s\" is %ld characters long", 
 		LOG_INF, curPtr, strlen(curPtr));
@@ -1081,7 +1104,11 @@ static X509_NAME* parse_subject(const char* subject)
 		}		
 		strncpy(keyBytes, curPtr, (int)keyLen);
 		
-		strippedKey = strip_blanks(keyBytes, keyLen);   
+		strippedKey = strip_blanks(keyBytes, keyLen);
+		if (!strippedKey) {
+			log_error("%s::%s(%d) : Failed to strip blanks from key", LOG_INF);
+			goto cleanup;
+		}
 		log_verbose("%s::%s(%d) : Key: \"%s\" is %ld characters long", 
 			LOG_INF, strippedKey, strlen(strippedKey));
 
@@ -2074,14 +2101,23 @@ char* ssl_generate_csr(const char* asciiSubject, size_t* csrLen,
         int writeLen = i2d_X509_REQ(req, &tempReqBytes);
         /* Now convert this structure to an ASCII string */
         csrString = base64_encode(reqBytes, (size_t)writeLen, false, NULL);
-        *csrLen = (size_t)writeLen;
-        log_trace("%s::%s(%d) : csrString=%s", LOG_INF, csrString);
-        log_trace("%s::%s(%d) : csrLen = %ld", LOG_INF, *csrLen);
-        if (MAX_CSR_SIZE < *csrLen) {
-            log_error("%s::%s(%d) : The length of the CSR = %ld which is longer than the maximum defined "
-                      "length of %d -- ABORTING, please increase the maximum CSR length above %ld and re-compile",
-                      LOG_INF, *csrLen, MAX_CSR_SIZE, *csrLen);
-            exit(EXIT_FAILURE);
+        if (!csrString) {
+            log_error("%s::%s(%d) : Failed to base64 encode CSR", LOG_INF);
+            append_linef(pMessage, "Failed to base64 encode CSR");
+        } else {
+            *csrLen = (size_t)writeLen;
+        }
+        if (csrString) {
+            log_trace("%s::%s(%d) : csrString=%s", LOG_INF, csrString);
+            log_trace("%s::%s(%d) : csrLen = %ld", LOG_INF, *csrLen);
+            if (MAX_CSR_SIZE < *csrLen) {
+                log_error("%s::%s(%d) : The length of the CSR = %ld which is longer than the maximum defined "
+                          "length of %d -- Please increase the maximum CSR length above %ld and re-compile",
+                          LOG_INF, *csrLen, MAX_CSR_SIZE, *csrLen);
+                append_linef(pMessage, "CSR length %ld exceeds maximum %d", *csrLen, MAX_CSR_SIZE);
+                free(csrString);
+                csrString = NULL;
+            }
         }
 	}
 
