@@ -256,13 +256,17 @@ int cms_job_enroll(SessionJob_t * jobInfo, char *sessionToken,
 
     res = get_enroll_config(sessionToken, jobInfo->JobId,
                             jobInfo->ConfigurationEndpoint, &enrConf);
-
-    log_verbose("%s::%s(%d) : KeyType: %s", LOG_INF, enrConf->KeyType);
-    log_verbose("%s::%s(%d) : Store to reenroll = %s",
-                LOG_INF, enrConf->StorePath);
+    if (res != 0) {
+        log_error("%s::%s(%d) : Failed to get enrollment config", LOG_INF);
+        free(statusMessage);
+        return 999;
+    }
 
     /* Validate returned data */
     if (enrConf) {
+        log_verbose("%s::%s(%d) : KeyType: %s", LOG_INF, enrConf->KeyType);
+        log_verbose("%s::%s(%d) : Store to reenroll = %s",
+                    LOG_INF, enrConf->StorePath);
         bool failed = false;
         /* Verify the target store isn't a directory */
         if (is_directory(enrConf->StorePath)) {
@@ -294,12 +298,14 @@ int cms_job_enroll(SessionJob_t * jobInfo, char *sessionToken,
                     jobInfo->CompletionEndpoint, STAT_ERR, enrConf->AuditId,
                                      statusMessage, &enrComp);
             EnrollmentCompleteResp_free(enrComp);
+            returnable = 999;
             goto exit;
         }
     } else {
         log_error("%s::%s(%d) : Error, no enrollment configuration "
                   "returned by platform", LOG_INF);
-        goto exit;
+        free(statusMessage);
+        return 999;
     }
 
     if (res == 0 &&
@@ -336,6 +342,7 @@ int cms_job_enroll(SessionJob_t * jobInfo, char *sessionToken,
                     log_error("%s::%s(%d) : A TPM requires a PrivateKeyPath",
                               LOG_INF);
                     status = STAT_ERR;
+                    returnable = 999;
                     append_linef(&statusMessage, "%s::%s(%d) : A TPM "
                                  "requires a PrivateKeyPath", LOG_INF);
                 }
@@ -349,6 +356,7 @@ int cms_job_enroll(SessionJob_t * jobInfo, char *sessionToken,
                     "with type %s and length %d", LOG_INF, enrConf->KeyType,
                               enrConf->KeySize);
                     status = STAT_ERR;
+                    returnable = 999;
                     append_linef(&statusMessage, "Unable to generate key "
                         "pair with type %s and length %d", enrConf->KeyType,
                                  enrConf->KeySize);
@@ -362,10 +370,11 @@ int cms_job_enroll(SessionJob_t * jobInfo, char *sessionToken,
                 csrString = ssl_generate_csr(enrConf->Subject, &csrLen,
                                              &statusMessage);
                 if (!csrString) {
-                    log_error("%s::%s(%d) : Out of memory", LOG_INF);
-                    append_linef(&statusMessage, "%s::%s(%d) : Out of memory",
+                    log_error("%s::%s(%d) : Failed to generate CSR", LOG_INF);
+                    append_linef(&statusMessage, "%s::%s(%d) : Failed to generate CSR",
                                  LOG_INF);
                     status = STAT_ERR;
+                    returnable = 999;
                 } else {
                     log_verbose("%s::%s(%d) : Successfully created CSR",
                                 LOG_INF);
@@ -376,14 +385,20 @@ int cms_job_enroll(SessionJob_t * jobInfo, char *sessionToken,
                 /* Send the CSR to the Platform for signing */
                 res = send_enrollment(sessionToken, jobInfo->JobId,
                               enrConf->EnrollEndpoint, csrString, &enrResp);
-                if (res == 0 && enrResp) {
-                    AgentApiResult_log(enrResp->Result, &statusMessage, &status);
-                } else {
+                if (res != 0) {
                     log_error("%s::%s(%d) : Enrollment failed with error"
                               " code %d", LOG_INF, res);
                     status = STAT_ERR;
+                    returnable = 999;
                     append_linef(&statusMessage, "Enrollment failed with "
                                  "error code %d", res);
+                }
+                if (res == 0 && enrResp) {
+                    if (!AgentApiResult_log(enrResp->Result, &statusMessage, &status)) {
+                        log_error("%s::%s(%d) : Enrollment response indicates error", LOG_INF);
+                        status = STAT_ERR;
+                        returnable = 999;
+                    }
                 }
             }
 
@@ -393,12 +408,20 @@ int cms_job_enroll(SessionJob_t * jobInfo, char *sessionToken,
                 res = save_cert_key(enrConf->StorePath, enrConf->PrivateKeyPath,
                                enrConf->StorePassword, enrResp->Certificate,
                                     &statusMessage, &status);
+                if (res != 0 || status >= STAT_ERR) {
+                    log_error("%s::%s(%d) : Failed to save certificate and key", LOG_INF);
+                    returnable = 999;
+                }
             }
 
             /* Send the normal job complete */
             res = send_enroll_job_complete(sessionToken, jobInfo->JobId,
                            jobInfo->CompletionEndpoint, status + 1, auditId,
                                            statusMessage, &enrComp);
+            if (res != 0) {
+                log_error("%s::%s(%d) : Failed to send enrollment job complete", LOG_INF);
+                returnable = 999;
+            }
 
 #if defined(__RUN_CHAIN_JOBS__)
             if (enrComp) {
@@ -411,8 +434,9 @@ int cms_job_enroll(SessionJob_t * jobInfo, char *sessionToken,
 #endif
 
             if (status >= STAT_ERR) {
-                log_info("%s::%s(%d) : Enrollment job %s failed with error: %s",
+                log_error("%s::%s(%d) : Enrollment job %s failed with error: %s",
                          LOG_INF, jobInfo->JobId, statusMessage);
+                returnable = 999;
             } else if (status == STAT_WARN) {
                 log_warn("%s::%s(%d) : Enrollment job %s completed with"
                     " warning: %s", LOG_INF, jobInfo->JobId, statusMessage);

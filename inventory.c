@@ -393,6 +393,11 @@ int cms_job_inventory(SessionJob_t * jobInfo, char *sessionToken)
 
     res = get_inventory_config(sessionToken, jobInfo->JobId,
                                jobInfo->ConfigurationEndpoint, &invConf);
+    if (res != 0) {
+        log_error("%s::%s(%d) : Failed to get inventory config", LOG_INF);
+        free(statusMessage);
+        return 999;
+    }
 
     /* Validate inputs */
     if (invConf) {
@@ -440,12 +445,14 @@ int cms_job_inventory(SessionJob_t * jobInfo, char *sessionToken)
                     jobInfo->CompletionEndpoint, STAT_ERR, invConf->AuditId,
                                         statusMessage, &invComp);
             CommonCompleteResp_free(invComp);
+            returnable = 999;
             goto exit;
         }
     } else {
         log_error("%s::%s(%d) : No inventory configuration was returned "
                   "from the platform", LOG_INF);
-        goto exit;
+        free(statusMessage);
+        return 999;
     }
 
     if ((res == 0) &&
@@ -464,6 +471,13 @@ int cms_job_inventory(SessionJob_t * jobInfo, char *sessionToken)
             res = ssl_read_store_inventory(invConf->Job.StorePath,
                                       invConf->Job.StorePassword, &pemList);
 
+            if (res != 0) {
+                log_error("%s::%s(%d) : Failed to read store inventory", LOG_INF);
+                status = STAT_ERR;
+                append_line(&statusMessage, strerror(res));
+                returnable = 999;
+            }
+
             if (res == 0) {
                 InventoryUpdateList_t *updateList = NULL;
                 compute_inventory_update(invConf->Job.Inventory,
@@ -472,6 +486,11 @@ int cms_job_inventory(SessionJob_t * jobInfo, char *sessionToken)
                 InventoryUpdateResp_t *updResp = NULL;
                 res = send_inventory_update(sessionToken, jobInfo->JobId,
                           invConf->InventoryEndpoint, updateList, &updResp);
+                if (res != 0) {
+                    log_error("%s::%s(%d) : Failed to send inventory update", LOG_INF);
+                    status = STAT_ERR;
+                    returnable = 999;
+                }
                 if (res == 0 && updResp) {
                     AgentApiResult_log(updResp->Result, &statusMessage, &status);
                 }
@@ -497,6 +516,10 @@ int cms_job_inventory(SessionJob_t * jobInfo, char *sessionToken)
             res = send_inventory_job_complete(sessionToken, jobInfo->JobId,
                          jobInfo->CompletionEndpoint, (status + 1), auditId,
                                               statusMessage, &invComp);
+            if (res != 0) {
+                log_error("%s::%s(%d) : Failed to send inventory job complete", LOG_INF);
+                returnable = 999;
+            }
             if (res == 0 && invComp) {
                 AgentApiResult_log(invComp->Result, NULL, NULL);
             }
@@ -504,6 +527,7 @@ int cms_job_inventory(SessionJob_t * jobInfo, char *sessionToken)
             if (status >= STAT_ERR) {
                 log_error("%s::%s(%d) : Inventory job %s failed with error: %s",
                           LOG_INF, jobInfo->JobId, statusMessage);
+                returnable = 999;
             } else if (status == STAT_WARN) {
                 log_warn("%s::%s(%d) : Inventory job %s completed with "
                      "warning: %s", LOG_INF, jobInfo->JobId, statusMessage);

@@ -401,13 +401,13 @@ int cms_job_manage(SessionJob_t * jobInfo, char *sessionToken,
                     jobInfo->CompletionEndpoint, STAT_ERR, manConf->AuditId,
                     statusMessage, &manComp);
             ManagementCompleteResp_free(manComp);
-            res = 999;
+            returnable = 999;
             goto exit;
         }
     } else {
         log_error("%s::%s(%d) : No management configuration was returned from the platform.", LOG_INF);
-        res = 999;
-        goto exit;
+        free(statusMessage);
+        return 999;
     }
 
     /* Data ok, process job */
@@ -428,7 +428,7 @@ int cms_job_manage(SessionJob_t * jobInfo, char *sessionToken,
                         const char* msg = "Adding a PFX is not supported at this time";
                         log_info("%s::%s(%d) :  %s", LOG_INF, msg);
                         status = STAT_ERR;
-                        res = 999;
+                        returnable = 999;
                         append_line(&statusMessage, msg);
                     } else {
                         log_info("%s::%s(%d) : Attempting to add certificate to the store:\n%s", LOG_INF,
@@ -437,7 +437,7 @@ int cms_job_manage(SessionJob_t * jobInfo, char *sessionToken,
                            manConf->Job.EntryContents, &statusMessage, &status);
                         if (res != 0) {
                             log_error("%s::%s(%d) : Failed to add certificate to the store", LOG_INF);
-                            res = 999;
+                            returnable = 999;
                         }
                     }
                     break;
@@ -448,14 +448,15 @@ int cms_job_manage(SessionJob_t * jobInfo, char *sessionToken,
                                 manConf->Job.Alias, manConf->Job.PrivateKeyPath,
                            manConf->Job.StorePassword, &statusMessage, &status);
                     if (res != 0) {
-                      log_error("%s::%s(%d) : Failed to add certificate to the store", LOG_INF);
-                      res = 999;
+                      log_error("%s::%s(%d) : Failed to remove certificate from the store", LOG_INF);
+                      returnable = 999;
                     }
                     break;
                 default:
                     log_error("%s::%s(%d) : Unsupported operation type: %d", LOG_INF, opType);
                     append_linef(&statusMessage, "Unsupported operation type: %d", opType);
                     status = STAT_ERR;
+                    returnable = 999;
                     break;
             }
 
@@ -471,12 +472,15 @@ int cms_job_manage(SessionJob_t * jobInfo, char *sessionToken,
 
             if (res != 0) {
                 log_error("%s::%s(%d) : Failed to send management job complete", LOG_INF);
+                returnable = 999;
+                ManagementCompleteResp_free(manComp);
                 goto exit;
             }
 
             if (status >= STAT_ERR) {
                 log_error("%s::%s(%d) : Management job %s failed with "
                        "error: %s", LOG_INF, jobInfo->JobId, statusMessage);
+                returnable = 999;
             } else if (status == STAT_WARN) {
                 log_warn("%s::%s(%d) : Management job %s completed"
                 " with warning: %s", LOG_INF, jobInfo->JobId, statusMessage);
