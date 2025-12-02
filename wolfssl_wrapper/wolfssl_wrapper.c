@@ -2251,6 +2251,8 @@ bool ssl_PemInventoryItem_create(struct PemInventoryItem** ppPEMout,
 		else
 		{
 			log_error("%s::%s(%d) : Error populating cert",	LOG_INF);
+			PemInventoryItem_free(*ppPEMout);
+			*ppPEMout = NULL;
 		}
 	}
 	else

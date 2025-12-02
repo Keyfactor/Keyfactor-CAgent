@@ -2279,6 +2279,8 @@ bool ssl_PemInventoryItem_create(struct PemInventoryItem** pem, const char* cert
         bResult = true;
     } else {
         log_error("%s::%s(%d) : Error populating cert", LOG_INF);
+        PemInventoryItem_free(*pem);
+        *pem = NULL;
     }
 
 cleanup:

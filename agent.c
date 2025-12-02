@@ -340,19 +340,23 @@ int run_job(SessionJob_t * job)
     }
 
 #if defined (__RUN_CHAIN_JOBS__)
-    if (chainJobId) {
-        log_info("%s::%s(%d) : Completed job indicates that job %s should be run immediately", LOG_INF, chainJobId);
-        chainJob = get_job_by_id(&JobList, chainJobId);
-        if (chainJob) {
-            (void)run_job(chainJob);
-        } else {
-            log_info("%s::%s(%d) : Job %s could not be found in the scheduled jobs list, and will not be run", LOG_INF, chainJobId);
+    if (0 == status) {
+        if (chainJobId) {
+            log_info("%s::%s(%d) : Completed job indicates that job %s should be run immediately", LOG_INF, chainJobId);
+            chainJob = get_job_by_id(&JobList, chainJobId);
+            if (chainJob) {
+                (void)run_job(chainJob);
+            } else {
+                log_info("%s::%s(%d) : Job %s could not be found in the scheduled jobs list, and will not be run", LOG_INF, chainJobId);
+            }
         }
     }
 #endif
+
     if (chainJobId) {
         free(chainJobId);
     }
+
     return status;
 } /* run_job */
 
@@ -480,14 +484,15 @@ bool release_platform(void)
 } /* release_platform */
 
 /*                                                                            */
-/* Runs a single loop agent                                                   */
-/* @param  - none                                                             */
-/* @return - none                                                             */
+/* Main program loop. Establishes a session with the platform, retrieves the  */
+/* job list, and executes all scheduled jobs in priority order.               */
+/*                                                                            */
+/* @return true if all jobs executed successfully, false otherwise            */
 /*                                                                            */
 static bool main_loop(void)
 {
     time_t now = 0;
-    bool error_status = false;
+    bool success = true;
     /* First establish a session with the platform; the session registration  */
     /* gets all of the jobs from the platform.  (Unless EnrollOnStartup is    */
     /*true in the config file.If EnrollOnStartup is true, the agent           */
@@ -504,7 +509,7 @@ static bool main_loop(void)
         //Run the jobs based on the time queue
         now = time(NULL);
         if (0 != run_job(currentJob->Job)) {
-            error_status = true;
+            success = false;
         }
         log_info("%s::%s(%d) : Advancing to job number %s", LOG_INF,
                  NULL == currentJob->NextJob ? "NULL" : currentJob->NextJob->Job->JobId);
@@ -513,7 +518,7 @@ static bool main_loop(void)
 
     log_info("%s::%s(%d) : No jobs to run -- Begin Agent Shutdown & Memory Release", LOG_INF);
 
-    return error_status;
+    return success;
 } /* main_loop */
 
 /*                                                                            */

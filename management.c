@@ -388,6 +388,7 @@ int cms_job_manage(SessionJob_t * jobInfo, char *sessionToken,
                                 jobInfo->ConfigurationEndpoint, &manConf);
     if (res != 0) {
         log_error("%s::%s(%d) : Failed to get management config", LOG_INF);
+        free(statusMessage);
         return res;
     }
 
