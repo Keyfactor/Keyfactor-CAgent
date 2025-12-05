@@ -19,6 +19,8 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
+ *
+ * Modified 2025-12-05 by Ray Lillback: Updated union member access for C99 pedantic compliance
  */
 
 #include "json.h"
@@ -28,6 +30,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 #define out_of_memory() do {                    \
         fprintf(stderr, "Out of memory.\n");    \
@@ -408,13 +411,13 @@ void json_delete(JsonNode * node)
 
         switch (node->tag) {
         case JSON_STRING:
-            free(node->string_);
+            free(node->u.string_);
             break;
         case JSON_ARRAY:
         case JSON_OBJECT:
             {
                 JsonNode *child, *next;
-                for (child = node->children.head; child != NULL; child = next) {
+                for (child = node->u.children.head; child != NULL; child = next) {
                     next = child->next;
                     json_delete(child);
                 }
@@ -476,7 +479,7 @@ JsonNode       *json_find_member(JsonNode * object, const char *name)
 JsonNode       *json_first_child(const JsonNode * node)
 {
     if (node != NULL && (node->tag == JSON_ARRAY || node->tag == JSON_OBJECT))
-        return node->children.head;
+        return node->u.children.head;
     return NULL;
 }
 
@@ -496,13 +499,13 @@ JsonNode       *json_mknull(void)
 JsonNode       *json_mkbool(bool b)
 {
     JsonNode *ret = mknode(JSON_BOOL);
-    ret->bool_ = b;
+    ret->u.bool_ = b;
     return ret;
 }
 
 static JsonNode * mkstring(char *s){
     JsonNode *ret = mknode(JSON_STRING);
-    ret->string_ = s;
+    ret->u.string_ = s;
     return ret;
 }
 
@@ -514,7 +517,7 @@ JsonNode       *json_mkstring(const char *s)
 JsonNode       *json_mknumber(double n)
 {
     JsonNode *node = mknode(JSON_NUMBER);
-    node->number_ = n;
+    node->u.number_ = n;
     return node;
 }
 
@@ -531,27 +534,27 @@ JsonNode       *json_mkobject(void)
 static void append_node(JsonNode * parent, JsonNode * child)
 {
     child->parent = parent;
-    child->prev = parent->children.tail;
+    child->prev = parent->u.children.tail;
     child->next = NULL;
 
-    if (parent->children.tail != NULL)
-        parent->children.tail->next = child;
+    if (parent->u.children.tail != NULL)
+        parent->u.children.tail->next = child;
     else
-        parent->children.head = child;
-    parent->children.tail = child;
+        parent->u.children.head = child;
+    parent->u.children.tail = child;
 }
 
 static void prepend_node(JsonNode * parent, JsonNode * child)
 {
     child->parent = parent;
     child->prev = NULL;
-    child->next = parent->children.head;
+    child->next = parent->u.children.head;
 
-    if (parent->children.head != NULL)
-        parent->children.head->prev = child;
+    if (parent->u.children.head != NULL)
+        parent->u.children.head->prev = child;
     else
-        parent->children.tail = child;
-    parent->children.head = child;
+        parent->u.children.tail = child;
+    parent->u.children.head = child;
 }
 
 static void append_member(JsonNode * object, char *key, JsonNode * value)
@@ -601,11 +604,11 @@ void json_remove_from_parent(JsonNode * node)
         if (node->prev != NULL)
             node->prev->next = node->next;
         else
-            parent->children.head = node->next;
+            parent->u.children.head = node->next;
         if (node->next != NULL)
             node->next->prev = node->prev;
         else
-            parent->children.tail = node->prev;
+            parent->u.children.tail = node->prev;
 
         free(node->key);
 
@@ -974,13 +977,13 @@ static void emit_value(SB * out, const JsonNode * node)
         sb_puts(out, "null");
         break;
     case JSON_BOOL:
-        sb_puts(out, node->bool_ ? "true" : "false");
+        sb_puts(out, node->u.bool_ ? "true" : "false");
         break;
     case JSON_STRING:
-        emit_string(out, node->string_);
+        emit_string(out, node->u.string_);
         break;
     case JSON_NUMBER:
-        emit_number(out, node->number_);
+        emit_number(out, node->u.number_);
         break;
     case JSON_ARRAY:
         emit_array(out, node);
@@ -1001,13 +1004,13 @@ void emit_value_indented(SB * out, const JsonNode * node, const char *space, int
         sb_puts(out, "null");
         break;
     case JSON_BOOL:
-        sb_puts(out, node->bool_ ? "true" : "false");
+        sb_puts(out, node->u.bool_ ? "true" : "false");
         break;
     case JSON_STRING:
-        emit_string(out, node->string_);
+        emit_string(out, node->u.string_);
         break;
     case JSON_NUMBER:
-        emit_number(out, node->number_);
+        emit_number(out, node->u.number_);
         break;
     case JSON_ARRAY:
         emit_array_indented(out, node, space, indent_level);
@@ -1035,7 +1038,7 @@ static void emit_array(SB * out, const JsonNode * array)
 
 static void emit_array_indented(SB * out, const JsonNode * array, const char *space, int indent_level)
 {
-    const JsonNode *element = array->children.head;
+    const JsonNode *element = array->u.children.head;
     int i;
 
     if (element == NULL) {
@@ -1074,7 +1077,7 @@ static void emit_object(SB * out, const JsonNode * object)
 
 static void emit_object_indented(SB * out, const JsonNode * object, const char *space, int indent_level)
 {
-    const JsonNode *member = object->children.head;
+    const JsonNode *member = object->u.children.head;
     int i;
 
     if (member == NULL) {
@@ -1319,16 +1322,16 @@ bool json_check(const JsonNode * node, char errmsg[256])
         problem("tag is invalid (%u)", node->tag);
 
     if (node->tag == JSON_BOOL) {
-        if (node->bool_ != false && node->bool_ != true)
+        if (node->u.bool_ != false && node->u.bool_ != true)
             problem("bool_ is neither false (%d) nor true (%d)", (int)false, (int)true);
     } else if (node->tag == JSON_STRING) {
-        if (node->string_ == NULL)
+        if (node->u.string_ == NULL)
             problem("string_ is NULL");
-        if (!utf8_validate(node->string_))
+        if (!utf8_validate(node->u.string_))
             problem("string_ contains invalid UTF-8");
     } else if (node->tag == JSON_ARRAY || node->tag == JSON_OBJECT) {
-        JsonNode *head = node->children.head;
-        JsonNode *tail = node->children.tail;
+        JsonNode *head = node->u.children.head;
+        JsonNode *tail = node->u.children.tail;
 
         if (head == NULL || tail == NULL) {
             if (head != NULL)
@@ -1384,7 +1387,7 @@ char           *json_get_value_string(JsonNode * node)
     if (!node || node->tag != JSON_STRING) {
         return NULL;
     } else {
-        return json_strdup(node->string_);
+        return json_strdup(node->u.string_);
     }
 }
 
@@ -1398,7 +1401,7 @@ double json_get_value_number(JsonNode * node, double defaultVal)
     if (!node || node->tag != JSON_NUMBER) {
         return defaultVal;
     } else {
-        return node->number_;
+        return node->u.number_;
     }
 }
 
@@ -1412,7 +1415,7 @@ bool json_get_value_bool(JsonNode * node, bool defaultVal)
     if (!node || node->tag != JSON_BOOL) {
         return defaultVal;
     } else {
-        return node->bool_;
+        return node->u.bool_;
     }
 }
 

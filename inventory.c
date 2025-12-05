@@ -15,6 +15,7 @@
 #include "httpclient.h"
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include "constants.h"
 #include "lib/base64.h"
 #include "utils.h"

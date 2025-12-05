@@ -22,10 +22,12 @@ CFLAGS += -Wno-deprecated-declarations
 
 CFLAGS += -fno-strict-aliasing
 CFLAGS += -Wno-ignored-qualifiers
+CFLAGS += -pedantic
           
 DEBUG_FLAGS = -g0 -O0
 DEFINES = 
 DEFINES += -D__RUN_CHAIN_JOBS__
+DEFINES += -D_POSIX_C_SOURCE=200809L
 
 WOLFLIBS = -I ./ -I/usr/local/include/wolfssl -I/usr/local/include/curl \
            -L/usr/local/lib -L/usr/local/include/wolfssl/wolfcrypt \

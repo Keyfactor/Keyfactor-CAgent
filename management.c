@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include "lib/base64.h"
 #include <errno.h>
 #include "utils.h"

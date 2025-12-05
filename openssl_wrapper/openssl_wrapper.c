@@ -10,6 +10,7 @@
 /* License.                                                                   */
 /******************************************************************************/
 #include <string.h>
+#include <strings.h>
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -2150,7 +2151,7 @@ unsigned long ssl_save_cert_key(const char* storePath, const char* keyPath,
 	unsigned long err = 0;
 	char errBuf[120];
 
-	log_verbose("%s::%s(%d) : Entering function %s", LOG_INF, __FUNCTION__);
+	log_verbose("%s::%s(%d) : Entering function %s", LOG_INF, __func__);
 	err = backup_file(storePath);
 	if(err != 0 && err != ENOENT) 
 	{

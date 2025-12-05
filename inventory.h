@@ -9,9 +9,10 @@
 /* thespecific language governing permissions and limitations under the       */
 /* License.                                                                   */
 /******************************************************************************/
-
 #ifndef __INVENTORY_H__
 #define __INVENTORY_H__
+
+#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
 
 #include "dto.h"
 #include "config.h"

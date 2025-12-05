@@ -9,9 +9,10 @@
 /* thespecific language governing permissions and limitations under the       */
 /* License.                                                                   */
 /******************************************************************************/
-
 #ifndef AGENT_H_
 #define AGENT_H_
+
+#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
 
 #include "session.h"
 #include "schedule.h"

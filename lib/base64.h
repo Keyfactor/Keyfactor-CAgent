@@ -1,7 +1,3 @@
-
-#ifndef CSS_BASE64_H
-#define CSS_BASE64_H
-
 //  NSData+Base64.h
 //  base64
 //
@@ -23,8 +19,13 @@
 //  3. This notice may not be removed or altered from any source
 //     distribution.
 //
-
 // 2017-04-11 Jon Proch - Removed Objective-C portion, adjusted name casing
+// 2025-12-05 Ray Lillback - Updated for C99 pedantic compliance and POSIX.1-2008
+
+#ifndef CSS_BASE64_H
+#define CSS_BASE64_H
+
+#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
 
 #include <stdbool.h>
 #include <string.h>

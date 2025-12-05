@@ -19,10 +19,13 @@
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
   THE SOFTWARE.
-*/
 
+  Modified 2025-12-05 by Ray Lillback: Named anonymous union for C99 pedantic compliance
+*/
 #ifndef CCAN_JSON_H
 #define CCAN_JSON_H
+
+#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -63,7 +66,7 @@ struct JsonNode
 		struct {
 			JsonNode *head, *tail;
 		} children;
-	};
+	} u;
 };
 
 /*** Encoding, decoding, and validation ***/

@@ -11,6 +11,7 @@
 /******************************************************************************/
 
 #include <string.h>
+#include <strings.h>
 #include "csr.h"
 #include "logging.h"
 #include "global.h"

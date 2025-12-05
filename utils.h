@@ -9,9 +9,10 @@
 /* thespecific language governing permissions and limitations under the       */
 /* License.                                                                   */
 /******************************************************************************/
-
 #ifndef UTILS_H_
 #define UTILS_H_
+
+#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
 
 #include <stdbool.h>
 #include <stddef.h>

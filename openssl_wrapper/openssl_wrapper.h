@@ -12,6 +12,8 @@
 #ifndef __OPENSSL_WRAPPER_H__
 #define __OPENSSL_WRAPPER_H__
 
+#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
+
 #include <stdbool.h>
 
 /**************************************************************************/

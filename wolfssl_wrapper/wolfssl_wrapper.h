@@ -9,9 +9,11 @@
 /* thespecific language governing permissions and limitations under the       */
 /* License.                                                                   */
 /******************************************************************************/
-/** @file wolfssl_wrapper.h */
 #ifndef __OPENSSL_WRAPPER_H__
 #define __OPENSSL_WRAPPER_H__
+
+#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
+/** @file wolfssl_wrapper.h */
 
 #include <stdbool.h>
 

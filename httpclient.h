@@ -9,9 +9,10 @@
 /* thespecific language governing permissions and limitations under the       */
 /* License.                                                                   */
 /******************************************************************************/
-
 #ifndef __HTTPCLIENT_H__
 #define __HTTPCLIENT_H__
+
+#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
 
 #define CONNECTION_TIMEOUT 60
 

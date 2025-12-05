@@ -9,9 +9,10 @@
 /* thespecific language governing permissions and limitations under the       */
 /* License.                                                                   */
 /******************************************************************************/
-
 #ifndef __CSR_H__
 #define __CSR_H__
+
+#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
 
 #include "dto.h"
 #include "config.h"

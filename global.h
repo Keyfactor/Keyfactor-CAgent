@@ -9,11 +9,12 @@
 /* thespecific language governing permissions and limitations under the       */
 /* License.                                                                   */
 /******************************************************************************/
-
-/* Global header file for things like global defines, variables, etc.         */
-
 #ifndef _GLOBAL_H_
 #define _GLOBAL_H_
+
+#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
+
+/* Global header file for things like global defines, variables, etc.         */
 
 /* Undefine this for HTTP version 2.0 */
 #define __HTTP_1_1__

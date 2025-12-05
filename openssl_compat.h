@@ -9,9 +9,10 @@
 /* thespecific language governing permissions and limitations under the       */
 /* License.                                                                   */
 /******************************************************************************/
-
 #ifndef OPENSSL_COMPAT_H_
 #define OPENSSL_COMPAT_H_
+
+#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
 
 #ifndef __WOLF_SSL__
 #if OPENSSL_VERSION_NUMBER < 0x10100000L

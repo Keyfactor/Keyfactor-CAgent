@@ -17,6 +17,7 @@
 #include "lib/json.h"
 #include "logging.h"
 #include <string.h>
+#include <strings.h>
 #include <stdbool.h>
 
 /******************************************************************************/
@@ -317,9 +318,9 @@ SessionRegisterReq_t *SessionRegisterReq_new(char *clientParamPath)
                 json_foreach(curNode, jsonRoot) {
                     if (curNode->tag == JSON_STRING &&
                         curNode->key &&
-                        curNode->string_) {
+                        curNode->u.string_) {
                         req->ClientParameters[nodeCount++] =
-                            ClientParameter_new(curNode->key, curNode->string_);
+                            ClientParameter_new(curNode->key, curNode->u.string_);
                     }
                 }
 
@@ -718,9 +719,9 @@ SessionRegisterResp_t *SessionRegisterResp_fromJson(char *jsonString)
                     current = 0;
                     json_foreach(jsonTmp, jsonParams) {
                         if (jsonTmp && jsonTmp->tag == JSON_STRING &&
-                            jsonTmp->string_) {
+                            jsonTmp->u.string_) {
                             resp->Session.ClientParameters[current++] =
-                                ClientParameter_new(jsonTmp->key, jsonTmp->string_);
+                                ClientParameter_new(jsonTmp->key, jsonTmp->u.string_);
                         }
                     }
                     resp->Session.ClientParameters_count = current;
@@ -1537,10 +1538,10 @@ EnrollmentConfigResp_t *EnrollmentConfigResp_fromJson(char *jsonString)
 
             JsonNode *keySizeNode = json_find_member(jsonRoot, "KeySize");
             if (keySizeNode && keySizeNode->tag == JSON_NUMBER) {
-                resp->KeySize = keySizeNode->number_;
+                resp->KeySize = keySizeNode->u.number_;
             } else if (keySizeNode && keySizeNode->tag == JSON_STRING) {
                 int tmp;
-                if (sscanf(keySizeNode->string_, "%d", &tmp) == 1) {
+                if (sscanf(keySizeNode->u.string_, "%d", &tmp) == 1) {
                     resp->KeySize = tmp;
                 }
             }

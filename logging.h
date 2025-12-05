@@ -9,9 +9,10 @@
 /* thespecific language governing permissions and limitations under the       */
 /* License.                                                                   */
 /******************************************************************************/
-
 #ifndef LOGGING_H_
 #define LOGGING_H_
+
+#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
 
 #include <stdbool.h>
 	
@@ -42,7 +43,7 @@ bool load_log_buffer( void );
 void write_log_file( void );
 void free_log_heap( void );
 
-#define LOG_INF __FILE__, __FUNCTION__, __LINE__
+#define LOG_INF __FILE__, __func__, __LINE__
 
 #endif /* LOGGING_H_ */
 /******************************************************************************/
