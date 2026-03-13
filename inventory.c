@@ -414,7 +414,7 @@ int cms_job_inventory(SessionJob_t * jobInfo, char *sessionToken)
                 failed = true;
             }
 
-            if (ConfigData->UseAgentCert) {
+            if (ConfigData->UseAgentCert && ConfigData->AgentCert) {
                 /* Verify the target store isn't the Agent store */
                 if (0 == strcasecmp(ConfigData->AgentCert, invConf->Job.StorePath)) {
 

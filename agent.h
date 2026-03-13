@@ -47,7 +47,7 @@ extern ScheduledJob_t* currentJob; /* Defined in schedule.c */
 #define AGENT_MAJOR 3ULL
 #define AGENT_MINOR 0ULL
 #define AGENT_MICRO 0ULL
-#define AGENT_BUILD 1ULL
+#define AGENT_BUILD 2ULL
 
 #define AGENT_VERSION \
 ((AGENT_MAJOR << 48) | \

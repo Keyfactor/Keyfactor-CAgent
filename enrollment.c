@@ -280,13 +280,10 @@ int cms_job_enroll(SessionJob_t * jobInfo, char *sessionToken,
 
         if (ConfigData->UseAgentCert) {
             /* Verify the target store isn't the Agent store */
-            if (enrConf->StorePath) {
+            if (enrConf->StorePath && ConfigData->UseAgentCert && ConfigData->AgentCert) {
                 if (0 == strcasecmp(ConfigData->AgentCert, enrConf->StorePath)) {
-
-                    log_warn("%s::%s(%d) : Attempting to re-enroll the agent "
-                             "cert is not allowed.", LOG_INF);
-                    append_linef(&statusMessage, "Attempting to re-enroll the "
-                                 "agent cert is not allowed.");
+                    log_warn("%s::%s(%d) : Attempting to re-enroll the agent cert is not allowed.", LOG_INF);
+                    append_linef(&statusMessage, "Attempting to re-enroll the agent cert is not allowed.");
                     failed = true;
                 }
             }

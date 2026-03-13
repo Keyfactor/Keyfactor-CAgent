@@ -335,12 +335,14 @@ static bool validate_management_store_configuration(ManagementConfigResp_t* manC
             append_linef(statusMessage, "The store path must be a file and not a directory.");
             failed = true;
         }
-        /* Is the target store the Agent store? */
-        if (0 == strcasecmp(ConfigData->AgentCert, manConf->Job.StorePath)) {
-            log_warn("%s::%s(%d) : Attempting a Management job on the agent cert store is not allowed.", LOG_INF);
-            append_linef(statusMessage, "Attempting a Management job the agent cert store is not allowed.");
-            failed = true;
-        }
+		if (ConfigData->UseAgentCert && ConfigData->AgentCert) { /* If we have an agent cert, we can't manage it through this job */
+            /* Is the target store the Agent store? */
+            if (0 == strcasecmp(ConfigData->AgentCert, manConf->Job.StorePath)) {
+                log_warn("%s::%s(%d) : Attempting a Management job on the agent cert store is not allowed.", LOG_INF);
+                append_linef(statusMessage, "Attempting a Management job the agent cert store is not allowed.");
+                failed = true;
+            }
+		}
         /* Verify the target store exists */
         if (!file_exists(manConf->Job.StorePath)) {
             log_warn("%s::%s(%d) : Attempting to manage a certificate store that does not exist yet.", LOG_INF);
