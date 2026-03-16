@@ -188,24 +188,18 @@ static int add_cert_to_store(const char *storePath, const char *certASCII,
     log_trace("%s::%s(%d) : Creating a new PemInventoryItem for certificate",
               LOG_INF);
     if (!ssl_PemInventoryItem_create(&certToAdd, certASCII)) {
-        log_error("%s::%s(%d) : Error creating cert thumbprint or invalid cert",
-                  LOG_INF);
-        append_linef(pMessage, "%s::%s(%d) : Error creating cert thumbprint"
-                     " or invalid cert", LOG_INF);
+        log_error("%s::%s(%d) : Error creating cert thumbprint or invalid cert", LOG_INF);
+        append_linef(pMessage, "%s::%s(%d) : Error creating cert thumbprint or invalid cert", LOG_INF);
         *pStatus = STAT_ERR;
         return -1;
     }
-    log_trace("%s::%s(%d) : New certificate has a thumbprint of %s",
-              LOG_INF, certToAdd->thumbprint_string);
+    log_trace("%s::%s(%d) : New certificate has a thumbprint of %s", LOG_INF, certToAdd->thumbprint_string);
 
     /* 2.) Read all the certs in the cert store */
-    log_trace("%s::%s(%d) : Reading cert store %s's inventory",
-              LOG_INF, storePath);
+    log_trace("%s::%s(%d) : Reading cert store %s's inventory", LOG_INF, storePath);
     if (0 != ssl_read_store_inventory(storePath, NULL, &pemList)) {
-        log_error("%s::%s(%d) : Error reading PEM store at %s",
-                  LOG_INF, storePath);
-        append_linef(pMessage, "%s::%s(%d) : Error reading PEM store at %s",
-                     LOG_INF, storePath);
+        log_error("%s::%s(%d) : Error reading PEM store at %s", LOG_INF, storePath);
+        append_linef(pMessage, "%s::%s(%d) : Error reading PEM store at %s", LOG_INF, storePath);
         if (certToAdd) {
             PemInventoryItem_free(certToAdd);
         }
@@ -215,18 +209,15 @@ static int add_cert_to_store(const char *storePath, const char *certASCII,
         *pStatus = STAT_ERR;
         return -1;
     }
-    log_trace("%s::%s(%d) : Found %d certs in store",
-              LOG_INF, pemList->item_count);
+    log_trace("%s::%s(%d) : Found %d certs in store", LOG_INF, pemList->item_count);
     for (i = 0; pemList->item_count > i; i++) {
-        log_trace("%s::%s(%d) : Thumbprint #%d found: %s",
-                  LOG_INF, i, pemList->items[i]->thumbprint_string);
+        log_trace("%s::%s(%d) : Thumbprint #%d found: %s", LOG_INF, i, pemList->items[i]->thumbprint_string);
     }
 
     /* 3.) Does the cert exist in the store already? */
     foundCert = false;
     i = 0;
-    log_trace("%s::%s(%d) : Checking if cert to add is already in the store",
-              LOG_INF);
+    log_trace("%s::%s(%d) : Checking if cert to add is already in the store", LOG_INF);
     while ((pemList->item_count > i) &&
            (false == foundCert) &&
            (certToAdd)) {
@@ -240,31 +231,26 @@ static int add_cert_to_store(const char *storePath, const char *certASCII,
         i++;
     }
 
-    log_verbose("%s::%s(%d) : Found cert: %s",
-                LOG_INF, (foundCert ? "yes" : "no"));
+    log_verbose("%s::%s(%d) : Found cert: %s", LOG_INF, (foundCert ? "yes" : "no"));
 
     /* 4.) If the cert doesn't exist, add it too the store */
     if (false == foundCert) {
-        log_trace("%s::%s(%d) : Adding cert with thumbprint %s to store %s",
-                  LOG_INF, certToAdd->thumbprint_string, storePath);
+        log_trace("%s::%s(%d) : Adding cert with thumbprint %s to store %s", LOG_INF, certToAdd->thumbprint_string,
+                  storePath);
         if (!ssl_Store_Cert_add(storePath, certASCII)) {
             log_error("%s::%s(%d) Error writing cert to store", LOG_INF);
-            append_linef(pMessage, "%s::%s(%d) Error writing cert to store",
-                         LOG_INF);
+            append_linef(pMessage, "%s::%s(%d) Error writing cert to store", LOG_INF);
             *pStatus = STAT_ERR;
             ret = -1;
         } else {
-            log_verbose("%s::%s(%d) Certificate successfully written to store",
-                        LOG_INF);
+            log_verbose("%s::%s(%d) Certificate successfully written to store", LOG_INF);
             *pStatus = STAT_SUCCESS;
             ret = 0;
         }
     } else {
-        log_warn("%s::%s(%d) : WARNING: Certificate with thumbprint %s "
-                 "was already present in store %s", LOG_INF,
+        log_warn("%s::%s(%d) : WARNING: Certificate with thumbprint %s was already present in store %s", LOG_INF,
                  certToAdd->thumbprint_string, storePath);
-        append_linef(pMessage, "%s::%s(%d) : WARNING: Certificate with "
-                     "thumbprint %s was already present in store %s",
+        append_linef(pMessage, "%s::%s(%d) : WARNING: Certificate with thumbprint %s was already present in store %s",
                      LOG_INF, certToAdd->thumbprint_string, storePath);
         *pStatus = STAT_WARN;
         ret = 0;
@@ -302,10 +288,8 @@ static int remove_cert_from_store(const char *storePath,
     int ret = 0;
 
     if (!ssl_remove_cert_from_store(storePath, searchThumb, keyPath, password)) {
-        log_error("%s::%s(%d) : Unable to remove cert from store at %s",
-                  LOG_INF, storePath);
-        append_linef(pMessage, "Unable to remove cert from store at %s",
-                     storePath);
+        log_error("%s::%s(%d) : Unable to remove cert from store at %s", LOG_INF, storePath);
+        append_linef(pMessage, "Unable to remove cert from store at %s", storePath);
         *pStatus = STAT_ERR;
     }
     return ret;
@@ -324,38 +308,37 @@ static int remove_cert_from_store(const char *storePath,
  * @param[out] statusMessage String array to append validation error messages
  * @return false if validation failed, false if validation passed
  */
-static bool validate_management_store_configuration(ManagementConfigResp_t* manConf, char** statusMessage)
+static bool management_store_config_valid(ManagementConfigResp_t* manConf, char** statusMessage)
 {
-    bool failed = false;
+    bool valid = true;
     if (manConf->Job.StorePath) {
         /* Is the target store a directory and not a file? */
         if (is_directory(manConf->Job.StorePath)) {
-            log_error("%s::%s(%d) : The store path must be a file and "
-                      "not a directory.", LOG_INF);
+            log_error("%s::%s(%d) : The store path must be a file and not a directory.", LOG_INF);
             append_linef(statusMessage, "The store path must be a file and not a directory.");
-            failed = true;
+            valid = false;
         }
 		if (ConfigData->UseAgentCert && ConfigData->AgentCert) { /* If we have an agent cert, we can't manage it through this job */
             /* Is the target store the Agent store? */
             if (0 == strcasecmp(ConfigData->AgentCert, manConf->Job.StorePath)) {
                 log_warn("%s::%s(%d) : Attempting a Management job on the agent cert store is not allowed.", LOG_INF);
                 append_linef(statusMessage, "Attempting a Management job the agent cert store is not allowed.");
-                failed = true;
+                valid = false;
             }
 		}
         /* Verify the target store exists */
         if (!file_exists(manConf->Job.StorePath)) {
             log_warn("%s::%s(%d) : Attempting to manage a certificate store that does not exist yet.", LOG_INF);
             append_linef(statusMessage, "Attempting to manage a certificate store that does not exist yet.");
-            failed = true;
+            valid = false;
         }
     } else {
       log_error("%s::%s(%d) : Job doesn't contain a target store to manage.", LOG_INF);
       append_linef(statusMessage, "Job doesn't contain a target store to manage.");
-      failed = true;
+      valid = false;
     }
-    return failed;
-} /* validate_management_store_configuration */
+    return valid;
+} /* management_store_config_valid */
 
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
@@ -384,8 +367,7 @@ int cms_job_manage(SessionJob_t * jobInfo, char *sessionToken,
     char *statusMessage = strdup("");
     enum AgentApiResultStatus status = STAT_UNK;
     int returnable = 0;
-    log_info("%s::%s(%d) : Starting management job %s", LOG_INF,
-             jobInfo->JobId);
+    log_info("%s::%s(%d) : Starting management job %s", LOG_INF, jobInfo->JobId);
 
     res = get_management_config(sessionToken, jobInfo->JobId,
                                 jobInfo->ConfigurationEndpoint, &manConf);
@@ -398,7 +380,7 @@ int cms_job_manage(SessionJob_t * jobInfo, char *sessionToken,
     /* Validate data */
     if (manConf) {
         /* if any test failed, then let the platform know about it. */
-        if (false == validate_management_store_configuration(manConf, &statusMessage)) {
+        if (false == management_store_config_valid(manConf, &statusMessage)) {
             ManagementCompleteResp_t *manComp = NULL;
             send_management_job_complete(sessionToken, jobInfo->JobId,
                     jobInfo->CompletionEndpoint, STAT_ERR, manConf->AuditId,
@@ -445,11 +427,10 @@ int cms_job_manage(SessionJob_t * jobInfo, char *sessionToken,
                     }
                     break;
                 case OP_REM:
-                    log_verbose("%s::%s(%d) : Remove certificate operation",
-                                LOG_INF);
+                    log_verbose("%s::%s(%d) : Remove certificate operation", LOG_INF);
                     res = remove_cert_from_store(manConf->Job.StorePath,
                                 manConf->Job.Alias, manConf->Job.PrivateKeyPath,
-                           manConf->Job.StorePassword, &statusMessage, &status);
+                                manConf->Job.StorePassword, &statusMessage, &status);
                     if (res != 0) {
                       log_error("%s::%s(%d) : Failed to remove certificate from the store", LOG_INF);
                       returnable = 999;
@@ -470,7 +451,7 @@ int cms_job_manage(SessionJob_t * jobInfo, char *sessionToken,
             ManagementCompleteResp_t *manComp = NULL;
             res = send_management_job_complete(sessionToken,
                     jobInfo->JobId, jobInfo->CompletionEndpoint, status + 1,
-                                          auditId, statusMessage, &manComp);
+                    auditId, statusMessage, &manComp);
             /* NOTE: Removed chain job due to inventory job running twice */
 
             if (res != 0) {
@@ -481,15 +462,12 @@ int cms_job_manage(SessionJob_t * jobInfo, char *sessionToken,
             }
 
             if (status >= STAT_ERR) {
-                log_error("%s::%s(%d) : Management job %s failed with "
-                       "error: %s", LOG_INF, jobInfo->JobId, statusMessage);
+                log_error("%s::%s(%d) : Management job %s failed with error: %s", LOG_INF, jobInfo->JobId, statusMessage);
                 returnable = 999;
             } else if (status == STAT_WARN) {
-                log_warn("%s::%s(%d) : Management job %s completed"
-                " with warning: %s", LOG_INF, jobInfo->JobId, statusMessage);
+                log_warn("%s::%s(%d) : Management job %s completed with warning: %s", LOG_INF, jobInfo->JobId, statusMessage);
             } else {
-                log_info("%s::%s(%d) : Management job %s completed"
-                         " successfully", LOG_INF, jobInfo->JobId);
+                log_info("%s::%s(%d) : Management job %s completed successfully", LOG_INF, jobInfo->JobId);
             }
 
             ManagementCompleteResp_free(manComp);
