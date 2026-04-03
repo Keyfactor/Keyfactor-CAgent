@@ -65,6 +65,9 @@ static void add_custom_client_parameters(SessionRegisterReq_t * sessionReq) {
      * this: SessionRegisterReq_addNewClientParameter(sessionReq,
      * "devicetype", "linux");
      */
+#ifdef __QATESTING__
+    SessionRegisterReq_addNewClientParameter(sessionReq, "qatesting", "true");
+#endif
     return;
 } /* add_custom_client_parameters */
 
@@ -135,17 +138,22 @@ static void update_config_from_session(SessionRegisterResp_t * sessionResp) {
     if (!ConfigData || !sessionResp) return;
     if (!ConfigData->EnrollOnStartup) return;
 
-    if (sessionResp->Session.Certificate) {
+    if (sessionResp->Session.Certificate && sessionResp->Session.Certificate[0] != '\0') {
         log_info("%s::%s(%d) : Received Agent Certificate. Turning off EnrollOnStartup.", LOG_INF);
         isChanged = true;
         ConfigData->EnrollOnStartup = false;
+    } else if (false == ConfigData->UseAgentCert) {
+      log_info("%s::%s(%d) : Not using an Agent Certificate. Turning off EnrollOnStartup.", LOG_INF);
+      isChanged = true;
+      ConfigData->EnrollOnStartup = false;
+    } else {
+      log_info("%s::%s(%d) : Received no Agent Certificate. BUT, we should have received one.", LOG_INF);
     }
 
     if (isChanged) {
         log_trace("%s::%s(%d) : Saving configuration to file system", LOG_INF);
         config_save();
     }
-    return;
 } /* update_config_from_session */
 
 /*                                                                            */
@@ -290,8 +298,8 @@ static void prioritize_jobs(ScheduledJob_t **pJobList,
       schedule_job(pJobList, job_to_schedule, time(NULL));
     }
   }
-  return;
 } /* prioritize_jobs */
+
 /*                                                                            */
 /* Add the capabilities allowed in this version of the agent by               */
 /* capability GUID defined in Keyfactor                                       */
@@ -376,7 +384,6 @@ static void set_registration_parameters(SessionRegisterReq_t * sessionReq) {
     /* Add any custom parameters for this customer */
     add_custom_client_parameters(sessionReq);
 
-    return;
 } /* set_registration_parameters */
 
 /*                                                                            */
@@ -808,34 +815,38 @@ exit:
 static bool do_first_registration_response(SessionRegisterResp_t * resp, char **status,
                                       enum AgentApiResultStatus *statusCode)
 {
-    if (NULL == resp) {
-        log_error("%s::%s(%d) : Error, response to parse is null", LOG_INF);
-        return false;
-    }
-    bool bResult = false;
-    bool bIdOk = false;
-    log_trace("%s::%s(%d): Updating config from session", LOG_INF);
-    bIdOk = update_agentid_from_session(resp);
+  if (NULL == resp) {
+      log_error("%s::%s(%d) : Error, response to parse is null", LOG_INF);
+      return false;
+  }
+  bool bResult = false;
+  bool bIdOk = false;
+  log_trace("%s::%s(%d): Updating config from session", LOG_INF);
+  bIdOk = update_agentid_from_session(resp);
 
-    if (ConfigData->UseAgentCert && bIdOk) {
-        if (resp->Session.Certificate) {
-            bResult = true;
-            log_info("%s::%s(%d): Agent certificate recieved from platform.  Saving Agent Specific Keypair and "
-                     "Agent Specific Cert.", LOG_INF);
-            save_cert_key(ConfigData->AgentCert,
-                          ConfigData->AgentKey, ConfigData->AgentKeyPassword,
-                          resp->Session.Certificate, status, statusCode);
-            update_config_from_session(resp);
-        } else {
-            /* The platform should have provided a certificate */
-            log_error("%s::%s(%d): Certificate not found", LOG_INF);
-        }
-    } else {
-        /* We don't need a certificate, but we do need an AgentId */
-        if (bIdOk)
-            bResult = true;
-    }
-    return bResult;
+  if (ConfigData->UseAgentCert && bIdOk) {
+      if (resp->Session.Certificate) {
+          bResult = true;
+          log_info("%s::%s(%d): Agent certificate received from platform.  Saving Agent Specific Keypair and "
+                   "Agent Specific Cert.", LOG_INF);
+          save_cert_key(ConfigData->AgentCert,
+                        ConfigData->AgentKey, ConfigData->AgentKeyPassword,
+                        resp->Session.Certificate, status, statusCode);
+          update_config_from_session(resp);
+      } else {
+          /* The platform should have provided a certificate */
+          log_error("%s::%s(%d): Certificate not found", LOG_INF);
+      }
+  } else {
+      /* We don't need a certificate, but we do need an AgentId */
+      if (bIdOk)
+          bResult = true;
+  }
+
+  log_info("%s::%s(%d): First registration completed with %s",
+    LOG_INF, bResult ? "success" : "failure");
+
+  return bResult;
 } /* do_first_registration_response */
 
 /*                                                                            */
@@ -930,7 +941,7 @@ int register_session(SessionInfo_t * session, ScheduledJob_t * *pJobList, uint64
                 log_trace("%s::%s(%d) : Successfully set up /Session/Register data.", LOG_INF);
             }
         } else {
-            log_trace("%s::%s(%d) : Skipping agent cert from configurtion", LOG_INF);
+            log_trace("%s::%s(%d) : Configured to not use an Agent Certificate", LOG_INF);
         }
     } else {
         if (ConfigData->UseAgentCert) {
@@ -1062,12 +1073,15 @@ exit:
         log_trace("%s::%s(%d) Performing second registration.", LOG_INF);
         httpRes = do_second_registration(session, pJobList, agentVersion);
         if (0 == httpRes) {
-            log_info("%s::%s(%d): Re-enrollment jobs set up successfully", LOG_INF);
+          log_info("%s::%s(%d): Re-enrollment jobs set up successfully", LOG_INF);
+          ConfigData->EnrollOnStartup = false;
+          config_save();
         } else {
-            /* Session failed, so we need to re-register the agent */
-            /* on the next trigger */
-            ConfigData->EnrollOnStartup = true;
-            log_warn("%s::%s(%d) : Re-registering agent as second registration failed", LOG_INF);
+          /* Session failed, so we need to re-register the agent */
+          /* on the next trigger */
+          ConfigData->EnrollOnStartup = true;
+          log_warn("%s::%s(%d) : Re-registering agent as second registration failed", LOG_INF);
+          config_save();
         }
     }
 

@@ -95,6 +95,10 @@ openinstall: libagent.so
 	sudo cp libagent.so /usr/lib
 	sudo chmod 755 /usr/lib/libagent.so
 
+qatesting: DEFINES += -D__OPEN_SSL__ -D__QATESTING__
+qatesting: ${OOBJ}
+	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${OPENLIBS}
+
 # The base build for a Raspberry Pi with a TPM installed
 rpi9670test: DEFINES += -D__OPEN_SSL__ -D__TPM__ -Wno-format
 rpi9670test: ${OOBJ}

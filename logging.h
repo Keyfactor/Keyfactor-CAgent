@@ -22,6 +22,9 @@ void log_info(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
 void log_verbose(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
 void log_debug(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
 void log_trace(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
+#ifdef __QATESTING__
+void log_qa(const char* fmt, ...) __attribute__ ((format (printf, 1, 2)));
+#endif
 
 void log_set_trace(bool param);
 void log_set_debug(bool param);

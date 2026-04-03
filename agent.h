@@ -43,11 +43,16 @@ extern ScheduledJob_t* currentJob; /* Defined in schedule.c */
 #endif
 
 /* Versioning Information                                                     */
-/* 3.0.0.1 = Release candidate for agent v3                                   */
+/* 3.0.0.2 = Release candidate for agent v3                                   */
 #define AGENT_MAJOR 3ULL
 #define AGENT_MINOR 0ULL
 #define AGENT_MICRO 0ULL
-#define AGENT_BUILD 2ULL
+
+#ifdef __QATESTING__
+  #define AGENT_BUILD 999ULL // Special build number for QA testing
+#else
+  #define AGENT_BUILD 2ULL
+#endif
 
 #define AGENT_VERSION \
 ((AGENT_MAJOR << 48) | \

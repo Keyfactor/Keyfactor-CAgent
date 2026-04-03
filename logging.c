@@ -30,6 +30,9 @@
 #define VERBOSELVL "[VERBOSE]"
 #define DEBUGLVL   "[DEBUG]  "
 #define TRACELVL   "[TRACE]  "
+#ifdef __QATESTING__
+#define QALVL      "[QA]     "
+#endif
 
 #define MAX_FILE_SIZE   (5ul * 1024ul * 1024ul) /* 5MByte log file on disk */
 #define MAX_HEAP_SIZE   (256 * 1024)    /* 256k of memory */
@@ -603,6 +606,42 @@ void log_trace(const char *fmt,...)
         }
     }
 } /* log_trace */
+
+#ifdef __QATESTING__
+/*                                                                            */
+/* @fn log_qa                                                                 */
+/* @brief Print a message if the info logging level is enabled                */
+/* @returns none                                                              */
+/*                                                                            */
+void log_qa(const char *fmt,...)
+{
+  get_log_format(logFormat, fmt, QALVL);
+
+  va_list args;
+  va_start(args, fmt);
+  size_t chars_to_write = vfprintf(stderr, logFormat, args);
+  va_end(args);
+
+  if (config_loaded) {
+    /* Write to the log buffer, too */
+    size_t log_index = (log_tail - log_head);  /* parasoft-suppress
+                                                         * MISRAC2012-DIR_4_1-i
+                                                         * "same array" */
+    if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) {
+
+      write_heap_to_disk();
+    }
+    get_log_format(logFormat, fmt, QALVL);
+    va_list args;
+    va_start(args, fmt);
+    size_t chars_written = vsprintf(log_tail, logFormat, args);
+    va_end(args);
+    log_tail += chars_written;
+    log_is_dirty = true;
+    /* End write to the log buffer, too */
+  }
+} /* log_warn */
+#endif
 
 /*                                                                            */
 /* @fn log_set_trace                                                          */

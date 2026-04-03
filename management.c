@@ -383,7 +383,7 @@ int cms_job_manage(SessionJob_t * jobInfo, char *sessionToken,
         if (false == management_store_config_valid(manConf, &statusMessage)) {
             ManagementCompleteResp_t *manComp = NULL;
             send_management_job_complete(sessionToken, jobInfo->JobId,
-                    jobInfo->CompletionEndpoint, STAT_ERR, manConf->AuditId,
+                    jobInfo->CompletionEndpoint, STAT_ERR + 1, manConf->AuditId,
                     statusMessage, &manComp);
             ManagementCompleteResp_free(manComp);
             returnable = 999;

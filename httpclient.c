@@ -158,7 +158,6 @@ static void stripCR(char string[])
         }
     }                           /* while */
     string[y] = '\0';
-    return;
 }
 
 /******************************************************************************/
@@ -434,23 +433,17 @@ skipTPM:
         log_trace("%s::%s(%d) : cURL options set correctly", LOG_INF);
 
         struct curl_slist *list = NULL;
-        /**************************************************************************/
+        /**********************************************************************/
+        /* Set up the HTTP header to tell the API this is standard JSON.      */
+        /* NOTE: Some versions of Internet Explorer have a problem using      */
+        /* these headers.                                                     */
+        /* Also, set the content length header option to the data size.       */
+        /**********************************************************************/
         /*
-         * Set up the HTTP header to tell the API this is standard JSON.
-         */
-        /*
-         * NOTE: Some versions of Internet Explorer have a problem using
-         */
-        /* these headers.                                                */
-        /*
-         * Also, set the content length header option to the data size.
-         */
-        /*
-         * TODO: Error checking, as this is a dynamic memory allocation and
+         * //TODO: Error checking, as this is a dynamic memory allocation and
          * any
+         * on-demand memory allocation needs a verification step.
          */
-        /* on-demand memory allocation needs a verification step.      */
-        /**************************************************************************/
         list = curl_slist_append(NULL, "Content-Type: application/json");
         list = curl_slist_append(list, "Accept: application/json");
         char clBuf[30];
@@ -466,11 +459,9 @@ skipTPM:
             log_debug("%s::%s(%d) : Skipping adding header = %s", LOG_INF, CLIENT_CERT_HEADER);
         }
 
-        /**************************************************************************/
-        /*
-         * Now add the header & data to the HTTP POST request.
-         */
-        /**************************************************************************/
+        /**********************************************************************/
+        /* Now add the header & data to the HTTP POST request.                */
+        /**********************************************************************/
         errNum = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
         if (CURLE_OK != errNum) {
             return handle_curl_error(curl, errNum);
@@ -483,24 +474,19 @@ skipTPM:
         if (CURLE_OK != errNum) {
             return handle_curl_error(curl, errNum);
         }
+#ifdef __QATESTING__
+        log_qa("%s::%s(%d): postData = %s", LOG_INF, postData);
+#else
         log_trace("%s::%s(%d): postData = %s", LOG_INF, postData);
+#endif
 
-
-        /**************************************************************************/
-        /*
-         * Make sure the cURL operation succeeded and the HTTP response code
-         */
-        /*
-         * indicates success. If we are successfull, place the response
-         * message
-         */
-        /*
-         * If the cURL operation fails, return the cURL error code.
-         */
-        /*
-         * If the HTTP response is an error, return the HTTP failure code.
-         */
-        /**************************************************************************/
+        /**********************************************************************/
+        /* Make sure the cURL operation succeeded and the HTTP response code  */
+        /* indicates success. If we are successfull, place the response       */
+        /* message                                                            */
+        /* If the cURL operation fails, return the cURL error code.           */
+        /* If the HTTP response is an error, return the HTTP failure code.    */
+        /**********************************************************************/
         long httpCode = 0;
         int res = CURLE_FAILED_INIT;
         int tries = retryCount;
@@ -542,7 +528,11 @@ skipTPM:
             log_verbose("%s::%s(%d): %lu bytes retrieved -- allocating memory for response",
                         LOG_INF, (unsigned long)chunk.size);
             *pRespData = strdup(chunk.memory);
+#ifdef __QATESTING__
+            log_qa("%s::%s(%d): Response is:\n%s", LOG_INF, *pRespData);
+#else
             log_trace("%s::%s(%d): Response is:\n%s", LOG_INF, *pRespData);
+#endif
             if (NULL == *pRespData) {
                 log_error("%s::%s(%d): Out of memory", LOG_INF);
                 toReturn = 255;
