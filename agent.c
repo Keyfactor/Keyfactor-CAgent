@@ -46,7 +46,6 @@
 #include "schedule.h"
 #include "config.h"
 #include "session.h"
-#include "global.h"
 #include "utils.h"
 
 /******************************************************************************/
@@ -59,15 +58,12 @@
 /******************************************************************************/
 SessionInfo_t   SessionData;
 ScheduledJob_t *JobList;
+bool success;
 
 /* KF v9 Adds in text capabilities                                            */
 const char     *cap_pem_inventory    = "CertStores.PEM.Inventory";
 const char     *cap_pem_management   = "CertStores.PEM.Management";
 const char     *cap_pem_reenrollment = "CertStores.PEM.Reenrollment";
-
-#if defined(__OPEN_SSL__)
-char            engine_id[21];  /* 20 characters should be enough */
-#endif
 
 #if defined(__TPM__)
 ENGINE         *e = NULL;
@@ -77,7 +73,6 @@ ENGINE         *e = NULL;
 /************************** LOCAL GLOBAL VARIABLES ****************************/
 /******************************************************************************/
 static bool     curlLoaded             = false;
-static bool     exit_if_inventory_only = false;
 static bool     inventory_ran          = false;
 
 /******************************************************************************/
@@ -157,10 +152,12 @@ static void set_log_level(char level)
 /**
  * @brief Allocates and stores the configuration file path from a CLI argument.
  *
- * Exits the process on allocation failure. Sets the global config_location.
+ * Sets the global config_location on success. Returns false on NULL/empty
+ * input or heap allocation failure — the caller is responsible for handling
+ * the error and ensuring all resources are released before exiting.
  *
  * @param[in] path  Path string from the -c / --config command line option.
- * @return true on success, false if path is NULL or empty.
+ * @return true on success, false if path is NULL/empty or strdup fails.
  */
 static bool allocate_config_location(const char *path)
 {
@@ -172,12 +169,7 @@ static bool allocate_config_location(const char *path)
     config_location = strdup(path);
     if (!config_location) {
         printf("%s::%s(%d) : Out of memory allocating config path\n", LOG_INF);
-        printf("%s::%s(%d) : Aborting...\n", LOG_INF);
-#ifdef __MAKE_LIBRARY__
         return false;
-#else
-        exit(EXIT_FAILURE);
-#endif
     }
     return true;
 } /* allocate_config_location */
@@ -271,8 +263,14 @@ static int parse_parameters(int argc, char *argv[])
     }
 #endif
 
-    if (!foundConfig)
+    if (!foundConfig) {
         config_location = strdup("config.json");
+        if (!config_location) {
+            printf("%s::%s(%d) : Out of memory allocating default config path\n",
+                   LOG_INF);
+            return 0;
+        }
+    }
 
     return 1;
 } /* parse_parameters */
@@ -335,6 +333,7 @@ static bool init_logging(void)
 } /* init_logging */
 
 
+#ifdef __TPM__
 /**
  * @brief Initialises the TPM engine and registers it with OpenSSL.
  *
@@ -345,16 +344,15 @@ static bool init_logging(void)
  */
 static bool init_tpm_engine(void)
 {
-#ifdef __TPM__
     log_trace("%s::%s(%d) : Initializing TPM engine", LOG_INF);
     e = initialize_engine(engine_id);
     if (!e) {
         log_error("%s::%s(%d) : ERROR getting engine %s", LOG_INF, engine_id);
         return false;
     }
-#endif
     return true;
 } /* init_tpm_engine */
+#endif
 
 
 /**
@@ -539,8 +537,10 @@ int init_platform(int argc, char *argv[])
         return 0;
     }
 
+#ifdef __TPM__
     if (!init_tpm_engine())
         return 0;
+#endif
 
     if (!init_ssl_and_curl())
         return 0;
@@ -588,18 +588,18 @@ bool release_platform(void)
  */
 static bool execute_all_jobs(void)
 {
-    bool success = true;
+    bool local_success = true;
 
     while (currentJob) {
         if (0 != run_job(currentJob->Job))
-            success = false;
+            local_success = false;
 
         log_info("%s::%s(%d) : Advancing to job number %s", LOG_INF,
                  currentJob->NextJob ? currentJob->NextJob->Job->JobId : "NULL");
         currentJob = currentJob->NextJob;
     }
 
-    return success;
+    return local_success;
 } /* execute_all_jobs */
 
 
@@ -623,10 +623,10 @@ static bool main_loop(void)
     }
     currentJob = JobList;
 
-    bool success = execute_all_jobs();
+    bool local_success = execute_all_jobs();
     log_info("%s::%s(%d) : No jobs to run -- Begin Agent Shutdown & Memory Release",
              LOG_INF);
-    return success;
+    return local_success;
 } /* main_loop */
 
 
@@ -646,7 +646,7 @@ int KF_main(int argc, char *argv[])
 int main(int argc, char *argv[])
 #endif
 {
-    bool success = true;
+    success = true;
 
     if (!init_platform(argc, argv)) {
         log_error("%s::%s(%d) : Failed to initialize platform", LOG_INF);

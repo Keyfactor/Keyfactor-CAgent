@@ -12,13 +12,13 @@
 
 #include <stdarg.h>
 #include <stdio.h>
-#include <string.h>
 #include <time.h>
 #include <stdlib.h>
 #include <limits.h>
 #include "logging.h"
 #include "config.h"
 #include "utils.h"
+#include "agent.h"
 
 #define LOG_HEAD_SIZE 50
 #define LOG_LEVEL_SIZE 10
@@ -398,6 +398,9 @@ bool is_log_off(void)
 /*                                                                            */
 void log_error(const char *fmt,...)
 {
+    /* NOTE: On error set global success to return EXIT_FAILURE */
+    success = false;
+
     if (_error) {
         get_log_format(logFormat, fmt, ERRORLVL);
 
@@ -412,14 +415,13 @@ void log_error(const char *fmt,...)
                                                                  * MISRAC2012-DIR_4_1-i
                                                                  * "same array" */
             if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) {
-
                 write_heap_to_disk();
             }
             get_log_format(logFormat, fmt, ERRORLVL);
-            va_list args;
-            va_start(args, fmt);
-            size_t chars_written = vsprintf(log_tail, logFormat, args);
-            va_end(args);
+            va_list args_inner;
+            va_start(args_inner, fmt);
+            size_t chars_written = vsprintf(log_tail, logFormat, args_inner);
+            va_end(args_inner);
             log_tail += chars_written;
             log_is_dirty = true;
             /* End write to the log buffer, too */
@@ -452,10 +454,10 @@ void log_warn(const char *fmt,...)
                 write_heap_to_disk();
             }
             get_log_format(logFormat, fmt, WARNLVL);
-            va_list args;
-            va_start(args, fmt);
-            size_t chars_written = vsprintf(log_tail, logFormat, args);
-            va_end(args);
+            va_list args_inner;
+            va_start(args_inner, fmt);
+            size_t chars_written = vsprintf(log_tail, logFormat, args_inner);
+            va_end(args_inner);
             log_tail += chars_written;
             log_is_dirty = true;
             /* End write to the log buffer, too */
@@ -488,10 +490,10 @@ void log_info(const char *fmt,...)
                 write_heap_to_disk();
             }
             get_log_format(logFormat, fmt, INFOLVL);
-            va_list args;
-            va_start(args, fmt);
-            size_t chars_written = vsprintf(log_tail, logFormat, args);
-            va_end(args);
+            va_list args_inner;
+            va_start(args_inner, fmt);
+            size_t chars_written = vsprintf(log_tail, logFormat, args_inner);
+            va_end(args_inner);
             log_tail += chars_written;
             log_is_dirty = true;
             /* End write to the log buffer, too */
@@ -524,10 +526,10 @@ void log_verbose(const char *fmt,...)
                 write_heap_to_disk();
             }
             get_log_format(logFormat, fmt, VERBOSELVL);
-            va_list args;
-            va_start(args, fmt);
-            size_t chars_written = vsprintf(log_tail, logFormat, args);
-            va_end(args);
+            va_list args_inner;
+            va_start(args_inner, fmt);
+            size_t chars_written = vsprintf(log_tail, logFormat, args_inner);
+            va_end(args_inner);
             log_tail += chars_written;
             log_is_dirty = true;
             /* End write to the log buffer, too */
@@ -560,10 +562,10 @@ void log_debug(const char *fmt,...)
                 write_heap_to_disk();
             }
             get_log_format(logFormat, fmt, DEBUGLVL);
-            va_list args;
-            va_start(args, fmt);
-            size_t chars_written = vsprintf(log_tail, logFormat, args);
-            va_end(args);
+            va_list args_inner;
+            va_start(args_inner, fmt);
+            size_t chars_written = vsprintf(log_tail, logFormat, args_inner);
+            va_end(args_inner);
             log_tail += chars_written;
             log_is_dirty = true;
             /* End write to the log buffer, too */
@@ -596,10 +598,10 @@ void log_trace(const char *fmt,...)
                 write_heap_to_disk();
             }
             get_log_format(logFormat, fmt, TRACELVL);
-            va_list args;
-            va_start(args, fmt);
-            size_t chars_written = vsprintf(log_tail, logFormat, args);
-            va_end(args);
+            va_list args_inner;
+            va_start(args_inner, fmt);
+            size_t chars_written = vsprintf(log_tail, logFormat, args_inner);
+            va_end(args_inner);
             log_tail += chars_written;
             log_is_dirty = true;
             /* End write to the log buffer, too */
@@ -632,10 +634,10 @@ void log_qa(const char *fmt,...)
       write_heap_to_disk();
     }
     get_log_format(logFormat, fmt, QALVL);
-    va_list args;
-    va_start(args, fmt);
-    size_t chars_written = vsprintf(log_tail, logFormat, args);
-    va_end(args);
+    va_list args_inner;
+    va_start(args_inner, fmt);
+    size_t chars_written = vsprintf(log_tail, logFormat, args_inner);
+    va_end(args_inner);
     log_tail += chars_written;
     log_is_dirty = true;
     /* End write to the log buffer, too */
@@ -810,3 +812,4 @@ void free_log_heap(void)
 } /* free_log_heap */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/
+/******************************************************************************/

@@ -32,8 +32,9 @@ extern SessionInfo_t SessionData;
 extern ScheduledJob_t* JobList;
 extern ConfigData_t* ConfigData;
 extern ScheduledJob_t* currentJob; /* Defined in schedule.c */
+extern bool success;   /* Used to define the program/library exit code */
 
-#if defined(__OPEN_SSL__)
+#if defined(__OPEN_SSL__) && defined(__TPM__)
 	extern char engine_id[21];
 #endif
 	
