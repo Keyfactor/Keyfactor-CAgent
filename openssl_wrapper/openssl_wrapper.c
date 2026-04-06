@@ -21,7 +21,7 @@
 #include "../utils.h"
 #include "../logging.h"
 #include "../lib/base64.h"
-#include "../global.h"
+#include "../constants.h"
 
 #include <openssl/bn.h>
 #include <openssl/bio.h>
@@ -30,12 +30,8 @@
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 #include <openssl/pem.h>
-#include <openssl/pkcs12.h>
 #include <openssl/rsa.h>
 #include <openssl/rand.h>
-#include <openssl/sha.h>
-
-#include "../openssl_compat.h" 
 
 #if defined(__TPM__)
 	#include "../agent.h"
@@ -59,7 +55,7 @@
 
 static const char x509PEMHeader[30] = "-----BEGIN CERTIFICATE-----\n\0";
 static const char x509PEMFooter[30] = "-----END CERTIFICATE-----\n\0";
-static const int MAX_CERT_SIZE = 4096;
+
 
 /******************************************************************************/
 /************************ LOCAL GLOBAL STRUCTURES *****************************/
@@ -2642,10 +2638,10 @@ bool ssl_is_cert_active(char* certFile) {
     int length = 0;
     const ASN1_TIME* start_date = NULL;
     const ASN1_TIME* end_date = NULL;
-    static const uint8_t bufLen = 30;
-    char notBeforeString[bufLen];
-    char notAfterString[bufLen];
-    char nowASN1string[bufLen];
+    #define CERT_DATE_BUF_LEN 30
+    char notBeforeString[CERT_DATE_BUF_LEN];
+    char notAfterString[CERT_DATE_BUF_LEN];
+    char nowASN1string[CERT_DATE_BUF_LEN];
     ASN1_TIME* now_asn1 = NULL;
     time_t now = 0;
 
@@ -2665,7 +2661,7 @@ bool ssl_is_cert_active(char* certFile) {
             break;
         }
         else {
-            if (get_datestring_ASN1(notBeforeString, bufLen, start_date)) {
+            if (get_datestring_ASN1(notBeforeString, CERT_DATE_BUF_LEN, start_date)) {
                 log_trace("%s::%s(%d) : Successfully converted notBeforeDate = %s", LOG_INF, notBeforeString);
             }
             else {
@@ -2681,7 +2677,7 @@ bool ssl_is_cert_active(char* certFile) {
             break;
         }
         else {
-            if (get_datestring_ASN1(notAfterString, bufLen, end_date)) {
+            if (get_datestring_ASN1(notAfterString, CERT_DATE_BUF_LEN, end_date)) {
                 log_trace("%s::%s(%d) : Successfully converted notAfterString = %s", LOG_INF, notAfterString);
             }
             else {
@@ -2709,7 +2705,7 @@ bool ssl_is_cert_active(char* certFile) {
         log_debug("%s::%s(%d) : ctime = %s", LOG_INF, ctime(&now));
         /* Convert the time to ASN1 format */
         now_asn1 = ASN1_TIME_adj(now_asn1, now, 0, 0);
-        if(get_datestring_ASN1(nowASN1string, bufLen, now_asn1)) {
+        if(get_datestring_ASN1(nowASN1string, CERT_DATE_BUF_LEN, now_asn1)) {
             log_trace("%s::%s(%d) : Successfully converted nowASN1string = %s", LOG_INF, nowASN1string);
         }
         else {

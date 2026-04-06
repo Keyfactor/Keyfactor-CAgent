@@ -6,6 +6,7 @@ CFLAGS += -fPIC
 # turn on typical warnings
 CFLAGS += -Wall
 CFLAGS += -Wextra
+CFLAGS += -Wvla
 # turn warnings into errors
 CFLAGS += -Werror
 

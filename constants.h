@@ -14,6 +14,8 @@
 
 #define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
 
+#define MAX_CERT_SIZE   4096
+
 /* These are the GUIDs of the capabilities supported by the Agent */
 #define CAP_PEM_INVENTORY "a809ce1f-1eea-4738-a38e-15708c89c981"
 #define CAP_PEM_MANAGEMENT "1d411b36-ae72-433f-9f3f-8593e836a1af"

@@ -106,66 +106,134 @@ exit:
     return thumbBuf;
 }
 
-int append_line(char **msg, const char *line)
+/**
+ * @brief Appends a line of text to a dynamically allocated string.
+ *
+ * This function safely reallocates the buffer pointed to by msg
+ * to accommodate the new line, followed by a newline character.
+ * It correctly handles the case where *msg is initially NULL.
+ *
+ * @param msg A pointer to a char*. On success, *msg will be updated
+ * to point to the new, larger buffer. The caller is
+ *
+ * responsible for freeing this memory.
+ * @param line The null-terminated string to append.
+ * @return 0 on success, or an error code (EINVAL, ENOMEM) on failure.
+ * If realloc fails, *msg remains unchanged.
+ */
+int append_line(char** msg, const char* line)
 {
-    int ret = 0;
+  /* Validate input parameters */
+  if (!msg || !line) {
+    return EINVAL;
+  }
 
-    if (msg && line) {
-        if (!*msg) {
-            log_error("%s::%s(%d) : Null pointer dereference - *msg is NULL", LOG_INF);
-            return EINVAL;
-        }
-        int len = strlen(*msg) + strlen(line) + 2;
-        char *tmp = realloc(*msg, len);
-        if (tmp) {
-            strcat(tmp, line);
-            strcat(tmp, "\n");
-            *msg = tmp;
-        } else {
-            ret = ENOMEM;
-        }
-    } else {
-        ret = EINVAL;
-    }
+  /* Gracefully handle the case where *msg is NULL to get the current length */
+  const size_t current_len = (*msg) ? strlen(*msg) : 0;
+  const size_t line_len = strlen(line);
 
-    return ret;
-}
+  /* Calculate the new total size required:
+     current string + new line + newline char '\n' + null terminator '\0' */
+  const size_t new_size = current_len + line_len + 2;
 
-int append_linef(char **msg, const char *fmt,...)
-{
-    int ret = 0;
+  /* Reallocate memory. realloc behaves like malloc if *msg is NULL. */
+  char* new_buffer = realloc(*msg, new_size);
+  if (!new_buffer) {
+    /* On failure, realloc leaves the original block untouched. */
+    return ENOMEM;
+  }
 
-    if (msg && fmt) {
-        if (!*msg) {
-            log_error("%s::%s(%d) : Null pointer dereference - *msg is NULL", LOG_INF);
-            return EINVAL;
-        }
-        va_list args;
-        va_start(args, fmt);
-        int len = vsnprintf(NULL, 0, fmt, args);
-        va_end(args);
+  /* Copy the new line to the end of the old content */
+  strcpy(new_buffer + current_len, line);
+  /* Append the newline character */
+  new_buffer[current_len + line_len] = '\n';
+  /* Add the new null terminator */
+  new_buffer[current_len + line_len + 1] = '\0';
 
-        char line[len + 1];
-        char *tmp = realloc(*msg, strlen(*msg) + len + 2);
+  /* Update the caller's pointer to the new buffer */
+  *msg = new_buffer;
 
-        if (tmp) {
-            va_list args2;
-            va_start(args2, fmt);
-            vsnprintf(line, len + 1, fmt, args2);
-            va_end(args2);
+  return 0;
+} /* append_line */
 
-            strcat(tmp, line);
-            strcat(tmp, "\n");
-            *msg = tmp;
-        } else {
-            ret = ENOMEM;
-        }
-    } else {
-        ret = EINVAL;
-    }
+/**
+ * @brief Appends a formatted string, followed by a newline, to a dynamic buffer.
+ *
+ * This function operates like `printf` to create a formatted string and appends it,
+ * along with a newline character, to the buffer pointed to by `msg`. The buffer is
+ * automatically reallocated to the necessary size. It correctly handles the
+ * case where `*msg` is initially `NULL`.
+ *
+ * @param[in,out] msg   A pointer to a char pointer (`char**`). On a successful return,
+ * `*msg` will point to the newly allocated buffer containing
+ * the appended content. The caller is responsible for freeing
+ * this memory using `free()`.
+ * @param[in]     fmt   The `printf`-style format string.
+ * @param[in]     ...   Variable arguments corresponding to the format string.
+ *
+ * @return 0 on success.
+ * @return `EINVAL` if `msg` or `fmt` is `NULL`.
+ * @return `EIO` if a formatting or encoding error occurs.
+ * @return `ENOMEM` if a memory allocation fails.
+ *
+ * @note The memory pointed to by `*msg` is managed by this function via `realloc`.
+ * The caller must not free the old pointer after a successful call,
+ * as `realloc` may have already done so. The caller is always responsible
+ * for freeing the final buffer.
+ */
+int append_linef(char** msg, const char* fmt, ...) {
+	if (!msg || !fmt) {
+		return EINVAL;
+	}
 
-    return ret;
-}
+	/* Determine the length of the string to be appended */
+	va_list args;
+	va_start(args, fmt);
+	int append_len = vsnprintf(NULL, 0, fmt, args);
+	va_end(args);
+
+	if (append_len < 0) {
+		return EIO; // Encoding error
+	}
+
+	/* Allocate temporary memory for the new line */
+	char* line_to_append = malloc(append_len + 1);
+	if (!line_to_append) {
+		return ENOMEM;
+	}
+
+	/* Create the new line string */
+	va_start(args, fmt);
+	vsnprintf(line_to_append, append_len + 1, fmt, args);
+	va_end(args);
+
+	/* Determine current message length (0 if msg is NULL) */
+	size_t current_len = (*msg) ? strlen(*msg) : 0;
+
+	/* New size = current length + appended line length + newline + null terminator */
+	size_t new_size = current_len + append_len + 2;
+
+	char* new_msg = realloc(*msg, new_size);
+	if (!new_msg) {
+		free(line_to_append); /* Clean up the temporary line */
+		return ENOMEM;
+	}
+
+	/* If the buffer was new (current_len was 0), ensure it starts as an empty string */
+	if (current_len == 0) {
+		new_msg[0] = '\0';
+	}
+
+	/* Concatenate the new parts */
+	strcat(new_msg, line_to_append);
+	strcat(new_msg, "\n");
+
+	/* Clean up and update the caller's pointer */
+	free(line_to_append);
+	*msg = new_msg;
+
+	return 0; /* Success */
+} /* append_linef */
 
 static int copy_file(const char *srcPath, const char *destPath)
 {
@@ -275,32 +343,49 @@ int write_file_bytes(const char *srcPath, char *pFileBytes, size_t len)
     return err;
 }
 
+/**
+ * @brief Creates a backup copy of a file by appending a tilde (~) to the filename.
+ *
+ * If the specified file does not exist, it is created before the backup is
+ * attempted. The backup file permissions are set to owner read/write only
+ * (S_IRUSR | S_IWUSR).
+ *
+ * @param[in] file  Null-terminated path to the file to back up.
+ *
+ * @return 0 on success.
+ * @return ENOENT if @p file is NULL.
+ * @return ENOMEM if memory allocation for the backup path fails.
+ * @return errno value if the chmod on the backup file fails.
+ */
 int backup_file(const char *file)
 {
-    int err = 0;
-    char *dummy = NULL;
+  int err = 0;
 
-    if (file) {
-        if (!file_exists(file))
-            create_file(file);
+  if (file) {
+    if (!file_exists(file))
+      create_file(file);
 
-        char backupPath[strlen(file) + 2];
-        strcpy(backupPath, file);
-        strcat(backupPath, "~");
-        err = copy_file(file, backupPath);
-
-        if (!err) {
-            if (chmod(backupPath, (S_IRUSR | S_IWUSR)) < 0) {
-                err = errno;
-            }
-        }
-    } else {
-        log_info("%s::%s(%d) : No file found", LOG_INF);
-        err = ENOENT;
+    char* backupPath = malloc(strlen(file) + 2);
+    if (!backupPath) {
+      return ENOMEM;
     }
+    strcpy(backupPath, file);
+    strcat(backupPath, "~");
+    err = copy_file(file, backupPath);
 
-    return err;
-}
+    if (!err) {
+      if (chmod(backupPath, (S_IRUSR | S_IWUSR)) < 0) {
+        err = errno;
+      }
+    }
+    free(backupPath);
+  } else {
+    log_info("%s::%s(%d) : No file found", LOG_INF);
+    err = ENOENT;
+  }
+
+  return err;
+} /* backup_file */
 
 int replace_file(const char *file, const char *contents, long len, bool backup)
 {

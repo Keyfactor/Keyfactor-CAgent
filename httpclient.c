@@ -29,7 +29,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <curl/curl.h>
-#include <time.h>
+#include "constants.h"
 
 #include "logging.h"
 #include "httpclient.h"
@@ -52,7 +52,6 @@ bool add_client_cert_to_header = false;
 /******************************************************************************/
 /***************************** LOCAL DEFINES  *********************************/
 /******************************************************************************/
-static const size_t MAX_CERT_SIZE = 4096;
 
 /******************************************************************************/
 /************************ LOCAL GLOBAL STRUCTURES *****************************/
