@@ -1089,8 +1089,10 @@ static bool parse_subject(Cert* pReq, const char* subject)
         return NULL;
     }
 	curPtr = localSubjectPtr;
-	log_debug("%s::%s(%d) : Subject \"%s\" is %ld characters long", 
-		LOG_INF, curPtr, strlen(curPtr));
+        if (is_log_debug()) {
+            log_debug("%s::%s(%d) : Subject \"%s\" is %ld characters long",
+                    LOG_INF, curPtr, strlen(curPtr));
+        }
 
 	log_trace("%s::%s(%d) : hasError = %s endOfSubject = %s", LOG_INF, 
 		hasError ? "true" : "false", endOfSubject ? "true" : "false");

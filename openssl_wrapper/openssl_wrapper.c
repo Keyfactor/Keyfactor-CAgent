@@ -184,7 +184,9 @@ static bool pemify(char** pToB64, const char* header, const char* footer) {
             result[outputArrayPtr] = '\n';
             outputArrayPtr++;
             result[outputArrayPtr] = '\0'; // Temporarily end this string so we can print it.
-            log_debug("%s::%s(%d) : Current result is %lu long", LOG_INF, strlen(result));
+            if (is_log_debug()) {
+              log_debug("%s::%s(%d) : Current result is %lu long", LOG_INF, strlen(result));
+            }
         }
         worked = true;
     } while(false);
@@ -1082,8 +1084,10 @@ static X509_NAME* parse_subject(const char* subject)
 		goto cleanup;
 	}
 	curPtr = localSubjectPtr;
-	log_debug("%s::%s(%d) : Subject \"%s\" is %ld characters long", 
-		LOG_INF, curPtr, strlen(curPtr));
+        if (is_log_debug()) {
+            log_debug("%s::%s(%d) : Subject \"%s\" is %ld characters long",
+                    LOG_INF, curPtr, strlen(curPtr));
+        }
 
 	log_trace("%s::%s(%d) : hasError = %s endOfSubject = %s", LOG_INF, 
 		hasError ? "true" : "false", endOfSubject ? "true" : "false");
@@ -2701,8 +2705,10 @@ bool ssl_is_cert_active(char* certFile) {
             log_error("%s::%s(%d) : Failed to convert local time to GMT", LOG_INF);
             break;
         }
-        log_debug("%s::%s(%d) : Current GMT time %ld", LOG_INF, now);
-        log_debug("%s::%s(%d) : ctime = %s", LOG_INF, ctime(&now));
+        if (is_log_debug()) {
+            log_debug("%s::%s(%d) : Current GMT time %ld", LOG_INF, now);
+            log_debug("%s::%s(%d) : ctime = %s", LOG_INF, ctime(&now));
+        }
         /* Convert the time to ASN1 format */
         now_asn1 = ASN1_TIME_adj(now_asn1, now, 0, 0);
         if(get_datestring_ASN1(nowASN1string, CERT_DATE_BUF_LEN, now_asn1)) {
