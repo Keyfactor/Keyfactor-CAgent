@@ -230,13 +230,13 @@ void SessionRegisterResp_freeJobs(SessionRegisterResp_t*);
 
 void SessionJob_free(SessionJob_t* job);
 
-CommonConfigReq_t* CommonConfigReq_new();
+CommonConfigReq_t* CommonConfigReq_new(void);
 
 void CommonConfigReq_free(CommonConfigReq_t* req);
 
 char* CommonConfigReq_toJson(CommonConfigReq_t* req);
 
-CommonCompleteReq_t* CommonCompleteReq_new();
+CommonCompleteReq_t* CommonCompleteReq_new(void);
 
 void CommonCompleteReq_free(CommonCompleteReq_t* req);
 
@@ -281,16 +281,6 @@ EnrollmentEnrollResp_t* EnrollmentEnrollResp_fromJson(char* jsonString);
 void EnrollmentCompleteResp_free(EnrollmentCompleteResp_t* resp);
 
 EnrollmentCompleteResp_t* EnrollmentCompleteResp_fromJson(char* jsonString);
-
-void FetchLogsConfigResp_free(FetchLogsConfigResp_t* req);
-
-FetchLogsConfigResp_t* FetchLogsConfigResp_fromJson(char* jsonString);
-
-void FetchLogsCompleteReq_free(FetchLogsCompleteReq_t* req);
-
-char* FetchLogsCompleteReq_toJson(FetchLogsCompleteReq_t* req);
-
-FetchLogsCompleteReq_t* FetchLogsCompleteReq_new();
 
 bool SessionRegisterReq_addNewClientParameter(SessionRegisterReq_t* req, \
 	const char* key, const char* value);

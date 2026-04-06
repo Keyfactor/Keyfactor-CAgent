@@ -6,8 +6,22 @@
 /* required by applicable law or agreed to in writing, software distributed   */
 /* under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES   */
 /* OR CONDITIONS OF ANY KIND, either express or implied. See the License for  */
-/* thespecific language governing permissions and limitations under the       */
+/* the specific language governing permissions and limitations under the      */
 /* License.                                                                   */
+/******************************************************************************/
+/* @file httpclient.c                                                         */
+/*                                                                            */
+/* Provides http_post_json(), the single HTTP transport function used by the  */
+/* agent to communicate with the Keyfactor platform.                          */
+/*                                                                            */
+/* Internal structure:                                                        */
+/*   setup_curl_handle()    -- init, error buffer, timeouts, HTTP version     */
+/*   apply_basic_auth()     -- optional username/password                     */
+/*   apply_trust_store()    -- optional CA bundle                             */
+/*   apply_client_cert()    -- bootstrap or agent mTLS cert + key             */
+/*   build_request_headers()-- Content-Type/Accept/Content-Length slist       */
+/*   attach_post_body()     -- POSTFIELDS + write callback                    */
+/*   execute_with_retry()   -- perform loop, HTTP code check, response alloc  */
 /******************************************************************************/
 
 #include <stdlib.h>
@@ -38,157 +52,476 @@ bool add_client_cert_to_header = false;
 /******************************************************************************/
 /***************************** LOCAL DEFINES  *********************************/
 /******************************************************************************/
-static const    size_t MAX_CERT_SIZE = 4096;
+static const size_t MAX_CERT_SIZE = 4096;
 
 /******************************************************************************/
 /************************ LOCAL GLOBAL STRUCTURES *****************************/
 /******************************************************************************/
+
 /*                                                                            */
-/* The memory structure used by curl in its callback function                 */
-/* memory holds the curl response data (callback NULL terminates this data)   */
-/* size holds the size of the data                                            */
+/* Response accumulator passed as userdata to WriteMemoryCallback.           */
+/* memory: heap buffer grown by realloc as chunks arrive.                    */
+/* size:   total bytes written so far (excludes the null terminator).        */
 /*                                                                            */
 struct MemoryStruct {
-    char *memory;
+    char  *memory;
     size_t size;
 };
-
-/******************************************************************************/
-/************************** LOCAL GLOBAL VARIABLES ****************************/
-/******************************************************************************/
 
 /******************************************************************************/
 /************************ LOCAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
 
 /*                                                                            */
-/* This handles curl_easy_setopt returned error code logging                  */
-/* @param  - [Input] curl = a pointer to our CURL handle                      */
-/* @param  - [I/O]   errNum = the curl error number                           */
+/* Log a cURL setup error, clean up the handle, and return the error code.  */
 /*                                                                            */
-static int handle_curl_error(CURL * curl, int errNum)
+/* errBuff must have been registered with CURLOPT_ERRORBUFFER before calling */
+/* this function; if it has not yet been populated it will be empty and the  */
+/* strerror fallback will be used instead.                                   */
+/*                                                                            */
+/* @param curl    - CURL handle to clean up (must not be NULL)               */
+/* @param errNum  - CURLcode that triggered the error                        */
+/* @param errBuff - buffer registered via CURLOPT_ERRORBUFFER                */
+/* @return errNum (pass-through for single-expression callers)               */
+/*                                                                            */
+static int handle_curl_error(CURL *curl, int errNum, const char *errBuff)
 {
-    char errBuff[CURL_ERROR_SIZE];
-    /* When tracing, dump the error buffer to stderr */
-    if (is_log_trace()) {
+    if (is_log_trace() && errBuff && errBuff[0] != '\0') {
         size_t len = strlen(errBuff);
-        log_error("%s::%s(%d) -libcurl: (%d) ", LOG_INF, errNum);
-        if (len) {
-            log_error("%s::%s(%d) : %s%s", LOG_INF, errBuff,
-                      ((errBuff[len - 1] != '\n') ? "\n" : ""));
-        } else {
-            log_error("%s::%s(%d) : %s", LOG_INF, curl_easy_strerror(errNum));
-        }
+        log_error("%s::%s(%d) : libcurl (%d): %s%s", LOG_INF, errNum,
+                  errBuff, (errBuff[len - 1] != '\n') ? "\n" : "");
+    } else {
+        log_error("%s::%s(%d) : libcurl (%d): %s", LOG_INF, errNum,
+                  curl_easy_strerror(errNum));
     }
-    log_error("%s::%s(%d) : %s", LOG_INF, curl_easy_strerror(errNum));
-
     curl_easy_cleanup(curl);
     return errNum;
-}
+} /* handle_curl_error */
 
 /*                                                                            */
-/* The memory callback function curl uses -- the default is fwrite, so we     */
-/* want to change that behaviour.                                             */
+/* curl write callback — appends each received chunk to a MemoryStruct.     */
+/* Registered via CURLOPT_WRITEFUNCTION / CURLOPT_WRITEDATA.                */
 /*                                                                            */
-/* to send data to this function, execute:                                    */
-/* curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback)  */
+/* @return bytes consumed; returning 0 signals an error to libcurl           */
 /*                                                                            */
-/* to pass our 'chunk' structure we need this code:                           */
-/* struct MemoryStruct chunk;                                                 */
-/* curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);          */
-/*                                                                            */
-/* This function gets called by libcurl as soon as there is data received     */
-/* that needs to be saved.  For most transfers, this callback gets called     */
-/* many times and each invoke delivers another chunk of data.                 */
-/*                                                                            */
-/* @param  - [Output] contents = The delivered data (NOT NULL TERMINATED)     */
-/* @param  - [N/A] size = 1.  This is always one (refers to a byte)           */
-/* @param  - [Input] nmemb = The size of the delivered contents               */
-/* @param  - [Output] userp =                                                 */
-/* @return - success = the number of bytes taken care of                      */
-/* failure = the number of bytes taken care of                                */
-/*                                                                            */
-static size_t WriteMemoryCallback(const void *contents, const size_t size, const size_t nmemb, const void *userp){
+static size_t WriteMemoryCallback(const void *contents, const size_t size,
+                                   const size_t nmemb, const void *userp)
+{
     size_t realsize = size * nmemb;
     struct MemoryStruct *mem = (struct MemoryStruct *)userp;
 
-    mem->memory = realloc(mem->memory, (mem->size + realsize + 1));
-    if (NULL == mem->memory) {
-        log_error("%s::%s(%d): out of memory", LOG_INF);
+    char *ptr = realloc(mem->memory, mem->size + realsize + 1);
+    if (!ptr) {
+        log_error("%s::%s(%d) : Out of memory in write callback", LOG_INF);
         return 0;
     }
-
-    memcpy(&(mem->memory[mem->size]), contents, realsize);
+    mem->memory = ptr;
+    memcpy(&mem->memory[mem->size], contents, realsize);
     mem->size += realsize;
     mem->memory[mem->size] = '\0';
-
     return realsize;
 } /* WriteMemoryCallback */
 
 /*                                                                            */
-/* Check if a file exists                                                     */
-/* @param fileName = the filename to look on the filesystem for               */
-/* @retval true = file exists                                                 */
-/* @retval false = file isn't there or other error                            */
+/* Strip newline characters ('\n') from a cert string in-place.             */
+/* Used before embedding a PEM cert in an HTTP header value.                */
+/* Bounded by MAX_CERT_SIZE to guard against unterminated input.            */
 /*                                                                            */
-static bool check_file_exists(const char *fileName)
+static void stripNewlines(char *string)
 {
-    FILE *fp;
-    if ((fp = fopen(fileName, "r"))) {
-        (void)fclose(fp);
-        return true;
-    } else {
-        return false;
+    size_t x = 0, y = 0;
+    while (string[x] != '\0' && x < MAX_CERT_SIZE) {
+        if (string[x] != '\n')
+            string[y++] = string[x];
+        x++;
     }
-} /* file_exists */
-
-static void stripCR(char string[])
-{
-    static const char CR = '\n';
-    size_t x, y;
-    x = 0;
-    y = 0;
-    while (('\0' != string[x]) && (MAX_CERT_SIZE > x)) {
-        if (CR != string[x]) {
-            string[y] = string[x];
-            x++;
-            y++;
-        } else {
-            x++;
-        }
-    }                           /* while */
     string[y] = '\0';
-}
+} /* stripNewlines */
+
+/*----------------------------------------------------------------------------*/
+/* CURL SETUP HELPERS                                                         */
+/*----------------------------------------------------------------------------*/
+
+/*                                                                            */
+/* Initialise the curl handle with core POST options: URL, error buffer,     */
+/* connect timeout, HTTP version, and verbose tracing if enabled.            */
+/*                                                                            */
+/* @param curl    - freshly initialised CURL handle                          */
+/* @param url     - target URL                                               */
+/* @param errBuff - CURL_ERROR_SIZE buffer, zeroed by caller                 */
+/* @return CURLE_OK or a CURLcode on failure (handle already cleaned up)     */
+/*                                                                            */
+static int setup_curl_handle(CURL *curl, const char *url, char *errBuff)
+{
+    int errNum;
+
+    /* Register the error buffer first so every subsequent error captures it */
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuff);
+
+    errNum = curl_easy_setopt(curl, CURLOPT_URL, url);
+    if (CURLE_OK != errNum) return handle_curl_error(curl, errNum, errBuff);
+
+    errNum = curl_easy_setopt(curl, CURLOPT_POST, 1L);
+    if (CURLE_OK != errNum) return handle_curl_error(curl, errNum, errBuff);
+
+    errNum = curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT);
+    if (CURLE_OK != errNum) return handle_curl_error(curl, errNum, errBuff);
+
+#ifdef __HTTP_1_1__
+    /* Some OpenSSL builds default to HTTP/2; force 1.1 when required */
+    errNum = curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+    if (CURLE_OK != errNum) return handle_curl_error(curl, errNum, errBuff);
+#endif
+
+    if (is_log_trace()) {
+        log_trace("%s::%s(%d) : Enabling cURL verbose output", LOG_INF);
+        errNum = curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+        if (CURLE_OK != errNum) return handle_curl_error(curl, errNum, errBuff);
+    }
+
+    return CURLE_OK;
+} /* setup_curl_handle */
+
+/*                                                                            */
+/* Apply HTTP basic auth credentials to the curl handle.                    */
+/* Both username and password must be non-NULL; otherwise auth is skipped.  */
+/*                                                                            */
+static int apply_basic_auth(CURL *curl, const char *username,
+                             const char *password, char *errBuff)
+{
+    if (!username || !password) {
+        log_trace("%s::%s(%d) : No basic auth credentials supplied — skipping",
+                  LOG_INF);
+        return CURLE_OK;
+    }
+
+    int errNum;
+    log_trace("%s::%s(%d) : Configuring basic auth", LOG_INF);
+
+    errNum = curl_easy_setopt(curl, CURLOPT_USERNAME, username);
+    if (CURLE_OK != errNum) return handle_curl_error(curl, errNum, errBuff);
+
+    errNum = curl_easy_setopt(curl, CURLOPT_PASSWORD, password);
+    if (CURLE_OK != errNum) return handle_curl_error(curl, errNum, errBuff);
+
+    return CURLE_OK;
+} /* apply_basic_auth */
+
+/*                                                                            */
+/* Configure an additional CA bundle for peer certificate verification.     */
+/* If the file does not exist the system default trust store is used.       */
+/*                                                                            */
+static int apply_trust_store(CURL *curl, const char *trustStore, char *errBuff)
+{
+    if (!file_exists(trustStore)) {
+        log_trace("%s::%s(%d) : Trust store not found — using system default",
+                  LOG_INF);
+        return CURLE_OK;
+    }
+
+    log_trace("%s::%s(%d) : Setting trust store: %s", LOG_INF, trustStore);
+    int errNum = curl_easy_setopt(curl, CURLOPT_CAINFO, trustStore);
+    if (CURLE_OK != errNum) return handle_curl_error(curl, errNum, errBuff);
+
+    return CURLE_OK;
+} /* apply_trust_store */
+
+/*                                                                            */
+/* Configure mTLS client certificate and key on the curl handle.            */
+/*                                                                            */
+/* Selects bootstrap credentials when EnrollOnStartup + UseBootstrapCert    */
+/* are both set; otherwise uses the agent cert/key passed by the caller.    */
+/* If the configuration indicates no cert should be used, returns CURLE_OK  */
+/* immediately without modifying the handle.                                */
+/*                                                                            */
+/* @param curl          - curl handle to configure                           */
+/* @param clientCert    - agent cert path (ignored during bootstrap)         */
+/* @param clientKey     - agent key path (ignored during bootstrap)          */
+/* @param clientKeyPass - agent key password, may be NULL                   */
+/* @param pCertBytes    - out: heap copy of the cert PEM for header use,    */
+/*                        or unchanged if not needed. Caller must free.     */
+/* @param errBuff       - curl error buffer                                  */
+/* @return CURLE_OK, a CURLcode, or CURLE_OUT_OF_MEMORY                    */
+/*                                                                            */
+static int apply_client_cert(CURL *curl, const char *clientCert,
+                              const char *clientKey, const char *clientKeyPass,
+                              unsigned char **pCertBytes, char *errBuff)
+{
+    const char *certPath = NULL;
+    const char *keyPath  = NULL;
+    const char *keyPass  = NULL;
+    int errNum;
+
+    if (ConfigData->EnrollOnStartup) {
+        if (!ConfigData->UseBootstrapCert) {
+            log_info("%s::%s(%d) : Bypassing client cert on initial enrollment",
+                     LOG_INF);
+            return CURLE_OK;
+        }
+        log_trace("%s::%s(%d) : Using bootstrap cert and key", LOG_INF);
+        certPath = ConfigData->BootstrapCert;
+        keyPath  = ConfigData->BootstrapKey;
+        keyPass  = ConfigData->BootstrapKeyPassword;
+    } else {
+        if (!ConfigData->UseAgentCert) {
+            log_verbose("%s::%s(%d) : Configured to not use agent cert", LOG_INF);
+            return CURLE_OK;
+        }
+        log_trace("%s::%s(%d) : Using agent cert and key", LOG_INF);
+        certPath = clientCert;
+        keyPath  = clientKey;
+        keyPass  = clientKeyPass;
+    }
+
+    /* Client certificate */
+    if (file_exists(certPath)) {
+        log_trace("%s::%s(%d) : Setting client cert: %s", LOG_INF, certPath);
+        errNum = curl_easy_setopt(curl, CURLOPT_SSLCERT, certPath);
+        if (CURLE_OK != errNum) return handle_curl_error(curl, errNum, errBuff);
+
+        size_t dummySize = 0;
+        read_file_bytes(certPath, pCertBytes, &dummySize);
+        if (!*pCertBytes) {
+            log_error("%s::%s(%d) : Out of memory reading client certificate",
+                      LOG_INF);
+            return CURLE_OUT_OF_MEMORY;
+        }
+    } else {
+        log_warn("%s::%s(%d) : Client cert not found at %s", LOG_INF, certPath);
+    }
+
+    /* Client private key */
+    if (file_exists(keyPath)) {
+        log_trace("%s::%s(%d) : Setting client key: %s", LOG_INF, keyPath);
+        errNum = curl_easy_setopt(curl, CURLOPT_SSLKEY, keyPath);
+        if (CURLE_OK != errNum) return handle_curl_error(curl, errNum, errBuff);
+
+        if (keyPass) {
+            log_trace("%s::%s(%d) : Setting client key password", LOG_INF);
+            errNum = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, keyPass);
+            if (CURLE_OK != errNum)
+                return handle_curl_error(curl, errNum, errBuff);
+        }
+    } else {
+        log_warn("%s::%s(%d) : Client key not found at %s", LOG_INF, keyPath);
+    }
+
+    return CURLE_OK;
+} /* apply_client_cert */
+
+#if defined(__TPM__)
+/*                                                                            */
+/* Configure the TPM2 SSL engine on the curl handle.                        */
+/* Only called when __TPM__ is defined and EnrollOnStartup is false.        */
+/*                                                                            */
+static int apply_tpm_engine(CURL *curl, char *errBuff)
+{
+    int errNum;
+    log_verbose("%s::%s(%d) : Configuring TPM2 SSL engine: %s",
+                LOG_INF, engine_id);
+
+    errNum = curl_easy_setopt(curl, CURLOPT_SSLENGINE, engine_id);
+    if (CURLE_OK != errNum) return handle_curl_error(curl, errNum, errBuff);
+
+    errNum = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
+    if (CURLE_OK != errNum) return handle_curl_error(curl, errNum, errBuff);
+
+    errNum = curl_easy_setopt(curl, CURLOPT_SSLKEYTYPE, "ENG");
+    if (CURLE_OK != errNum) return handle_curl_error(curl, errNum, errBuff);
+
+    errNum = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, "");
+    if (CURLE_OK != errNum) return handle_curl_error(curl, errNum, errBuff);
+
+    return CURLE_OK;
+} /* apply_tpm_engine */
+#endif /* __TPM__ */
+
+/*                                                                            */
+/* Build the HTTP request header slist: Content-Type, Accept,               */
+/* Content-Length, and optionally the client cert header.                   */
+/*                                                                            */
+/* @param postData  - the JSON body (used only to compute Content-Length)   */
+/* @param certBytes - PEM cert bytes to embed in header, or NULL to skip    */
+/* @return allocated slist on success, NULL on failure                      */
+/*                                                                            */
+static struct curl_slist *build_request_headers(const char *postData,
+                                                 const unsigned char *certBytes)
+{
+    struct curl_slist *list = NULL;
+
+    list = curl_slist_append(NULL, "Content-Type: application/json");
+    list = curl_slist_append(list, "Accept: application/json");
+
+    char clBuf[30];
+    (void)snprintf(clBuf, sizeof(clBuf), "Content-Length: %d",
+                   (int)strlen(postData));
+    list = curl_slist_append(list, clBuf);
+
+    if (add_client_cert_to_header && certBytes) {
+        log_debug("%s::%s(%d) : Adding client cert to %s header",
+                  LOG_INF, CLIENT_CERT_HEADER);
+        /* Copy into a local buffer so stripNewlines does not modify the    */
+        /* original cert bytes, which may be needed for error reporting.    */
+        char certBuf[MAX_CERT_SIZE];
+        strncpy(certBuf, (const char *)certBytes, sizeof(certBuf) - 1);
+        certBuf[sizeof(certBuf) - 1] = '\0';
+        stripNewlines(certBuf);
+
+        char headerBuf[MAX_CERT_SIZE + 32];
+        (void)snprintf(headerBuf, sizeof(headerBuf), "%s: %s",
+                       CLIENT_CERT_HEADER, certBuf);
+        list = curl_slist_append(list, headerBuf);
+    } else {
+        log_debug("%s::%s(%d) : Skipping %s header", LOG_INF,
+                  CLIENT_CERT_HEADER);
+    }
+
+    return list;
+} /* build_request_headers */
+
+/*                                                                            */
+/* Attach the POST body and write callback to the curl handle, then set     */
+/* the pre-built header slist.                                               */
+/*                                                                            */
+/* Takes ownership of list on success; on failure list is freed here and    */
+/* the caller should not free it again.                                      */
+/*                                                                            */
+static int attach_post_body(CURL *curl, char *postData,
+                             struct curl_slist *list,
+                             struct MemoryStruct *chunk, char *errBuff)
+{
+    int errNum;
+
+    errNum = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+    if (CURLE_OK != errNum) goto fail;
+
+    errNum = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)chunk);
+    if (CURLE_OK != errNum) goto fail;
+
+    errNum = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
+    if (CURLE_OK != errNum) goto fail;
+
+    errNum = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData);
+    if (CURLE_OK != errNum) goto fail;
+
+    errNum = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (int)strlen(postData));
+    if (CURLE_OK != errNum) goto fail;
+
+#ifdef __QATESTING__
+    log_qa("%s::%s(%d) : postData = %s", LOG_INF, postData);
+#else
+    log_trace("%s::%s(%d) : postData = %s", LOG_INF, postData);
+#endif
+
+    return CURLE_OK;
+
+fail:
+    curl_slist_free_all(list);
+    return handle_curl_error(curl, errNum, errBuff);
+} /* attach_post_body */
+
+/*                                                                            */
+/* Execute the curl request with retry logic, check the HTTP response code, */
+/* and allocate the response string on success.                             */
+/*                                                                            */
+/* The retry sleep is applied before each attempt after the first, so a     */
+/* retryCount of 1 makes exactly one attempt with no sleep.                 */
+/* A retryCount <= 0 is treated as 1 (at least one attempt always occurs).  */
+/*                                                                            */
+/* @param curl          - fully configured curl handle                       */
+/* @param retryCount    - total number of attempts                           */
+/* @param retryInterval - seconds between attempts                           */
+/* @param chunk         - response accumulator populated by the callback     */
+/* @param pRespData     - out: heap-allocated response body on success       */
+/* @param errBuff       - curl error buffer                                  */
+/* @return 0            on success                                           */
+/*         1-99         CURLcode on transport failure                        */
+/*         255          out of memory allocating *pRespData                 */
+/*         300-511      HTTP error response code                             */
+/*                                                                            */
+static int execute_with_retry(CURL *curl, int retryCount, int retryInterval,
+                               struct MemoryStruct *chunk, char **pRespData,
+                               char *errBuff)
+{
+    int res = CURLE_FAILED_INIT;
+    long httpCode = 0;
+    int attempts = (retryCount > 0) ? retryCount : 1;
+
+    for (int i = 0; i < attempts; i++) {
+        if (i > 0 && retryInterval > 0) {
+            log_verbose("%s::%s(%d) : Retry %d/%d — sleeping %d seconds",
+                        LOG_INF, i + 1, attempts, retryInterval);
+            (void)sleep((unsigned int)retryInterval);
+        }
+
+        res = curl_easy_perform(curl);
+        (void)curl_easy_getinfo(curl, CURLINFO_HTTP_CODE, &httpCode);
+        log_verbose("%s::%s(%d) : Attempt %d/%d — curl=%d httpCode=%ld",
+                    LOG_INF, i + 1, attempts, res, httpCode);
+
+        if (CURLE_OK == res && httpCode < 300)
+            break;
+    }
+
+    /* Evaluate final outcome */
+    if (CURLE_OK != res) {
+        if (is_log_trace() && errBuff[0] != '\0') {
+            size_t len = strlen(errBuff);
+            log_error("%s::%s(%d) : libcurl (%d): %s%s", LOG_INF, res,
+                      errBuff, (errBuff[len - 1] != '\n') ? "\n" : "");
+        } else {
+            log_error("%s::%s(%d) : libcurl (%d): %s", LOG_INF, res,
+                      curl_easy_strerror(res));
+        }
+        return res;
+    }
+
+    if (httpCode >= 300) {
+        log_error("%s::%s(%d) : HTTP error: %ld", LOG_INF, httpCode);
+        return (int)httpCode;
+    }
+
+    log_verbose("%s::%s(%d) : %lu bytes received", LOG_INF,
+                (unsigned long)chunk->size);
+    *pRespData = strdup(chunk->memory);
+    if (!*pRespData) {
+        log_error("%s::%s(%d) : Out of memory allocating response", LOG_INF);
+        return 255;
+    }
+
+#ifdef __QATESTING__
+    log_qa("%s::%s(%d) : Response:\n%s", LOG_INF, *pRespData);
+#else
+    log_trace("%s::%s(%d) : Response:\n%s", LOG_INF, *pRespData);
+#endif
+
+    return 0;
+} /* execute_with_retry */
 
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
+
 /*                                                                            */
-/* Issue an HTTP POST command stating that the content is JSON and that a     */
-/* JSON response is accepted.                                                 */
+/* Issue an HTTP POST with JSON content and accept headers, with optional    */
+/* basic auth, trust store, and mTLS client certificate.                    */
 /*                                                                            */
-/* @param url = a string with the URL address to contact                      */
-/* @param username = a string with the username to log into the URL address   */
-/* @param password = a string with password to log into the URL address       */
-/* @param trustStore = a string with a filename containing additional         */
-/* trusted certificates                                                       */
-/* @param clientCert = a string with a filename containing a CA signed        */
-/* cert for this platform (for TLS communication)                             */
-/* @param clientKey = a string with a filename containing the private key     */
-/* associated with the clientCert                                             */
-/* @param clientKeyPass = a string with the password associated with the      */
-/* clientKey                                                                  */
-/* @param postData = a JSON string                                            */
-/* @param pRespData = a pointer to a string where the HTTP response           */
-/* data gets set.  NOTE: This memory gets DYNAMICALLY                         */
-/* allocated here!  You need to properly dispose of it in                     */
-/* the calling function.                                                      */
-/* @param retryCount = The number of times to try the http session            */
-/* @param retryInterval = The time (in seconds) between retries               */
-/* @return 0 on successfull completion                                        */
-/* 1-99 corresponding to the failed cURL response code                        */
-/* 255 if the dynamic memory allocation for pRespData fails                   */
-/* 300-511 The HTTP response error (e.g. 404 Not Found)                       */
+/* @param url           - URL to POST to                                     */
+/* @param username      - basic auth username, or NULL to skip               */
+/* @param password      - basic auth password, or NULL to skip               */
+/* @param trustStore    - path to CA bundle file, or NULL to use system      */
+/* @param clientCert    - path to client certificate file                    */
+/* @param clientKey     - path to client private key file                    */
+/* @param clientKeyPass - password for client key, or NULL                  */
+/* @param postData      - null-terminated JSON string to POST               */
+/* @param pRespData     - out: dynamically allocated response body;          */
+/*                        caller must free on success                        */
+/* @param retryCount    - total number of attempts (clamped to min 1)       */
+/* @param retryInterval - seconds to wait between attempts                  */
+/* @return 0            on success                                           */
+/*         1-99         cURL error code                                      */
+/*         255          response memory allocation failure                   */
+/*         300-511      HTTP error response code                             */
 /*                                                                            */
 int http_post_json(const char *url, const char *username,
                    const char *password, const char *trustStore,
@@ -196,365 +529,85 @@ int http_post_json(const char *url, const char *username,
                    const char *clientKeyPass, char *postData,
                    char **pRespData, int retryCount, int retryInterval)
 {
-    log_info("%s::%s(%d) : Preparing to POST to Platform at %s", LOG_INF, url);
-    bool client_cert_present = false;
-    unsigned char *client_cert_compressed = NULL;
-    size_t dummySize = 0;
-    int toReturn = -1;
-    int errNum = 0;
-    log_trace("%s::%s(%d) : Initializing cURL", LOG_INF);
-    CURL *curl = curl_easy_init();
+    log_info("%s::%s(%d) : Preparing to POST to %s", LOG_INF, url);
+
+    int toReturn = CURLE_FAILED_INIT;
+    unsigned char *client_cert_bytes = NULL;
     char errBuff[CURL_ERROR_SIZE];
-    if (curl) {
-        log_trace("%s::%s(%d) : Curl initialized ok", LOG_INF);
-        struct MemoryStruct chunk;
-        chunk.size = 0;
-        chunk.memory = calloc(1, sizeof(*chunk.memory));
-        if (!chunk.memory) {
-            log_error("%s::%s(%d): Out of memory when allocating chunk", LOG_INF);
-            curl_easy_cleanup(curl);
-            return CURLE_FAILED_INIT;
-        }
+    errBuff[0] = '\0';
 
-#if  defined(__TPM__)
-        if (ConfigData->EnrollOnStartup) {
-            log_info("%s::%s(%d) : Skipping TPM - enroll on startup is turned on.",
-                     LOG_INF);
-            goto skipTPM;
-        }
-        /**************************************************************************/
-        /*
-         * When a TPM is used, the clientKey is an encrypted BLOB.  The BLOB
-         * can
-         */
-        /*
-         * only be decoded inside the TPM.  Tell cURL that this is the case &
-         */
-        /*
-         * use the engine_id global variable.  This is usually the tpm2tss
-         * engine
-         */
-        /**************************************************************************/
-        log_verbose("%s::%s(%d) : Setting cURL to use TPM as SSL Engine %s",
-                    LOG_INF, engine_id);
-        errNum = curl_easy_setopt(curl, CURLOPT_SSLENGINE, engine_id);
-        if (CURLE_OK != errNum) {
-            return handle_curl_error(curl, errNum);
-        }
+    struct MemoryStruct chunk = { .memory = calloc(1, 1), .size = 0 };
+    if (!chunk.memory) {
+        log_error("%s::%s(%d) : Out of memory allocating response buffer",
+                  LOG_INF);
+        return CURLE_FAILED_INIT;
+    }
 
-        log_verbose("%s::%s(%d) : Setting cURL to use TPM as the default "
-                    "SSL Engine %s", LOG_INF, engine_id);
-        errNum = curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
-        if (CURLE_OK != errNum) {
-            return handle_curl_error(curl, errNum);
-        }
+    CURL *curl = curl_easy_init();
+    if (!curl) {
+        log_error("%s::%s(%d) : curl_easy_init() failed", LOG_INF);
+        free(chunk.memory);
+        return CURLE_FAILED_INIT;
+    }
 
-        log_verbose("%s::%s(%d) : Setting cURL to have keytype as engine", LOG_INF);
-        errNum = curl_easy_setopt(curl, CURLOPT_SSLKEYTYPE, "ENG");
-        if (CURLE_OK != errNum) {
-            return handle_curl_error(curl, errNum);
-        }
+    /* ------------------------------------------------------------------ */
+    /* Step 1: Core handle options (URL, timeout, HTTP version, verbose)  */
+    /* ------------------------------------------------------------------ */
+    toReturn = setup_curl_handle(curl, url, errBuff);
+    if (CURLE_OK != toReturn) goto exit;
 
-        log_verbose("%s::%s(%d) : Setting cURL to use default TPM keyphrase", LOG_INF);
-        errNum = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, "");
-        if (CURLE_OK != errNum) {
-            return handle_curl_error(curl, errNum);
-        }
-
-skipTPM:
+    /* ------------------------------------------------------------------ */
+    /* Step 2: TPM engine (compiled out on non-TPM builds)                */
+    /* ------------------------------------------------------------------ */
+#if defined(__TPM__)
+    if (!ConfigData->EnrollOnStartup) {
+        toReturn = apply_tpm_engine(curl, errBuff);
+        if (CURLE_OK != toReturn) goto exit;
+    } else {
+        log_info("%s::%s(%d) : Skipping TPM setup — enroll on startup active",
+                 LOG_INF);
+    }
 #endif
 
-        /**************************************************************************/
-        /*
-         * Set up curl to POST to a url using the username and Password
-         */
-        /*
-         * passed to the function
-         */
-        /**************************************************************************/
-        log_trace("%s::%s(%d) : Configuring cURL options", LOG_INF);
-        errNum = curl_easy_setopt(curl, CURLOPT_URL, url);
-        if (CURLE_OK != errNum) {
-            return handle_curl_error(curl, errNum);
-        }
-        errNum = curl_easy_setopt(curl, CURLOPT_POST, 1L);
-        if (CURLE_OK != errNum) {
-            return handle_curl_error(curl, errNum);
-        }
-        if (username && password) {
-            log_trace("%s::%s(%d) Configuring username and password", LOG_INF);
-            errNum = curl_easy_setopt(curl, CURLOPT_USERNAME, username);
-            if (CURLE_OK != errNum) {
-                return handle_curl_error(curl, errNum);
-            }
-            errNum = curl_easy_setopt(curl, CURLOPT_PASSWORD, password);
-            if (CURLE_OK != errNum) {
-                return handle_curl_error(curl, errNum);
-            }
-        } else {
-            log_trace("%s::%s(%d) : Username and password not supplied - skipping",
-                      LOG_INF);
-        }
-        errNum = curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, CONNECTION_TIMEOUT);
-        if (CURLE_OK != errNum) {
-            return handle_curl_error(curl, errNum);
-        }
-#ifdef __HTTP_1_1__
-        /*
-         * Some versions of openSSL default to v2.0.  If the platform is set
-         * for
-         */
-        /* v1.1, curl will not failover to v1.1.  So, force V1.1 */
-        errNum = curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-        if (CURLE_OK != errNum) {
-            return handle_curl_error(curl, errNum);
-        }
-#endif
+    /* ------------------------------------------------------------------ */
+    /* Step 3: Authentication and TLS material                            */
+    /* ------------------------------------------------------------------ */
+    toReturn = apply_basic_auth(curl, username, password, errBuff);
+    if (CURLE_OK != toReturn) goto exit;
 
-        /**************************************************************************/
-        /*
-         * If the passed files exist in the system, then use them for
-         * additional
-         */
-        /*
-         * trusted certificates, and certs to create the TLS connection.
-         */
-        /**************************************************************************/
-        if (1 == file_exists(trustStore)) {
-            log_trace("%s::%s(%d) : Setting trustStore to %s", LOG_INF, trustStore);
-            errNum = curl_easy_setopt(curl, CURLOPT_CAINFO, trustStore);
-            if (CURLE_OK != errNum) {
-                return handle_curl_error(curl, errNum);
-            }
-        } else {
-            log_trace("%s::%s(%d) : Trust store does not exist", LOG_INF);
-        }
+    toReturn = apply_trust_store(curl, trustStore, errBuff);
+    if (CURLE_OK != toReturn) goto exit;
 
-        /* Set the cert based on enroll on startup and UseBootStrapCert */
-        if (ConfigData->EnrollOnStartup) {
-            if (ConfigData->UseBootstrapCert) {
-                log_trace("%s::%s(%d) : Attempting to use the BOOTSTRAP cert and key", LOG_INF);
-                if (1 == file_exists(ConfigData->BootstrapCert)) {
-                    log_trace("%s::%s(%d) : Setting clientCert to %s", LOG_INF, ConfigData->BootstrapCert);
-                    errNum = curl_easy_setopt(curl, CURLOPT_SSLCERT, ConfigData->BootstrapCert);
-                    if (CURLE_OK != errNum) {
-                        return handle_curl_error(curl, errNum);
-                    }
-                    read_file_bytes(ConfigData->BootstrapCert, &client_cert_compressed, &dummySize);
-                    if (NULL == client_cert_compressed) {
-                        log_error("%s::%s(%d) : Out of memory copying client certificate", LOG_INF);
-                        goto exit;
-                    }
-                } else {
-                    log_warn("%s::%s(%d) : The BOOTSTRAP cert was not found at %s", LOG_INF,
-                             ConfigData->BootstrapCert);
-                }
-                if (1 == file_exists(ConfigData->BootstrapKey)) {
-                    log_trace("%s::%s(%d) : Setting clientKey to %s", LOG_INF, ConfigData->BootstrapKey);
-                    errNum = curl_easy_setopt(curl, CURLOPT_SSLKEY, ConfigData->BootstrapKey);
-                    if (CURLE_OK != errNum) {
-                        return handle_curl_error(curl, errNum);
-                    }
-                } else {
-                    log_warn("%s::%s(%d) : The BOOTSTRAP key was not found at %s", LOG_INF,
-                             ConfigData->BootstrapKey);
-                }
-                if ((1 == file_exists(ConfigData->BootstrapKey)) && ConfigData->BootstrapKeyPassword) {
-                    log_trace("%s::%s(%d) : Setting clientPassword to %s", LOG_INF,
-                              ConfigData->BootstrapKeyPassword);
-                    errNum = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, ConfigData->BootstrapKeyPassword);
-                    if (CURLE_OK != errNum) {
-                        return handle_curl_error(curl, errNum);
-                    }
-                }
-            } else {
-                log_info("%s::%s(%d) : Bypassing client certificates on initial startup", LOG_INF);
-            }
-        } else {
-            if (ConfigData->UseAgentCert) {
-                log_trace("%s::%s(%d) : Use the Agent cert and key", LOG_INF);
-                if (1 == file_exists(clientCert)) {
-                    log_trace("%s::%s(%d) : Setting clientCert to %s", LOG_INF, clientCert);
-                    errNum = curl_easy_setopt(curl, CURLOPT_SSLCERT, clientCert);
-                    if (CURLE_OK != errNum)
-                        return handle_curl_error(curl, errNum);
-                    read_file_bytes(clientCert, &client_cert_compressed, &dummySize);
-                    if (NULL == client_cert_compressed) {
-                        log_error("%s::%s(%d) : Out of memory copying client certificate", LOG_INF);
-                        goto exit;
-                    }
-                } else {
-                    log_warn("%s::%s(%d) : The clientCert does not exist at %s", LOG_INF, clientCert);
-                }
-                if (1 == file_exists(clientKey)) {
-                    log_trace("%s::%s(%d) : Setting clientKey to %s", LOG_INF, clientKey);
-                    errNum = curl_easy_setopt(curl, CURLOPT_SSLKEY, clientKey);
-                    if (CURLE_OK != errNum)
-                        return handle_curl_error(curl, errNum);
-                } else {
-                    log_warn("%s::%s(%d) : The clientKey does not exist at %s", LOG_INF, clientKey);
-                }
-                if ((1 == file_exists(clientKey)) && clientKeyPass) {
-                    log_trace("%s::%s(%d) : Setting clientPassword to %s", LOG_INF, clientKeyPass);
-                    errNum = curl_easy_setopt(curl, CURLOPT_KEYPASSWD, clientKeyPass);
-                    if (CURLE_OK != errNum)
-                        return handle_curl_error(curl, errNum);
-                }
-            } else {
-                log_verbose("%s::%s(%d) : Configured to not use agent cert", LOG_INF);
-            }
-        }
+    toReturn = apply_client_cert(curl, clientCert, clientKey, clientKeyPass,
+                                 &client_cert_bytes, errBuff);
+    if (CURLE_OK != toReturn) goto exit;
 
-        /* Turn on verbose output for tracing */
-        if (is_log_trace()) {
-            log_trace("%s::%s(%d) : Turning on cURL verbose output", LOG_INF);
-            errNum = curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
-            if (CURLE_OK != errNum) {
-                return handle_curl_error(curl, errNum);
-            }
-            errNum = curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errBuff);
-            if (CURLE_OK != errNum) {
-                return handle_curl_error(curl, errNum);
-            }
-            errBuff[0] = 0;     /* empty the error buffer */
-        }
+    /* ------------------------------------------------------------------ */
+    /* Step 4: Build headers and attach POST body                         */
+    /* ------------------------------------------------------------------ */
+    struct curl_slist *list = build_request_headers(postData, client_cert_bytes);
+    if (!list) {
+        log_error("%s::%s(%d) : Failed to build request headers", LOG_INF);
+        toReturn = CURLE_OUT_OF_MEMORY;
+        goto exit;
+    }
 
-        /* send all data to this function  */
-        errNum = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-        if (CURLE_OK != errNum) {
-            return handle_curl_error(curl, errNum);
-        }
-        /* we pass our 'chunk' struct to the callback function */
-        errNum = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
-        if (CURLE_OK != errNum) {
-            return handle_curl_error(curl, errNum);
-        }
+    toReturn = attach_post_body(curl, postData, list, &chunk, errBuff);
+    if (CURLE_OK != toReturn) goto exit;  /* list already freed by attach_post_body on failure */
 
-        log_trace("%s::%s(%d) : cURL options set correctly", LOG_INF);
-
-        struct curl_slist *list = NULL;
-        /**********************************************************************/
-        /* Set up the HTTP header to tell the API this is standard JSON.      */
-        /* NOTE: Some versions of Internet Explorer have a problem using      */
-        /* these headers.                                                     */
-        /* Also, set the content length header option to the data size.       */
-        /**********************************************************************/
-        /*
-         * //TODO: Error checking, as this is a dynamic memory allocation and
-         * any
-         * on-demand memory allocation needs a verification step.
-         */
-        list = curl_slist_append(NULL, "Content-Type: application/json");
-        list = curl_slist_append(list, "Accept: application/json");
-        char clBuf[30];
-        (void)snprintf(clBuf, 30, "Content-Length: %d", (int)strlen(postData));
-        list = curl_slist_append(list, clBuf);
-        if ((add_client_cert_to_header) && (NULL != client_cert_compressed)) {
-            log_debug("%s::%s(%d) : Adding client certificate to %s header", LOG_INF, CLIENT_CERT_HEADER);
-            char certBuf[MAX_CERT_SIZE];
-            stripCR((char *)client_cert_compressed);
-            (void)snprintf(certBuf, MAX_CERT_SIZE, "%s: %s", CLIENT_CERT_HEADER, (char *)client_cert_compressed);
-            list = curl_slist_append(list, certBuf);
-        } else {
-            log_debug("%s::%s(%d) : Skipping adding header = %s", LOG_INF, CLIENT_CERT_HEADER);
-        }
-
-        /**********************************************************************/
-        /* Now add the header & data to the HTTP POST request.                */
-        /**********************************************************************/
-        errNum = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
-        if (CURLE_OK != errNum) {
-            return handle_curl_error(curl, errNum);
-        }
-        errNum = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData);
-        if (CURLE_OK != errNum) {
-            return handle_curl_error(curl, errNum);
-        }
-        errNum = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (int)strlen(postData));
-        if (CURLE_OK != errNum) {
-            return handle_curl_error(curl, errNum);
-        }
-#ifdef __QATESTING__
-        log_qa("%s::%s(%d): postData = %s", LOG_INF, postData);
-#else
-        log_trace("%s::%s(%d): postData = %s", LOG_INF, postData);
-#endif
-
-        /**********************************************************************/
-        /* Make sure the cURL operation succeeded and the HTTP response code  */
-        /* indicates success. If we are successfull, place the response       */
-        /* message                                                            */
-        /* If the cURL operation fails, return the cURL error code.           */
-        /* If the HTTP response is an error, return the HTTP failure code.    */
-        /**********************************************************************/
-        long httpCode = 0;
-        int res = CURLE_FAILED_INIT;
-        int tries = retryCount;
-
-        while (0 < tries) {
-            res = curl_easy_perform(curl);
-            (void)curl_easy_getinfo(curl, CURLINFO_HTTP_CODE, &httpCode);
-            /* if there was an error & we still have tries left to do */
-            tries--;
-            log_verbose("%s::%s(%d): curl resp = %d, httpCode = %ld, tries left = %d",
-                        LOG_INF, res, httpCode, tries);
-            if (((CURLE_OK != res) || (httpCode >= 300)) && (0 < tries)) {
-                log_verbose("%s::%s(%d): Failed curl post. Sleeping %d seconds before retry", LOG_INF, retryInterval);
-                if (0 < retryInterval) {
-                    (void)sleep((unsigned int)retryInterval);
-                }
-            } else {
-                tries = 0;      /* exit the loop */
-            }
-        }                       /* while */
-
-        if (res != CURLE_OK) {
-            /* When tracing, dump the error buffer to stderr */
-            if (is_log_trace()) {
-                size_t len = strlen(errBuff);
-                log_error("%s::%s(%d): libcurl: (%d) ", LOG_INF, res);
-                if (0 != len) {
-                    log_error("%s::%s(%d): %s%s", LOG_INF, errBuff, ((errBuff[len - 1] != '\n') ? "\n" : ""));
-                } else {
-                    log_error("%s::%s(%d): %s\n", LOG_INF, curl_easy_strerror(res));
-                }
-            }
-            log_error("%s::%s(%d): %s", LOG_INF, curl_easy_strerror(res));
-            toReturn = res;
-        } else if (httpCode >= 300) {
-            log_error("%s::%s(%d): HTTP Response: %ld", LOG_INF, httpCode);
-            toReturn = (int)httpCode;
-        } else {
-            log_verbose("%s::%s(%d): %lu bytes retrieved -- allocating memory for response",
-                        LOG_INF, (unsigned long)chunk.size);
-            *pRespData = strdup(chunk.memory);
-#ifdef __QATESTING__
-            log_qa("%s::%s(%d): Response is:\n%s", LOG_INF, *pRespData);
-#else
-            log_trace("%s::%s(%d): Response is:\n%s", LOG_INF, *pRespData);
-#endif
-            if (NULL == *pRespData) {
-                log_error("%s::%s(%d): Out of memory", LOG_INF);
-                toReturn = 255;
-            } else {
-                toReturn = 0;
-            }
-        }
+    /* ------------------------------------------------------------------ */
+    /* Step 5: Execute with retry and harvest response                    */
+    /* ------------------------------------------------------------------ */
+    toReturn = execute_with_retry(curl, retryCount, retryInterval,
+                                  &chunk, pRespData, errBuff);
 
 exit:
-        /* Cleanup, de-allocate, etc. */
-        if (list) {
-            curl_slist_free_all(list);
-        }
-        if (curl) {
-            curl_easy_cleanup(curl);
-        }
-        if (chunk.memory) {
-            free(chunk.memory);
-        }
-    }                           /* if curl */
-
+    curl_easy_cleanup(curl);
+    free(chunk.memory);
+    if (client_cert_bytes)
+        free(client_cert_bytes);
     return toReturn;
 } /* http_post_json */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/
+/******************************************************************************/

@@ -13,6 +13,7 @@
 #include "dto.h"
 #include <stdlib.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include "lib/json.h"
 #include "logging.h"
@@ -165,34 +166,47 @@ bool AgentApiResult_log(AgentApiResult_t result,
  */
 static ClientParameter_t * ClientParameter_new(const char *key,
                                                const char *value){
-    ClientParameter_t *cp = calloc(1, sizeof(ClientParameter_t));
-    if (!cp) {
-        log_error("%s::%s(%d) : Out of memory", LOG_INF);
+
+  // ReSharper disable once CppDFAMemoryLeak
+  // Ownership of cp is transferred to the caller, which stores it in either
+  // SessionRegisterReq_t->ClientParameters[] or
+  // SessionRegisterResp_t->Session.ClientParameters[]. In both cases it is
+  // freed via ClientParameter_free() called from SessionRegisterReq_free()
+  // or SessionRegisterResp_free() respectively.
+  ClientParameter_t *cp = calloc(1, sizeof(ClientParameter_t));
+  if (!cp) {
+    log_error("%s::%s(%d) : Out of memory", LOG_INF);
+    return NULL;
+  }
+  if (key) {
+    cp->Key = strdup(key);
+    if (!cp->Key) {
+        log_error("%s::%s(%d) : Failed to allocate Key", LOG_INF);
+        free(cp);
         return NULL;
     }
-    if (key) {
-        cp->Key = strdup(key);
-        if (!cp->Key) {
-            log_error("%s::%s(%d) : Failed to allocate Key", LOG_INF);
-            free(cp);
-            return NULL;
-        }
-    } else {
-        cp->Key = NULL;
-    }
-    if (value) {
-        cp->Value = strdup(value);
-        if (!cp->Value) {
-            log_error("%s::%s(%d) : Failed to allocate Value", LOG_INF);
-            free(cp->Key);
-            free(cp);
-            return NULL;
-        }
-    } else {
-        cp->Value = NULL;
-    }
+  } else {
+    cp->Key = NULL;
+  }
+  if (value) {
+      cp->Value = strdup(value);
+      if (!cp->Value) {
+          log_error("%s::%s(%d) : Failed to allocate Value", LOG_INF);
+          free(cp->Key);
+          free(cp);
+          return NULL;
+      }
+  } else {
+      cp->Value = NULL;
+  }
 
-    return cp;
+  // ReSharper disable once CppDFAMemoryLeak
+  // Ownership of cp is transferred to the caller, which stores it in either
+  // SessionRegisterReq_t->ClientParameters[] or
+  // SessionRegisterResp_t->Session.ClientParameters[]. In both cases it is
+  // freed via ClientParameter_free() called from SessionRegisterReq_free()
+  // or SessionRegisterResp_free() respectively.
+  return cp;
 } /* ClientParameter_new */
 
 /**
@@ -230,42 +244,47 @@ static void ClientParameter_free(ClientParameter_t * cliParam)
 bool SessionRegisterReq_addNewClientParameter(SessionRegisterReq_t * req,
                                          const char *key, const char *value)
 {
-    bool bResult = false;
-    int index;
+  bool bResult = false;
+  int index;
 
-    if (!req) {
-        log_error("%s::%s(%d) : Null pointer dereference - req is NULL", LOG_INF);
-        return false;
-    }
+  if (!req) {
+      log_error("%s::%s(%d) : Null pointer dereference - req is NULL", LOG_INF);
+      return false;
+  }
 
-    index = req->ClientParameters_count;
+  index = req->ClientParameters_count;
 
-    req->ClientParameters_count++;
-    log_trace("%s::%s(%d) Increasing parameter count to %d",
-              LOG_INF, req->ClientParameters_count);
-    req->ClientParameters = realloc(req->ClientParameters,
-               (req->ClientParameters_count * sizeof(ClientParameter_t *)));
-    if (NULL == req->ClientParameters) {
-        log_error("%s::%s(%d) : Out of memory error",
-                  LOG_INF);
-        return false;
-    }
+  req->ClientParameters_count++;
+  log_trace("%s::%s(%d) Increasing parameter count to %d",
+            LOG_INF, req->ClientParameters_count);
+  req->ClientParameters = realloc(req->ClientParameters,
+             (req->ClientParameters_count * sizeof(ClientParameter_t *)));
+  if (NULL == req->ClientParameters) {
+    log_error("%s::%s(%d) : Out of memory error",
+              LOG_INF);
+    return false;
+  }
 
-    req->ClientParameters[index] = ClientParameter_new(key, value);
-    if (NULL != req->ClientParameters[index]) {
-        log_trace("%s::%s(%d) : Successfully added key= %s with "
-                  "value= %s to ClientParameters", LOG_INF, key, value);
-        bResult = true;
-    } else {
-        log_error("%s::%s(%d) : Error adding new client parameters"
-                  " to SessionRegisterRequest", LOG_INF);
-        bResult = false;
-        /* Reset things */
-        free(req->ClientParameters[index]);
-        req->ClientParameters_count--;
-    }
-
-    return bResult;
+  // ReSharper disable once CppDFAMemoryLeak
+  // False positive: ClientParameter_t allocated here is stored in
+  // req->ClientParameters[] which is owned by the SessionRegisterReq_t struct.
+  // It is freed via the ClientParameter_free() loop inside
+  // SessionRegisterReq_free(), which is called by all callers once they are
+  // done with the request.
+  req->ClientParameters[index] = ClientParameter_new(key, value);
+  if (NULL != req->ClientParameters[index]) {
+    log_trace("%s::%s(%d) : Successfully added key= %s with "
+              "value= %s to ClientParameters", LOG_INF, key, value);
+    bResult = true;
+  } else {
+    log_error("%s::%s(%d) : Error adding new client parameters"
+              " to SessionRegisterRequest", LOG_INF);
+    bResult = false;
+    /* Reset things */
+    free(req->ClientParameters[index]);
+    req->ClientParameters_count--;
+  }
+  return bResult;
 } /* SessionRegisterReq_addNewClientParameter */
 
 /**
@@ -279,67 +298,72 @@ bool SessionRegisterReq_addNewClientParameter(SessionRegisterReq_t * req,
  */
 SessionRegisterReq_t *SessionRegisterReq_new(char *clientParamPath)
 {
-    SessionRegisterReq_t *req = calloc(1, sizeof(*req));
-    if (!req) {
-        log_error("%s::%s(%d) : Out of memory", LOG_INF);
-        return NULL;
-    }
+  SessionRegisterReq_t *req = calloc(1, sizeof(*req));
+  if (!req) {
+      log_error("%s::%s(%d) : Out of memory", LOG_INF);
+      return NULL;
+  }
 
-    req->Capabilities_count = 0;
-    req->TenantId = strdup("00000000-0000-0000-0000-000000000000");
-    req->ClientParameters_count = 0;
+  req->Capabilities_count = 0;
+  req->TenantId = strdup("00000000-0000-0000-0000-000000000000");
+  req->ClientParameters_count = 0;
 
-    if (clientParamPath) {
-        log_trace("%s::%s(%d) : Found client parameters -- adding them"
-                  " to the session", LOG_INF);
-        FILE *fp = fopen(clientParamPath, "r");
-        if (fp) {
-            /* Client parameter file should never be anywhere near this long */
-            char buf[4096];
-            size_t len = fread(buf, 1, 4095, fp);
-            buf[len++] = '\0';
+  if (clientParamPath) {
+    log_trace("%s::%s(%d) : Found client parameters -- adding them"
+              " to the session", LOG_INF);
+    FILE *fp = fopen(clientParamPath, "r");
+    if (fp) {
+      /* Client parameter file should never be anywhere near this long */
+      char buf[4096];
+      size_t len = fread(buf, 1, 4095, fp);
+      buf[len++] = '\0';
 
-            JsonNode *jsonRoot = json_decode(buf);
-            if (jsonRoot && jsonRoot->tag == JSON_OBJECT) {
-                JsonNode *curNode;
-                int nodeCount = 0;
-                json_foreach(curNode, jsonRoot) {       /* Loop first to get
-                                                         * count */
-                    if (curNode->tag == JSON_STRING) {
-                        nodeCount++;
-                    }
-                }
-
-                req->ClientParameters = calloc(nodeCount,
-                                            sizeof(*req->ClientParameters));
-                req->ClientParameters_count = nodeCount;
-
-                nodeCount = 0;
-                json_foreach(curNode, jsonRoot) {
-                    if (curNode->tag == JSON_STRING &&
-                        curNode->key &&
-                        curNode->u.string_) {
-                        req->ClientParameters[nodeCount++] =
-                            ClientParameter_new(curNode->key, curNode->u.string_);
-                    }
-                }
-
-                json_delete(jsonRoot);
-            } else {
-                log_error("%s::%s(%d) : Contents of %s are not valid JSON",
-                          LOG_INF, clientParamPath);
+      JsonNode *jsonRoot = json_decode(buf);
+      if (jsonRoot && jsonRoot->tag == JSON_OBJECT) {
+        JsonNode *curNode;
+        int nodeCount = 0;
+        json_foreach(curNode, jsonRoot) {       /* Loop first to get
+                                                 * count */
+            if (curNode->tag == JSON_STRING) {
+                nodeCount++;
             }
-            (void)fclose(fp);   /* Deallocate memory associated with this
-                                 * file */
-        } else {
-            int err = errno;
-            log_error(\
-                 "%s::%s(%d) : Unable to open client parameter file %s: %s",
-                      LOG_INF, clientParamPath, strerror(err));
         }
-    }
 
-    return req;
+        req->ClientParameters = calloc(nodeCount,
+                                    sizeof(*req->ClientParameters));
+        req->ClientParameters_count = nodeCount;
+
+        nodeCount = 0;
+        json_foreach(curNode, jsonRoot) {
+          if (curNode->tag == JSON_STRING &&
+              curNode->key &&
+              curNode->u.string_) {
+            // ReSharper disable once CppDFAMemoryLeak
+            // False positive: ClientParameter_t instances allocated here are stored in
+            // req->ClientParameters[] which is owned by the SessionRegisterReq_t struct
+            // returned to the caller. They are freed via the ClientParameter_free() loop
+            // inside SessionRegisterReq_free(), which is called by all callers of
+            // SessionRegisterReq_new() once they are done with the request.
+            req->ClientParameters[nodeCount++] =
+                ClientParameter_new(curNode->key, curNode->u.string_);
+          }
+        }
+
+        json_delete(jsonRoot);
+      } else {
+        log_error("%s::%s(%d) : Contents of %s are not valid JSON",
+                  LOG_INF, clientParamPath);
+      }
+      (void)fclose(fp);   /* Deallocate memory associated with this
+                           * file */
+    } else {
+      int err = errno;
+      log_error(\
+         "%s::%s(%d) : Unable to open client parameter file %s: %s",
+              LOG_INF, clientParamPath, strerror(err));
+    }
+  }
+  return req;
 } /* SessionRegisterReq_new */
 
 /**
@@ -350,47 +374,47 @@ SessionRegisterReq_t *SessionRegisterReq_new(char *clientParamPath)
  */
 void SessionRegisterReq_free(SessionRegisterReq_t * req)
 {
-    if (req) {
-        if (req->TenantId) {
-            free(req->TenantId);
-            req->TenantId = NULL;
-        }
-        if (req->ClientMachine) {
-            free(req->ClientMachine);
-            req->ClientMachine = NULL;
-        }
-        /* Agent Platform is an enum, no need to free */
-        if (req->Capabilities) {
-            for (int i = 0; i < req->Capabilities_count; ++i) {
-                free(req->Capabilities[i]);
-                req->Capabilities[i] = NULL;
-            }
-            free(req->Capabilities);
-            req->Capabilities = NULL;
-        }
-        /* Capabilities count is an int, no need to free */
-        /* Agent version is an int, no need to free */
-        if (req->AgentId) {
-            free(req->AgentId);
-            req->AgentId = NULL;
-        }
-        /* Free the entire array */
-        if (req->ClientParameters) {
-            for (int i = 0; i < req->ClientParameters_count; ++i) {
-                ClientParameter_free(req->ClientParameters[i]);
-                req->ClientParameters[i] = NULL;
-            }
-            free(req->ClientParameters);
-            req->ClientParameters = NULL;
-        }
-        /* ClientParameters_count is an int, no need to free */
-        if (req->CSR) {
-            free(req->CSR);
-            req->CSR = NULL;
-        }
-        free(req);
-        req = NULL;
+  if (req) {
+    if (req->TenantId) {
+      free(req->TenantId);
+      req->TenantId = NULL;
     }
+    if (req->ClientMachine) {
+      free(req->ClientMachine);
+      req->ClientMachine = NULL;
+    }
+    /* Agent Platform is an enum, no need to free */
+    if (req->Capabilities) {
+      for (int i = 0; i < req->Capabilities_count; ++i) {
+        free(req->Capabilities[i]);
+        req->Capabilities[i] = NULL;
+      }
+      free(req->Capabilities);
+      req->Capabilities = NULL;
+    }
+    /* Capabilities count is an int, no need to free */
+    /* Agent version is an int, no need to free */
+    if (req->AgentId) {
+      free(req->AgentId);
+      req->AgentId = NULL;
+    }
+    /* Free the entire array */
+    if (req->ClientParameters) {
+      for (int i = 0; i < req->ClientParameters_count; ++i) {
+        ClientParameter_free(req->ClientParameters[i]);
+        req->ClientParameters[i] = NULL;
+      }
+      free(req->ClientParameters);
+      req->ClientParameters = NULL;
+    }
+    /* ClientParameters_count is an int, no need to free */
+    if (req->CSR) {
+      free(req->CSR);
+      req->CSR = NULL;
+    }
+    free(req);
+    req = NULL;
+  }
 } /* SessionRegisterReq_free */
 
 /**
@@ -523,6 +547,10 @@ void SessionRegisterResp_freeJobs(SessionRegisterResp_t * resp)
         log_error("%s::%s(%d) : Null pointer dereference - resp is NULL", LOG_INF);
         return;
     }
+    if (!resp->Session.Jobs) {
+        log_error("%s::%s(%d) : Null pointer dereference - resp->Session.Jobs is NULL", LOG_INF);
+        return;
+    }
 
     while (lp < resp->Session.Jobs_count) {
         if (resp->Session.Jobs[lp]) {
@@ -612,20 +640,35 @@ void SessionRegisterResp_free(SessionRegisterResp_t * resp)
 static SessionJob_t* SessionJob_fromJsonNode(JsonNode * jsonJob) {
     SessionJob_t *job = NULL;
     if (jsonJob) {
-        job = calloc(1, sizeof(SessionJob_t));
-        if (!job) {
-            log_error("%s::%s(%d) : Null pointer dereference - failed to allocate SessionJob_t", LOG_INF);
-            return NULL;
-        }
-        job->CompletionEndpoint = json_get_member_string(jsonJob,
-                                                      "CompletionEndpoint");
-        job->ConfigurationEndpoint = json_get_member_string(jsonJob,
-                                                   "ConfigurationEndpoint");
-        job->Cron = json_get_member_string(jsonJob, "Cron");
-        job->JobId = json_get_member_string(jsonJob, "JobId");
-        job->JobTypeId = json_get_member_string(jsonJob, "JobTypeId");
-        job->Schedule = json_get_member_string(jsonJob, "Schedule");
-        job->Priority = json_get_member_number(jsonJob, "Priority", 5);
+      // ReSharper disable once CppDFAMemoryLeak
+      // Rider flags this calloc as a potential leak, but ownership of the returned
+      // SessionJob_t is intentionally transferred to the scheduler's ScheduledJob_t
+      // linked list via prioritize_jobs()/schedule_job(). Jobs are released by
+      // clear_job_schedules(). In the first-registration path where jobs are not
+      // scheduled, the caller (SessionRegisterResp_fromJson) frees them explicitly
+      // via SessionRegisterResp_freeJobs(). See the __NEVER_COMPILE_THIS__ block
+      // in SessionRegisterResp_free() for the full ownership rationale.
+      job = calloc(1, sizeof(SessionJob_t));
+      if (!job) {
+          log_error("%s::%s(%d) : Null pointer dereference - failed to allocate SessionJob_t", LOG_INF);
+          return NULL;
+      }
+      job->CompletionEndpoint = json_get_member_string(jsonJob,
+                                                    "CompletionEndpoint");
+      job->ConfigurationEndpoint = json_get_member_string(jsonJob,
+                                                 "ConfigurationEndpoint");
+      job->Cron = json_get_member_string(jsonJob, "Cron");
+      job->JobId = json_get_member_string(jsonJob, "JobId");
+      job->JobTypeId = json_get_member_string(jsonJob, "JobTypeId");
+      job->Schedule = json_get_member_string(jsonJob, "Schedule");
+      double priorityVal = json_get_member_number(jsonJob, "Priority", 5);
+      if (priorityVal < INT_MIN || priorityVal > INT_MAX) {
+        log_error("%s::%s(%d) : Priority value %.0f out of integer range, defaulting to 5",
+                  LOG_INF, priorityVal);
+        job->Priority = 5;
+      } else {
+        job->Priority = (int)priorityVal;
+      }
     }
 
     return job;
@@ -639,105 +682,121 @@ static SessionJob_t* SessionJob_fromJsonNode(JsonNode * jsonJob) {
  */
 SessionRegisterResp_t *SessionRegisterResp_fromJson(char *jsonString)
 {
-    JsonNode *jsonRoot = NULL;
-    JsonNode *jsonSession = NULL;
-    int jobCount = 0;
-    JsonNode *jsonJobs = NULL;
-    JsonNode *jsonTmp = NULL;
-    int current = 0;
-    JsonNode *jsonParams = NULL;
-    JsonNode *jsonResult = NULL;
-    SessionRegisterResp_t *resp = NULL;
+  JsonNode *jsonRoot = NULL;
+  JsonNode *jsonSession = NULL;
+  int jobCount = 0;
+  JsonNode *jsonJobs = NULL;
+  JsonNode *jsonTmp = NULL;
+  int current = 0;
+  JsonNode *jsonParams = NULL;
+  JsonNode *jsonResult = NULL;
+  SessionRegisterResp_t *resp = NULL;
 
-    resp = calloc(1, sizeof(SessionRegisterResp_t));
-    if (NULL == resp) {
-        log_error("%s::%s(%d) : Out of memory allocating Session Response",
-                  LOG_INF);
-        return NULL;
-    }
+  resp = calloc(1, sizeof(SessionRegisterResp_t));
+  if (NULL == resp) {
+    log_error("%s::%s(%d) : Out of memory allocating Session Response",
+              LOG_INF);
+    return NULL;
+  }
 
-    if (jsonString) {
-        jsonRoot = json_decode(jsonString);
-        if (jsonRoot) {
-            jsonSession = json_find_member(jsonRoot, "Session");
-            if (jsonSession) {
-                resp->Session.Token =
-                    json_get_member_string(jsonSession, "Token");
-                resp->Session.AgentId =
-                    json_get_member_string(jsonSession, "AgentId");
-                resp->Session.Certificate =
-                    json_get_member_string(jsonSession, "Certificate");
-                resp->Session.ClientMachine =
-                    json_get_member_string(jsonSession, "ClientMachine");
-                resp->Session.HeartbeatInterval =
-                    json_get_member_number(jsonSession, "HeartbeatInterval", 5);
+  if (jsonString) {
+    jsonRoot = json_decode(jsonString);
+    if (jsonRoot) {
+      jsonSession = json_find_member(jsonRoot, "Session");
+      if (jsonSession) {
+        resp->Session.Token =
+            json_get_member_string(jsonSession, "Token");
+        resp->Session.AgentId =
+            json_get_member_string(jsonSession, "AgentId");
+        resp->Session.Certificate =
+            json_get_member_string(jsonSession, "Certificate");
+        resp->Session.ClientMachine =
+            json_get_member_string(jsonSession, "ClientMachine");
+        resp->Session.HeartbeatInterval =
+            json_get_member_number(jsonSession, "HeartbeatInterval", 5);
 
-                jsonJobs = json_find_member(jsonSession, "Jobs");
-                jobCount = json_array_size(jsonJobs);
-                resp->Session.Jobs_count = jobCount;
-                resp->Session.Jobs = calloc(jobCount,
-                                            sizeof(SessionJob_t *));
-                if (NULL == resp->Session.Jobs) {
-                    log_error("%s::%s(%d) : Out of memory allocating"
-                              " Session.Jobs", LOG_INF);
+        jsonJobs = json_find_member(jsonSession, "Jobs");
+        jobCount = json_array_size(jsonJobs);
+        resp->Session.Jobs_count = jobCount;
+        resp->Session.Jobs = calloc(jobCount,
+                                    sizeof(SessionJob_t *));
+        if (NULL == resp->Session.Jobs) {
+          log_error("%s::%s(%d) : Out of memory allocating"
+                    " Session.Jobs", LOG_INF);
 
-                    if (resp) {
-                        /* Free any allocated memory before returning */
-                        SessionRegisterResp_free(resp);
-                    }
-                    return NULL;
-                }
-
-                current = 0;
-                json_foreach(jsonTmp, jsonJobs) {
-                    resp->Session.Jobs[current++] =
-                        SessionJob_fromJsonNode(jsonTmp);
-                }
-
-                jsonParams = json_find_member(jsonSession, "ClientParameters");
-                if (jsonParams && jsonParams->tag == JSON_OBJECT) {
-                    current = 0;
-                    json_foreach(jsonTmp, jsonParams) {
-                        current++;
-                    }
-
-                    resp->Session.ClientParameters = calloc(current,
-                                               sizeof(ClientParameter_t *));
-                    if (NULL == resp->Session.ClientParameters) {
-                        log_error("%s::%s(%d) : Out of memory allocating"
-                                  " ClientParameters", LOG_INF);
-                        if (resp) {
-                            /* Free any allocated memory before returning */
-                            /* Note, we may have jobs at this point.      */
-                            /* So manually free them first, as the        */
-                            /* SessionRegisterResp_free will not do that  */
-                            SessionRegisterResp_freeJobs(resp);
-                            SessionRegisterResp_free(resp);
-                        }
-                        return NULL;
-                    }
-                    current = 0;
-                    json_foreach(jsonTmp, jsonParams) {
-                        if (jsonTmp && jsonTmp->tag == JSON_STRING &&
-                            jsonTmp->u.string_) {
-                            resp->Session.ClientParameters[current++] =
-                                ClientParameter_new(jsonTmp->key, jsonTmp->u.string_);
-                        }
-                    }
-                    resp->Session.ClientParameters_count = current;
-                }
-            }
-
-            jsonResult = json_find_member(jsonRoot, "Result");
-            if (jsonResult) {
-                resp->Result = AgentApiResult_fromJsonNode(jsonResult);
-            }
-
-            json_delete(jsonRoot);
+          if (resp) {
+            /* Free any allocated memory before returning */
+            SessionRegisterResp_free(resp);
+          }
+          return NULL;
         }
-    }
 
-    return resp;
+        current = 0;
+        json_foreach(jsonTmp, jsonJobs) {
+          // ReSharper disable once CppDFAMemoryLeak
+          // False positive: SessionJob_t instances allocated here are stored in
+          // resp->Session.Jobs[] and ownership is intentionally transferred to the
+          // scheduler's ScheduledJob_t linked list via prioritize_jobs()/schedule_job().
+          // They are freed by clear_job_schedules(). In the first-registration path
+          // where jobs are not scheduled, the caller frees them explicitly via
+          // SessionRegisterResp_freeJobs() before calling SessionRegisterResp_free().
+          // See the __NEVER_COMPILE_THIS__ block in SessionRegisterResp_free() for
+          // the full ownership rationale.
+          resp->Session.Jobs[current++] =
+              SessionJob_fromJsonNode(jsonTmp);
+        }
+
+        jsonParams = json_find_member(jsonSession, "ClientParameters");
+        if (jsonParams && jsonParams->tag == JSON_OBJECT) {
+          current = 0;
+          json_foreach(jsonTmp, jsonParams) {
+            current++;
+          }
+
+          resp->Session.ClientParameters = calloc(current,
+                                     sizeof(ClientParameter_t *));
+          if (NULL == resp->Session.ClientParameters) {
+            log_error("%s::%s(%d) : Out of memory allocating"
+                      " ClientParameters", LOG_INF);
+            if (resp) {
+              /* Free any allocated memory before returning */
+              /* Note, we may have jobs at this point.      */
+              /* So manually free them first, as the        */
+              /* SessionRegisterResp_free will not do that  */
+              SessionRegisterResp_freeJobs(resp);
+              SessionRegisterResp_free(resp);
+            }
+            return NULL;
+          }
+          current = 0;
+          json_foreach(jsonTmp, jsonParams) {
+            if (jsonTmp && jsonTmp->tag == JSON_STRING &&
+                jsonTmp->u.string_) {
+              // ReSharper disable once CppDFAMemoryLeak
+              // False positive: ClientParameter_t instances allocated here are stored in
+              // resp->Session.ClientParameters[] and are owned by the response struct.
+              // They are guaranteed to be freed by the ClientParameter_free() loop inside
+              // SessionRegisterResp_free(), which is called by all callers of this function
+              // once they are done with the response. There are no execution paths between
+              // this point and the return of resp that can cause a leak.
+              resp->Session.ClientParameters[current++] =
+                  ClientParameter_new(jsonTmp->key, jsonTmp->u.string_);
+            }
+          }
+          resp->Session.ClientParameters_count = current;
+        }
+      }
+
+      jsonResult = json_find_member(jsonRoot, "Result");
+      if (jsonResult) {
+        resp->Result = AgentApiResult_fromJsonNode(jsonResult);
+      }
+
+      json_delete(jsonRoot);
+    }
+  }
+
+  return resp;
 } /* SessionRegisterResp_fromJson */
 
 /**
@@ -745,7 +804,7 @@ SessionRegisterResp_t *SessionRegisterResp_fromJson(char *jsonString)
  *
  * @return Pointer to newly allocated CommonConfigReq_t, or NULL on failure
  */
-CommonConfigReq_t *CommonConfigReq_new()
+CommonConfigReq_t *CommonConfigReq_new(void)
 {
     return calloc(1, sizeof(CommonConfigReq_t));
 } /* CommonConfigReq_new */
@@ -807,7 +866,7 @@ char *CommonConfigReq_toJson(CommonConfigReq_t * req)
  *
  * @return Pointer to newly allocated CommonCompleteReq_t, or NULL on failure
  */
-CommonCompleteReq_t *CommonCompleteReq_new()
+CommonCompleteReq_t *CommonCompleteReq_new(void)
 {
     return calloc(1, sizeof(CommonCompleteReq_t));
 } /* CommonCompleteReq_new */
@@ -1033,7 +1092,7 @@ ManagementConfigResp_t *ManagementConfigResp_fromJson(char *jsonString)
                 JsonNode *jsonProps = NULL;
                 char *propString =
                 json_get_member_string(jsonJob, "Properties");
-                if (propString && (jsonProps = json_decode(propString))) {
+                if (propString && ((jsonProps = json_decode(propString)) != NULL)) {
                     resp->Job.PrivateKeyPath =
                         json_get_member_string(jsonProps, "PrivateKeyPath");
                 }
@@ -1771,144 +1830,5 @@ EnrollmentCompleteResp_t *EnrollmentCompleteResp_fromJson(char *jsonString)
 
     return resp;
 } /* EnrollmentCompleteResp_fromJson */
-
-/**
- * @brief Free memory allocated for a FetchLogsConfigResponse structure
- *
- * @param[in] resp Pointer to FetchLogsConfigResp_t to free
- * @return None
- */
-void FetchLogsConfigResp_free(FetchLogsConfigResp_t * resp)
-{
-    if (resp) {
-        AgentApiResult_free(resp->Result);
-
-        free(resp);
-    }
-} /* FetchLogsConfigResp_free */
-
-/**
- * @brief Parse a FetchLogsConfigResponse from JSON string
- *
- * @param[in] jsonString JSON string to parse
- * @return Pointer to newly allocated FetchLogsConfigResp_t, or NULL on failure
- */
-FetchLogsConfigResp_t *FetchLogsConfigResp_fromJson(char *jsonString)
-{
-    log_verbose("%s::%s(%d) : jsonString: %s",
-                LOG_INF, jsonString);
-    FetchLogsConfigResp_t *resp = NULL;
-
-    if (jsonString) {
-        JsonNode *jsonRoot = json_decode(jsonString);
-        if (jsonRoot) {
-            resp = calloc(1, sizeof(FetchLogsConfigResp_t));
-            if (!resp) {
-                log_error("%s::%s(%d) : Null pointer dereference - failed to allocate FetchLogsConfigResp_t", LOG_INF);
-                json_delete(jsonRoot);
-                return NULL;
-            }
-
-            JsonNode *jsonResult = json_find_member(jsonRoot, "Result");
-            if (jsonResult) {
-                resp->Result = AgentApiResult_fromJsonNode(jsonResult);
-            }
-            resp->AuditId = json_get_member_number(jsonRoot, "AuditId", 0);
-            resp->MaxCharactersToReturn =
-                json_get_member_number(jsonRoot, "MaxCharactersToReturn", 0);
-
-            json_delete(jsonRoot);
-        }
-    }
-
-    return resp;
-} /* FetchLogsConfigResp_fromJson */
-
-/**
- * @brief Free memory allocated for a FetchLogsCompleteRequest structure
- *
- * @param[in] req Pointer to FetchLogsCompleteReq_t to free
- * @return None
- */
-void FetchLogsCompleteReq_free(FetchLogsCompleteReq_t * req)
-{
-    if (req) {
-        if (req->JobId) {
-            free(req->JobId);
-            req->JobId = NULL;
-        }
-        if (req->SessionToken) {
-            free(req->SessionToken);
-            req->SessionToken = NULL;
-        }
-        if (req->Message) {
-            free(req->Message);
-            req->Message = NULL;
-        }
-        if (req->Log) {
-            free(req->Log);
-            req->Log = NULL;
-        }
-        free(req);
-    }
-} /* FetchLogsCompleteReq_free */
-
-/**
- * @brief Convert a FetchLogsCompleteRequest to JSON string
- *
- * @param[in] req Pointer to FetchLogsCompleteReq_t to serialize
- * @return Newly allocated JSON string, or NULL on failure. Caller must free.
- */
-char           *FetchLogsCompleteReq_toJson(FetchLogsCompleteReq_t * req)
-{
-    char *jsonString = NULL;
-
-    if (req) {
-        JsonNode *jsonRoot = json_mkobject();
-        json_append_member(jsonRoot, "Status",
-                           json_mknumber((double)req->Status));
-        json_append_member(jsonRoot, "AuditId",
-                           json_mknumber((double)req->AuditId));
-        if (req->JobId) {
-            json_append_member(jsonRoot, "JobId", json_mkstring(req->JobId));
-        } else {
-            json_append_member(jsonRoot, "JobId", json_mknull());
-        }
-        if (req->Message) {
-            json_append_member(jsonRoot, "Message",
-                               json_mkstring(req->Message));
-        } else {
-            json_append_member(jsonRoot, "Message", json_mknull());
-        }
-
-        if (req->SessionToken) {
-            json_append_member(jsonRoot, "SessionToken",
-                               json_mkstring(req->SessionToken));
-        } else {
-            json_append_member(jsonRoot, "SessionToken", json_mknull());
-        }
-
-        if (req->Log) {
-            json_append_member(jsonRoot, "Log", json_mkstring(req->Log));
-        } else {
-            json_append_member(jsonRoot, "Log", json_mknull());
-        }
-
-        jsonString = json_encode(jsonRoot);
-        json_delete(jsonRoot);
-    }
-
-    return jsonString;
-} /* FetchLogsCompleteReq_toJson */
-
-/**
- * @brief Allocate and initialize a new FetchLogsCompleteRequest structure
- *
- * @return Pointer to newly allocated FetchLogsCompleteReq_t, or NULL on failure
- */
-FetchLogsCompleteReq_t *FetchLogsCompleteReq_new()
-{
-    return calloc(1, sizeof(FetchLogsCompleteReq_t));
-} /* FetchLogsCompleteReq_new */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/
