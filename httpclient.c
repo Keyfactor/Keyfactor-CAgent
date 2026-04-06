@@ -389,9 +389,7 @@ static int attach_post_body(CURL *curl, char *postData,
                              struct curl_slist *list,
                              struct MemoryStruct *chunk, char *errBuff)
 {
-    int errNum;
-
-    errNum = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+    int errNum = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
     if (CURLE_OK != errNum) goto fail;
 
     errNum = curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)chunk);
