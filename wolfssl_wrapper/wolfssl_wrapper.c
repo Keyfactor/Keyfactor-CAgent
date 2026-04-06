@@ -45,15 +45,13 @@
 #include <wolfssl/error-ssl.h>
 #include <wolfssl/wolfcrypt/asn_public.h>
 
-#include "../openssl_compat.h" 
-
-#define RSA_DEFAULT_EXP 65537
-#define MAX_CSR_SIZE 8192 /* shouldn't get longer than this */
-#define SHA1LEN 20
-#define MAX_ENTROPY_SIZE 2048 /* 4096 bytes */
-#define ONEK_SIZE 1024
-#define FOURK_SIZE (4*ONEK_SIZE)
-#define FIVEK_SIZE (5*ONEK_SIZE)
+#define RSA_DEFAULT_EXP   65537
+#define MAX_CSR_SIZE      8192 /* shouldn't get longer than this */
+#define SHA1LEN           20
+#define MAX_ENTROPY_SIZE  2048 /* 4096 bytes */
+#define ONEK_SIZE         1024
+#define FOURK_SIZE        (4*ONEK_SIZE)
+#define FIVEK_SIZE        (5*ONEK_SIZE)
 
 /* Only return a byte of randomness at a time */
 #if defined(RAND_MAX)

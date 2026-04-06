@@ -253,7 +253,7 @@ static void prioritize_jobs(ScheduledJob_t **pJobList,
       if (MANAGEMENT_ADD_PRIORITY == job_to_schedule->Priority) {
         log_trace("%s::%s(%d) : Adding management ADD job %s", LOG_INF,
                   job_to_schedule->JobId);
-        schedule_job(pJobList, job_to_schedule, time(NULL));
+        schedule_job(pJobList, job_to_schedule);
       }
     }
   }
@@ -267,7 +267,7 @@ static void prioritize_jobs(ScheduledJob_t **pJobList,
     if (0 == strcasecmp(CAP_PEM_REENROLLMENT, job_to_schedule->JobTypeId)) {
       log_trace("%s::%s(%d) : Adding reenrollment job %s", LOG_INF,
                 job_to_schedule->JobId);
-      schedule_job(pJobList, job_to_schedule, time(NULL));
+      schedule_job(pJobList, job_to_schedule);
     }
   }
   /* Store management non-ADD jobs */
@@ -281,7 +281,7 @@ static void prioritize_jobs(ScheduledJob_t **pJobList,
       if (MANAGEMENT_ADD_PRIORITY != job_to_schedule->Priority) {
         log_trace("%s::%s(%d) : Adding management non-ADD job %s", LOG_INF,
                   job_to_schedule->JobId);
-        schedule_job(pJobList, job_to_schedule, time(NULL));
+        schedule_job(pJobList, job_to_schedule);
       }
     }
   }
@@ -295,7 +295,7 @@ static void prioritize_jobs(ScheduledJob_t **pJobList,
     if (0 == strcasecmp(CAP_PEM_INVENTORY, job_to_schedule->JobTypeId)) {
       log_trace("%s::%s(%d) : Adding inventory job %s", LOG_INF,
                 job_to_schedule->JobId);
-      schedule_job(pJobList, job_to_schedule, time(NULL));
+      schedule_job(pJobList, job_to_schedule);
     }
   }
 } /* prioritize_jobs */
@@ -736,7 +736,9 @@ static bool is_cert_renewal_error(SessionRegisterResp_t *resp)
 /* @return failure : 998 or a failed http code                                */
 /* success : 200                                                              */
 /*                                                                            */
-static int re_register_agent(SessionInfo_t * session, ScheduledJob_t * *pJobList, uint64_t agentVersion,
+static int re_register_agent(SessionInfo_t * session,
+                             ScheduledJob_t * *pJobList,
+                             uint64_t agentVersion,
                              bool needNewAgentName)
 {
     int httpRes = 998;
@@ -846,30 +848,28 @@ static int handle_token_response(SessionRegisterResp_t *resp,
                                  bool firstAgentRegistration,
                                  bool *bFirstRegistrationSuccess_out)
 {
-    char schedule[10];
-    char *status = NULL;
-    enum AgentApiResultStatus statusCode = STAT_UNK;
-    int httpRes = 0;
+  char schedule[10];
+  char *status = NULL;
+  enum AgentApiResultStatus statusCode = STAT_UNK;
+  int httpRes = 0;
 
-    log_trace("%s::%s(%d) : Token found, parsing response.", LOG_INF);
+  log_trace("%s::%s(%d) : Token found, parsing response.", LOG_INF);
 
-    if (AgentApiResult_log(resp->Result, NULL, NULL)) {
-      if (firstAgentRegistration) {
-        *bFirstRegistrationSuccess_out =
-            do_first_registration_response(resp, &status, &statusCode);
-      } else {
-        do_normal_registration_response(resp, session, pJobList, schedule);
-      }
-    } else if (is_cert_renewal_error(resp)) {
-      log_info("%s::%s(%d): Re-enrolling Agent certificate, WITH session token", LOG_INF);
-      httpRes = re_register_agent(session, pJobList, agentVersion, false);
+  if (AgentApiResult_log(resp->Result, NULL, NULL)) {
+    if (firstAgentRegistration) {
+      *bFirstRegistrationSuccess_out =
+          do_first_registration_response(resp, &status, &statusCode);
     } else {
-      //TODO: Get rid of schedule information, as the agent doesn't use it
-      sprintf(schedule, "I_%d", session->Interval);
-      session->NextExecution = next_execution(schedule, session->NextExecution);
+      do_normal_registration_response(resp, session, pJobList, schedule);
     }
+  } else if (is_cert_renewal_error(resp)) {
+    log_info("%s::%s(%d): Re-enrolling Agent certificate, WITH session token", LOG_INF);
+    httpRes = re_register_agent(session, pJobList, agentVersion, false);
+  } else {
+    log_verbose("%s::%s(%d): Nothing to do", LOG_INF);
+  }
 
-    return httpRes;
+  return httpRes;
 } /* handle_token_response */
 
 /*                                                                            */
@@ -901,8 +901,6 @@ static int handle_no_token_response(SessionRegisterResp_t *resp,
                 resp->Result.Error.Message ? resp->Result.Error.Message : "(null)");
       log_error("%s::%s(%d): Session registration provided CodeString of %s", LOG_INF,
                 resp->Result.Error.CodeString ? resp->Result.Error.CodeString : "(null)");
-      sprintf(schedule, "I_%d", session->Interval);
-      session->NextExecution = next_execution(schedule, session->NextExecution);
     }
 
     return httpRes;
@@ -928,89 +926,87 @@ static int handle_no_token_response(SessionRegisterResp_t *resp,
 static int do_second_registration(SessionInfo_t * session,
                           ScheduledJob_t * *pJobList, uint64_t agentVersion)
 {
-    int httpRes = 998;
-    SessionRegisterResp_t *resp = NULL;
-    char *respString = NULL;
-    char schedule[10];
+  int httpRes = 998;
+  SessionRegisterResp_t *resp = NULL;
+  char *respString = NULL;
+  char schedule[10];
 
-    SessionRegisterReq_t *sessionReq = SessionRegisterReq_new(ConfigData->ClientParameterPath);
-    if (!sessionReq) {
-      log_error("%s::%s(%d) : Null pointer dereference - failed to allocate sessionReq", LOG_INF);
-      return 998;
+  SessionRegisterReq_t *sessionReq = SessionRegisterReq_new(ConfigData->ClientParameterPath);
+  if (!sessionReq) {
+    log_error("%s::%s(%d) : Null pointer dereference - failed to allocate sessionReq", LOG_INF);
+    return 998;
+  }
+
+  log_info("%s::%s(%d): Register 2nd Session, ask for enrollment jobs", LOG_INF);
+
+  if (ConfigData->AgentName) {
+    sessionReq->ClientMachine = strdup(ConfigData->AgentName);
+    if (!sessionReq->ClientMachine) {
+        log_error("%s::%s(%d) : Null pointer dereference - failed to allocate ClientMachine", LOG_INF);
+        SessionRegisterReq_free(sessionReq);
+        return 998;
     }
-
-    log_info("%s::%s(%d): Register 2nd Session, ask for enrollment jobs", LOG_INF);
-
-    if (ConfigData->AgentName) {
-      sessionReq->ClientMachine = strdup(ConfigData->AgentName);
-      if (!sessionReq->ClientMachine) {
-          log_error("%s::%s(%d) : Null pointer dereference - failed to allocate ClientMachine", LOG_INF);
-          SessionRegisterReq_free(sessionReq);
-          return 998;
-      }
+  }
+  if (ConfigData->AgentId) {
+    sessionReq->AgentId = strdup(ConfigData->AgentId);
+    if (!sessionReq->AgentId) {
+        log_error("%s::%s(%d) : Null pointer dereference - failed to allocate AgentId", LOG_INF);
+        SessionRegisterReq_free(sessionReq);
+        return 998;
     }
-    if (ConfigData->AgentId) {
-      sessionReq->AgentId = strdup(ConfigData->AgentId);
-      if (!sessionReq->AgentId) {
-          log_error("%s::%s(%d) : Null pointer dereference - failed to allocate AgentId", LOG_INF);
-          SessionRegisterReq_free(sessionReq);
-          return 998;
-      }
-    }
+  }
 
-    sessionReq->AgentPlatform = PLAT_NATIVE;
-    sessionReq->AgentVersion = agentVersion;
-    register_add_capabilities(sessionReq);
-    add_custom_client_parameters(sessionReq);
+  sessionReq->AgentPlatform = PLAT_NATIVE;
+  sessionReq->AgentVersion = agentVersion;
+  register_add_capabilities(sessionReq);
+  add_custom_client_parameters(sessionReq);
 
-    /* Signal the registration handler to generate re-enrollment jobs */
-    SessionRegisterReq_addNewClientParameter(sessionReq,
-        "RegistrationRequest", PLATORM_ENROLL_STORES);
+  /* Signal the registration handler to generate re-enrollment jobs */
+  SessionRegisterReq_addNewClientParameter(sessionReq,
+      "RegistrationRequest", PLATORM_ENROLL_STORES);
 
-    httpRes = send_session_request(sessionReq, &respString, &resp);
-    SessionRegisterReq_free(sessionReq);
+  httpRes = send_session_request(sessionReq, &respString, &resp);
+  SessionRegisterReq_free(sessionReq);
 
-    if (0 == httpRes) {
-      if (!AgentApiResult_log(resp->Result, NULL, NULL)) {
-          if (resp->Result.Status == STAT_ERR) {
-              log_error("%s::%s(%d): Command reported an error during the second registration call", LOG_INF);
-              httpRes = 997;
-              goto exit;
-          }
-      }
-
-      if (resp->Session.Token) {
-        log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF,
-                 resp->Session.Token, resp->Session.Jobs_count);
-
-        size_t l = resp->Session.Token ? strlen(resp->Session.Token) : 0;
-        if (0 < l) {
-          strcpy(session->Token, resp->Session.Token);
-        } else {
-          log_warn("%s::%s(%d) : Session does not contain a token", LOG_INF);
-          session->Token[0] = '\0';
+  if (0 == httpRes) {
+    if (!AgentApiResult_log(resp->Result, NULL, NULL)) {
+        if (resp->Result.Status == STAT_ERR) {
+            log_error("%s::%s(%d): Command reported an error during the second registration call", LOG_INF);
+            httpRes = 997;
+            goto exit;
         }
-
-        l = resp->Session.AgentId ? strlen(resp->Session.AgentId) : 0;
-        if (0 < l) {
-          strcpy(session->AgentId, resp->Session.AgentId);
-        } else {
-          log_warn("%s::%s(%d) : Session does not contain an AgentId", LOG_INF);
-          session->AgentId[0] = '\0';
-        }
-
-        session->UnreachableCount = 0;
-        sprintf(schedule, "I_%d", resp->Session.HeartbeatInterval);
-        session->NextExecution = next_execution(schedule, time(NULL));
-        clear_job_schedules(pJobList);
-        prioritize_jobs(pJobList, resp);
-      }
     }
+
+    if (resp->Session.Token) {
+      log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF,
+               resp->Session.Token, resp->Session.Jobs_count);
+
+      size_t l = resp->Session.Token ? strlen(resp->Session.Token) : 0;
+      if (0 < l) {
+        strcpy(session->Token, resp->Session.Token);
+      } else {
+        log_warn("%s::%s(%d) : Session does not contain a token", LOG_INF);
+        session->Token[0] = '\0';
+      }
+
+      l = resp->Session.AgentId ? strlen(resp->Session.AgentId) : 0;
+      if (0 < l) {
+        strcpy(session->AgentId, resp->Session.AgentId);
+      } else {
+        log_warn("%s::%s(%d) : Session does not contain an AgentId", LOG_INF);
+        session->AgentId[0] = '\0';
+      }
+
+      session->UnreachableCount = 0;
+      clear_job_schedules(pJobList);
+      prioritize_jobs(pJobList, resp);
+    }
+  }
 
 exit:
-    if (resp)       SessionRegisterResp_free(resp);
-    if (respString) free(respString);
-    return httpRes;
+  if (resp)       SessionRegisterResp_free(resp);
+  if (respString) free(respString);
+  return httpRes;
 } /* do_second_registration */
 
 /*                                                                            */
@@ -1112,9 +1108,6 @@ int register_session(SessionInfo_t * session, ScheduledJob_t * *pJobList, uint64
       resp = NULL;
     } else {
       log_error("%s::%s(%d): Session registration failed with error code %d", LOG_INF, httpRes);
-      char schedule[10];
-      sprintf(schedule, "I_%d", session->Interval);
-      session->NextExecution = next_execution(schedule, session->NextExecution);
     }
 
     if (respString) free(respString);
