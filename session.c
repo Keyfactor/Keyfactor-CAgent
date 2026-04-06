@@ -308,30 +308,41 @@ static void prioritize_jobs(ScheduledJob_t **pJobList,
 /* @return - success : true                                                   */
 /* failure : false                                                            */
 /*                                                                            */
-static bool register_add_capabilities(SessionRegisterReq_t * sessionReq) {
-    bool bResult = false;
+static bool register_add_capabilities(
+                                      SessionRegisterReq_t * sessionReq,
+                                      bool use_guids
+                                     ) {
+  if (!sessionReq) {
+      log_error("%s::%s(%d) : Null pointer dereference - sessionReq is NULL", LOG_INF);
+      return false;
+  }
 
-    if (!sessionReq) {
-        log_error("%s::%s(%d) : Null pointer dereference - sessionReq is NULL", LOG_INF);
-        return false;
-    }
+  sessionReq->Capabilities_count = 3;
+  sessionReq->Capabilities = calloc(sessionReq->Capabilities_count, sizeof(char *));
+  if (!sessionReq->Capabilities) {
+    log_error("%s::%s(%d) : Out of memory", LOG_INF);
+    return false;
+  }
 
-    sessionReq->Capabilities_count = 3;
-    sessionReq->Capabilities = calloc(sessionReq->Capabilities_count, sizeof(char *));
-    if (sessionReq->Capabilities) {
-        sessionReq->Capabilities[0] = strdup(cap_pem_inventory);
-        sessionReq->Capabilities[1] = strdup(cap_pem_management);
-        sessionReq->Capabilities[2] = strdup(cap_pem_reenrollment);
-        if (!sessionReq->Capabilities[0] || !sessionReq->Capabilities[1] ||
-            !sessionReq->Capabilities[2]) {
-            log_error("%s::%s(%d) : Null pointer dereference - failed to allocate capabilities", LOG_INF);
-            return false;
-        }
-        bResult = true;
-    } else {
-        log_error("%s::%s(%d) : Out of memory", LOG_INF);
-    }
-    return bResult;
+  if (use_guids) {
+    sessionReq->Capabilities[0] = strdup(CAP_PEM_INVENTORY);
+    sessionReq->Capabilities[1] = strdup(CAP_PEM_MANAGEMENT);
+    sessionReq->Capabilities[2] = strdup(CAP_PEM_REENROLLMENT);
+  } else {
+    sessionReq->Capabilities[0] = strdup(cap_pem_inventory);
+    sessionReq->Capabilities[1] = strdup(cap_pem_management);
+    sessionReq->Capabilities[2] = strdup(cap_pem_reenrollment);
+  }
+
+  if (
+      !sessionReq->Capabilities[0] ||
+      !sessionReq->Capabilities[1] ||
+      !sessionReq->Capabilities[2]
+      ) {
+    log_error("%s::%s(%d) : Null pointer dereference - failed to allocate capabilities", LOG_INF);
+    return false;
+  }
+  return true;
 } /* register_add_capabilities */
 
 /*                                                                            */
@@ -341,48 +352,52 @@ static bool register_add_capabilities(SessionRegisterReq_t * sessionReq) {
 /* @return : void                                                             */
 /*                                                                            */
 static void set_registration_parameters(SessionRegisterReq_t * sessionReq) {
-    if (!sessionReq) {
-        log_error("%s::%s(%d) : Null pointer dereference - sessionReq is NULL", LOG_INF);
-        return;
+  if (!sessionReq) {
+    log_error("%s::%s(%d) : Null pointer dereference - sessionReq is NULL", LOG_INF);
+    return;
+  }
+
+  if (ConfigData->AgentName) {
+    sessionReq->ClientMachine = strdup(ConfigData->AgentName);
+    if (!sessionReq->ClientMachine) {
+      log_error("%s::%s(%d) : Null pointer dereference - failed to allocate ClientMachine", LOG_INF);
+      return;
     }
-
-    if (ConfigData->AgentName) {
-        sessionReq->ClientMachine = strdup(ConfigData->AgentName);
-        if (!sessionReq->ClientMachine) {
-            log_error("%s::%s(%d) : Null pointer dereference - failed to allocate ClientMachine", LOG_INF);
-            return;
-        }
-    } else {
-        sessionReq->ClientMachine = strdup("");
-        if (!sessionReq->ClientMachine) {
-            log_error("%s::%s(%d) : Null pointer dereference - failed to allocate ClientMachine", LOG_INF);
-            return;
-        }
+  } else {
+    sessionReq->ClientMachine = strdup("");
+    if (!sessionReq->ClientMachine) {
+      log_error("%s::%s(%d) : Null pointer dereference - failed to allocate ClientMachine", LOG_INF);
+      return;
     }
+  }
 
-    if ((ConfigData->EnrollOnStartup) || !(ConfigData->AgentId)) {
-        /* Never send an Agent GUID to the platform when registering the */
-        /* Agent or if the Id was not defined in the config */
-        sessionReq->AgentId = strdup("");
-        if (!sessionReq->AgentId) {
-            log_error("%s::%s(%d) : Null pointer dereference - failed to allocate AgentId", LOG_INF);
-            return;
-        }
-    } else {
-        sessionReq->AgentId = strdup(ConfigData->AgentId);
-        if (!sessionReq->AgentId) {
-            log_error("%s::%s(%d) : Null pointer dereference - failed to allocate AgentId", LOG_INF);
-            return;
-        }
+  if ((ConfigData->EnrollOnStartup) || !(ConfigData->AgentId)) {
+    /* Never send an Agent GUID to the platform when registering the */
+    /* Agent or if the Id was not defined in the config */
+    sessionReq->AgentId = strdup("");
+    if (!sessionReq->AgentId) {
+      log_error("%s::%s(%d) : Null pointer dereference - failed to allocate AgentId", LOG_INF);
+      return;
     }
+  } else {
+    sessionReq->AgentId = strdup(ConfigData->AgentId);
+    if (!sessionReq->AgentId) {
+      log_error("%s::%s(%d) : Null pointer dereference - failed to allocate AgentId", LOG_INF);
+      return;
+    }
+  }
 
-    sessionReq->AgentPlatform = PLAT_NATIVE;
-    sessionReq->AgentVersion = (uint64_t) AGENT_VERSION;
+  sessionReq->AgentPlatform = PLAT_NATIVE;
+  sessionReq->AgentVersion = (uint64_t) AGENT_VERSION;
 
-    /* Add the agent's capabilities, so the Platform knows what to expect */
-    register_add_capabilities(sessionReq);
-    /* Add any custom parameters for this customer */
-    add_custom_client_parameters(sessionReq);
+  /* Add the agent's capabilities, so the Platform knows what to expect */
+#ifdef __QATESTING__
+  register_add_capabilities(sessionReq, true);
+#else
+  register_add_capabilities(sessionReq, false);
+#endif
+  /* Add any custom parameters for this customer */
+  add_custom_client_parameters(sessionReq);
 
 } /* set_registration_parameters */
 
@@ -958,7 +973,7 @@ static int do_second_registration(SessionInfo_t * session,
 
   sessionReq->AgentPlatform = PLAT_NATIVE;
   sessionReq->AgentVersion = agentVersion;
-  register_add_capabilities(sessionReq);
+  register_add_capabilities(sessionReq, false);
   add_custom_client_parameters(sessionReq);
 
   /* Signal the registration handler to generate re-enrollment jobs */

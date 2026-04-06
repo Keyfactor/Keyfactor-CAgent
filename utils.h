@@ -19,19 +19,11 @@
 #include <stdint.h>
 
 char* hex_encode(unsigned char* inBuf, int len);
-
 int append_line(char** msg, const char* line);
-
-int append_linef(char** msg, 
-	const char* fmt, ...) __attribute__ ((format (printf, 2, 3)));
-
+int append_linef(char** msg,const char* fmt, ...) __attribute__ ((format (printf, 2, 3)));
 int backup_file(const char* file);
-
-int read_file_bytes(const char* srcPath, unsigned char** pFileBytes, 
-	size_t* fileLen);
-
+int read_file_bytes(const char* srcPath, unsigned char** pFileBytes, size_t* fileLen);
 int replace_file(const char* file, const char* contents, long len, bool backup);
-
 char* util_strip_string(const char* fromString, const char* stripString);
 int file_exists( const char *file );
 bool is_directory( const char *file );

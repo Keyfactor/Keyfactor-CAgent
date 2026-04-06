@@ -34,6 +34,74 @@
 /******************************************************************************/
 /************************ LOCAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
+/*                                                                            */
+/* @brief creates a blank file                                                */
+/* @param const char *file = path and filename of file to create              */
+/* @returns 0 if file file creation fails, 1 if file creation succeeds        */
+/*                                                                            */
+static int create_file(const char *file)
+{
+  int retval = 0;
+  FILE *fd;
+
+  if (!file) {
+    log_error("%s::%s(%d) : Null pointer dereference - file is NULL", LOG_INF);
+    return 0;
+  }
+
+  fd = fopen(file, "w");
+  if (fd) {
+    fclose(fd);
+    retval = 1;
+  }
+  return retval;
+} /* create_file */
+
+static int copy_file(const char *srcPath, const char *destPath)
+{
+  int err = 0;
+
+  struct stat st;
+  if (stat(srcPath, &st) == 0) {
+    FILE *fpRead = fopen(srcPath, "r");
+    if (!fpRead) {
+      err = errno;
+    }
+    FILE *fpWrite = fopen(destPath, "w");
+    if (!fpWrite) {
+      err = errno;
+    }
+
+    if (fpRead && fpWrite) {
+      char buf[1024];
+
+      bool done = false;
+      while (!done) {
+        int rcnt = fread(buf, 1, 1024, fpRead);
+        if (rcnt != 1024) {
+          done = true;
+          err = ferror(fpRead);
+        }
+
+        if (!err) {
+          int wcnt = fwrite(buf, 1, rcnt, fpWrite);
+          if (wcnt != rcnt) {
+            done = true;
+            err = ferror(fpWrite);
+          }
+        }
+      }
+    }
+    if (fpRead)
+      fclose(fpRead);
+    if (fpWrite)
+      fclose(fpWrite);
+  } else {
+    err = errno;
+  }
+
+  return err;
+}
 
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
@@ -59,29 +127,6 @@ int file_exists(const char *file)
 
     return retval;
 } /* file_exists */
-
-/*                                                                            */
-/* @brief creates a blank file                                                */
-/* @param const char *file = path and filename of file to create              */
-/* @returns 0 if file file creation fails, 1 if file creation succeeds        */
-/*                                                                            */
-int create_file(const char *file)
-{
-    int retval = 0;
-    FILE *fd;
-
-    if (!file) {
-        log_error("%s::%s(%d) : Null pointer dereference - file is NULL", LOG_INF);
-        return 0;
-    }
-
-    fd = fopen(file, "w");
-    if (fd) {
-        fclose(fd);
-        retval = 1;
-    }
-    return retval;
-} /* create_file */
 
 char *hex_encode(unsigned char *inBuf, int len)
 {
@@ -234,52 +279,6 @@ int append_linef(char** msg, const char* fmt, ...) {
 
 	return 0; /* Success */
 } /* append_linef */
-
-static int copy_file(const char *srcPath, const char *destPath)
-{
-    int err = 0;
-
-    struct stat st;
-    if (stat(srcPath, &st) == 0) {
-        FILE *fpRead = fopen(srcPath, "r");
-        if (!fpRead) {
-            err = errno;
-        }
-        FILE *fpWrite = fopen(destPath, "w");
-        if (!fpWrite) {
-            err = errno;
-        }
-
-        if (fpRead && fpWrite) {
-            char buf[1024];
-
-            bool done = false;
-            while (!done) {
-                int rcnt = fread(buf, 1, 1024, fpRead);
-                if (rcnt != 1024) {
-                    done = true;
-                    err = ferror(fpRead);
-                }
-
-                if (!err) {
-                    int wcnt = fwrite(buf, 1, rcnt, fpWrite);
-                    if (wcnt != rcnt) {
-                        done = true;
-                        err = ferror(fpWrite);
-                    }
-                }
-            }
-        }
-        if (fpRead)
-            fclose(fpRead);
-        if (fpWrite)
-            fclose(fpWrite);
-    } else {
-        err = errno;
-    }
-
-    return err;
-}
 
 int read_file_bytes(const char *srcPath, unsigned char **pFileBytes,
                     size_t * fileLen)
