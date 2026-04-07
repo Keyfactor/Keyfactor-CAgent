@@ -571,12 +571,21 @@ bool release_platform(void)
 #endif
 
     ssl_cleanup();
-    write_log_file();
-    cleanup_config();
-    free_log_heap();
 
     return true;
 } /* release_platform */
+
+/**
+ * @brief Releases log sources and resets global state.
+ *
+ * @return Always returns none.
+ */
+void cleanup_logs(void)
+{
+    write_log_file();
+    cleanup_config();
+    free_log_heap();
+} /* cleanup_logs */
 
 
 /**
@@ -656,7 +665,10 @@ int main(int argc, char *argv[])
     if (success && !main_loop())
         success = false;
 
-    release_platform();
+    release_platform(); /* The last place where we log items */
+    log_info("%s::%s(%d) : Agent preparing to clean up and should exit with a STATUS of %s",
+        LOG_INF, success ? "SUCCESS" : "FAILURE");
+    cleanup_logs();
     printf("\n\n");
 
 #ifdef __MAKE_LIBRARY__

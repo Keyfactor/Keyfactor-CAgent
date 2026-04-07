@@ -394,6 +394,15 @@ bool is_log_off(void)
 /*                                                                            */
 /* @fn log_error                                                              */
 /* @brief Print a message if the error logging level is enabled               */
+/*                                                                            */
+/* NOTE: This function unconditionally sets the global 'success' flag to      */
+/* false as a side effect, regardless of whether logging is enabled.          */
+/* Code that calls log_error() through an intermediate function               */
+/* (e.g., AgentApiResult_log) may snapshot and conditionally restore          */
+/* 'success' if the logged condition is recoverable. Search for               */
+/* 'success_before' to locate all such snapshot/restore sites before          */
+/* modifying this behavior.                                                   */
+/*                                                                            */
 /* @returns none                                                              */
 /*                                                                            */
 void log_error(const char *fmt,...)
@@ -420,7 +429,9 @@ void log_error(const char *fmt,...)
             get_log_format(logFormat, fmt, ERRORLVL);
             va_list args_inner;
             va_start(args_inner, fmt);
-            size_t chars_written = vsprintf(log_tail, logFormat, args_inner);
+            size_t remaining = MAX_HEAP_SIZE - (log_tail - log_head);
+            size_t chars_written = vsnprintf(log_tail, remaining, logFormat,
+                                             args_inner);
             va_end(args_inner);
             log_tail += chars_written;
             log_is_dirty = true;
@@ -456,7 +467,9 @@ void log_warn(const char *fmt,...)
             get_log_format(logFormat, fmt, WARNLVL);
             va_list args_inner;
             va_start(args_inner, fmt);
-            size_t chars_written = vsprintf(log_tail, logFormat, args_inner);
+            size_t remaining = MAX_HEAP_SIZE - (log_tail - log_head);
+            size_t chars_written = vsnprintf(log_tail, remaining, logFormat,
+                                             args_inner);
             va_end(args_inner);
             log_tail += chars_written;
             log_is_dirty = true;
@@ -492,7 +505,9 @@ void log_info(const char *fmt,...)
             get_log_format(logFormat, fmt, INFOLVL);
             va_list args_inner;
             va_start(args_inner, fmt);
-            size_t chars_written = vsprintf(log_tail, logFormat, args_inner);
+            size_t remaining = MAX_HEAP_SIZE - (log_tail - log_head);
+            size_t chars_written = vsnprintf(log_tail, remaining, logFormat,
+                                             args_inner);
             va_end(args_inner);
             log_tail += chars_written;
             log_is_dirty = true;
@@ -528,7 +543,9 @@ void log_verbose(const char *fmt,...)
             get_log_format(logFormat, fmt, VERBOSELVL);
             va_list args_inner;
             va_start(args_inner, fmt);
-            size_t chars_written = vsprintf(log_tail, logFormat, args_inner);
+            size_t remaining = MAX_HEAP_SIZE - (log_tail - log_head);
+            size_t chars_written = vsnprintf(log_tail, remaining, logFormat,
+                                             args_inner);
             va_end(args_inner);
             log_tail += chars_written;
             log_is_dirty = true;
@@ -564,7 +581,9 @@ void log_debug(const char *fmt,...)
             get_log_format(logFormat, fmt, DEBUGLVL);
             va_list args_inner;
             va_start(args_inner, fmt);
-            size_t chars_written = vsprintf(log_tail, logFormat, args_inner);
+            size_t remaining = MAX_HEAP_SIZE - (log_tail - log_head);
+            size_t chars_written = vsnprintf(log_tail, remaining, logFormat,
+                                             args_inner);
             va_end(args_inner);
             log_tail += chars_written;
             log_is_dirty = true;
@@ -600,7 +619,9 @@ void log_trace(const char *fmt,...)
             get_log_format(logFormat, fmt, TRACELVL);
             va_list args_inner;
             va_start(args_inner, fmt);
-            size_t chars_written = vsprintf(log_tail, logFormat, args_inner);
+            size_t remaining = MAX_HEAP_SIZE - (log_tail - log_head);
+            size_t chars_written = vsnprintf(log_tail, remaining, logFormat,
+                                             args_inner);
             va_end(args_inner);
             log_tail += chars_written;
             log_is_dirty = true;
@@ -636,7 +657,9 @@ void log_qa(const char *fmt,...)
     get_log_format(logFormat, fmt, QALVL);
     va_list args_inner;
     va_start(args_inner, fmt);
-    size_t chars_written = vsprintf(log_tail, logFormat, args_inner);
+    size_t remaining = MAX_HEAP_SIZE - (log_tail - log_head);
+    size_t chars_written = vsnprintf(log_tail, remaining, logFormat,
+                                     args_inner);
     va_end(args_inner);
     log_tail += chars_written;
     log_is_dirty = true;

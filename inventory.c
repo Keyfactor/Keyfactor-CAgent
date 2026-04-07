@@ -247,12 +247,13 @@ static void InventoryUpdateList_add(InventoryUpdateList_t *list,
     if (!list || !item)
         return;
 
-    list->items = realloc(list->items,
+    InventoryUpdateItem_t **tmp = realloc(list->items,
                           (list->count + 1) * sizeof(InventoryUpdateItem_t *));
-    if (!list->items) {
+    if (!tmp) {
         log_error("%s::%s(%d) : Out of memory", LOG_INF);
         return;
     }
+    list->items = tmp;
 
     list->items[list->count] = item;
     list->count++;

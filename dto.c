@@ -1212,6 +1212,10 @@ InventoryCurrentItem_fromJsonNode(JsonNode * node) {
             int thumbCount = json_array_size(jsonThumbs);
             result->Thumbprints_count = thumbCount;
             result->Thumbprints = calloc(thumbCount, sizeof(char *));
+            if (!result->Thumbprints) {
+                result->Thumbprints_count = 0;
+                return result;
+            }
 
             int current = 0;
             JsonNode *jsonTmp = NULL;

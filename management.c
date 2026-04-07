@@ -89,6 +89,11 @@ static int get_management_config(const char *sessionToken, const char *jobId,
                          ConfigData->httpRetries, ConfigData->retryInterval);
     if (res == 0) {
         *pManConf = ManagementConfigResp_fromJson(jsonResp);
+        if (!*pManConf) {
+            log_error("%s::%s(%d) : Error parsing management config response",
+                      LOG_INF);
+            return 999;
+        }
     } else {
         log_error("%s::%s(%d) : Config retrieval failed with error code %d",
                   LOG_INF, res);
@@ -473,6 +478,11 @@ static int finalize_management_job(const char *sessionToken,
                                            auditId,
                                            statusMessage,
                                            &manComp);
+
+    if (res == 0 && manComp) {
+        AgentApiResult_log(manComp->Result, NULL, NULL);
+    }
+
     ManagementCompleteResp_free(manComp);
 
     if (res != 0) {

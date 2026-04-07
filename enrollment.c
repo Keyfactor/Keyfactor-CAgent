@@ -505,14 +505,16 @@ static int finalize_enrollment_job(const char *sessionToken,
         return 999;
     }
 
+    if (enrComp) {
 #if defined(__RUN_CHAIN_JOBS__)
-    if (enrComp &&
-        AgentApiResult_log(enrComp->Result, NULL, NULL) &&
-        enrComp->InventoryJob &&
-        chainJob) {
-        *chainJob = strdup(enrComp->InventoryJob);
-    }
+        if (AgentApiResult_log(enrComp->Result, NULL, NULL) &&
+            enrComp->InventoryJob && chainJob) {
+            *chainJob = strdup(enrComp->InventoryJob);
+        }
+#else
+        AgentApiResult_log(enrComp->Result, NULL, NULL);
 #endif
+    }
 
     if (status >= STAT_ERR) {
         log_error("%s::%s(%d) : Enrollment job %s failed with error: %s",

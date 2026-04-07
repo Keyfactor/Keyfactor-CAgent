@@ -32,6 +32,7 @@
 /***************************** LOCAL DEFINES  *********************************/
 /******************************************************************************/
 #define DATE_TIME_LEN 14        /* YYYYMMDDHHMMSS */
+#define STR_OR_NOT_SET(s) ((s) ? (s) : "(not set)")
 
 /******************************************************************************/
 /*************************** GLOBAL VARIABLES *********************************/
@@ -56,33 +57,37 @@ bool            use_host_as_agent_name = false;
 /**
  * @brief Prints all configuration parameters to stdout.
  *
- * @param[in] ConfigData  Pointer to the configuration structure to display.
+ * @param[in] data  Pointer to the configuration structure to display.
  */
-static void print_config(ConfigData_t *ConfigData)
+static void print_config(const ConfigData_t *data)
 {
-    printf("\n\n          AgentId = %s\n",            ConfigData->AgentId);
-    printf("          AgentName = %s\n",              ConfigData->AgentName);
-    printf("          ClientParameterPath = %s\n",    ConfigData->ClientParameterPath);
-    printf("          Hostname = %s\n",               ConfigData->Hostname);
-    printf("          Password = %s\n",               ConfigData->Password);
-    printf("          Username = %s\n",               ConfigData->Username);
-    printf("          VirtualDirectory = %s\n",       ConfigData->VirtualDirectory);
-    printf("          TrustStore = %s\n",             ConfigData->TrustStore);
-    printf("          UseAgentCert = %s\n",           ConfigData->UseAgentCert ? "true" : "false");
-    printf("          AgentCert = %s\n",              ConfigData->AgentCert);
-    printf("          AgentKey = %s\n",               ConfigData->AgentKey);
-    printf("          AgentKeyPassword = %s\n",       ConfigData->AgentKeyPassword);
-    printf("          UseSsl = %s\n",                 ConfigData->UseSsl ? "true" : "false");
-    printf("          CSRKeyType = %s\n",             ConfigData->CSRKeyType);
-    printf("          CSRKeySize = %d\n",             ConfigData->CSRKeySize);
-    printf("          CSRSubject = %s\n",             ConfigData->CSRSubject);
-    printf("          EnrollOnStartup = %s\n",        ConfigData->EnrollOnStartup ? "true" : "false");
-    printf("          UseBootstrapCert = %s\n",       ConfigData->UseBootstrapCert ? "true" : "false");
-    printf("          BootstrapCert = %s\n",          ConfigData->BootstrapCert);
-    printf("          BootstrapKey = %s\n",           ConfigData->BootstrapKey);
-    printf("          LogFile = %s\n",                ConfigData->LogFile);
-    printf("          httpRetries = %d\n",            ConfigData->httpRetries);
-    printf("          retryInterval = %d\n",          ConfigData->retryInterval);
+    if (!data) {
+        log_error("%s::%s(%d) : Null pointer dereference - data is NULL", LOG_INF);
+        return;
+    }
+    printf("\n\n          AgentId = %s\n",            STR_OR_NOT_SET(data->AgentId));
+    printf("          AgentName = %s\n",              STR_OR_NOT_SET(data->AgentName));
+    printf("          ClientParameterPath = %s\n",    STR_OR_NOT_SET(data->ClientParameterPath));
+    printf("          Hostname = %s\n",               STR_OR_NOT_SET(data->Hostname));
+    printf("          Password = %s\n",               data->Password        ? "********" : "(not set)");
+    printf("          Username = %s\n",               STR_OR_NOT_SET(data->Username));
+    printf("          VirtualDirectory = %s\n",       STR_OR_NOT_SET(data->VirtualDirectory));
+    printf("          TrustStore = %s\n",             STR_OR_NOT_SET(data->TrustStore));
+    printf("          UseAgentCert = %s\n",           data->UseAgentCert    ? "true" : "false");
+    printf("          AgentCert = %s\n",              STR_OR_NOT_SET(data->AgentCert));
+    printf("          AgentKey = %s\n",               STR_OR_NOT_SET(data->AgentKey));
+    printf("          AgentKeyPassword = %s\n",       data->AgentKeyPassword ? "********" : "(not set)");
+    printf("          UseSsl = %s\n",                 data->UseSsl          ? "true" : "false");
+    printf("          CSRKeyType = %s\n",             STR_OR_NOT_SET(data->CSRKeyType));
+    printf("          CSRKeySize = %d\n",             data->CSRKeySize);
+    printf("          CSRSubject = %s\n",             STR_OR_NOT_SET(data->CSRSubject));
+    printf("          EnrollOnStartup = %s\n",        data->EnrollOnStartup ? "true" : "false");
+    printf("          UseBootstrapCert = %s\n",       data->UseBootstrapCert ? "true" : "false");
+    printf("          BootstrapCert = %s\n",          STR_OR_NOT_SET(data->BootstrapCert));
+    printf("          BootstrapKey = %s\n",           STR_OR_NOT_SET(data->BootstrapKey));
+    printf("          LogFile = %s\n",                STR_OR_NOT_SET(data->LogFile));
+    printf("          httpRetries = %d\n",            data->httpRetries);
+    printf("          retryInterval = %d\n",          data->retryInterval);
     printf("\n\n");
 } /* print_config */
 
@@ -455,8 +460,13 @@ static void validate_and_fix_agent_id(ConfigData_t *config)
     if ((UUID_LEN - 1) > strlen(config->AgentId)) {
         log_trace("%s::%s(%d) : Resizing agent id to %lu bytes",
                   LOG_INF, UUID_LEN * sizeof(*(config->AgentId)));
-        config->AgentId = realloc(config->AgentId,
-                                  UUID_LEN * sizeof(*(config->AgentId)));
+        char *tmp = realloc(config->AgentId,
+                            UUID_LEN * sizeof(*(config->AgentId)));
+        if (!tmp) {
+            log_error("%s::%s(%d) : Out of memory resizing AgentId", LOG_INF);
+            return;
+        }
+        config->AgentId = tmp;
     }
 } /* validate_and_fix_agent_id */
 

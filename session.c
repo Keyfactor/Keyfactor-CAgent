@@ -761,7 +761,6 @@ static int re_register_agent(SessionInfo_t * session,
     char *respString = NULL;
     char *status;
     enum AgentApiResultStatus statusCode;
-    char schedule[10];
 
     SessionRegisterReq_t *sessionReq = SessionRegisterReq_new(ConfigData->ClientParameterPath);
     if (!sessionReq) {
@@ -785,6 +784,13 @@ static int re_register_agent(SessionInfo_t * session,
     sessionReq = NULL;
 
     if (0 == httpRes) {
+        const bool current_success = success;
+        if (!AgentApiResult_log(resp->Result, NULL, NULL)) {
+            if (is_cert_renewal_error(resp)) {
+                success = current_success;
+            }
+        }
+
         if (resp->Session.Token) {
             if (resp->Session.Certificate) {
                 log_trace("%s::%s(%d): Found certificate."
@@ -848,6 +854,14 @@ exit:
 /* Dispatches to first-registration handling, normal handling, or             */
 /* re-registration on cert-renewal error codes.                               */
 /*                                                                            */
+/* NOTE: AgentApiResult_log() calls log_error() on any STAT_ERR/STAT_WARN     */
+/* result, which sets the global 'success' flag to false as a side effect.    */
+/* Cert renewal errors (A0100007, A0100008) are recoverable -- success is     */
+/* restored to its pre-call state before re-registration is attempted, so     */
+/* that a successful re-registration does not incorrectly drive EXIT_FAILURE. */
+/* See log_error() in logging.c for the success flag side effect, and search  */
+/* for 'success_before' to locate all snapshot/restore sites.                 */
+/*                                                                            */
 /* @param  [Input]  : resp                      = decoded platform response   */
 /* @param  [Output] : session                   = session state to update     */
 /* @param  [Output] : pJobList                  = job list to populate        */
@@ -870,27 +884,37 @@ static int handle_token_response(SessionRegisterResp_t *resp,
 
   log_trace("%s::%s(%d) : Token found, parsing response.", LOG_INF);
 
-  if (AgentApiResult_log(resp->Result, NULL, NULL)) {
-    if (firstAgentRegistration) {
-      *bFirstRegistrationSuccess_out =
-          do_first_registration_response(resp, &status, &statusCode);
+    const bool current_success = success; /* Capture this state */
+    if (AgentApiResult_log(resp->Result, NULL, NULL)) {
+        if (firstAgentRegistration) {
+            *bFirstRegistrationSuccess_out =
+              do_first_registration_response(resp, &status, &statusCode);
+        } else {
+            do_normal_registration_response(resp, session, pJobList, schedule);
+        }
+    } else if (is_cert_renewal_error(resp)) {
+        log_info("%s::%s(%d): Re-enrolling Agent certificate, WITH session token", LOG_INF);
+        success = current_success; /* Don't let re-registration change the success state */
+        httpRes = re_register_agent(session, pJobList, agentVersion, false);
     } else {
-      do_normal_registration_response(resp, session, pJobList, schedule);
+        log_verbose("%s::%s(%d): Nothing to do", LOG_INF);
     }
-  } else if (is_cert_renewal_error(resp)) {
-    log_info("%s::%s(%d): Re-enrolling Agent certificate, WITH session token", LOG_INF);
-    httpRes = re_register_agent(session, pJobList, agentVersion, false);
-  } else {
-    log_verbose("%s::%s(%d): Nothing to do", LOG_INF);
-  }
 
-  return httpRes;
+    return httpRes;
 } /* handle_token_response */
 
 /*                                                                            */
 /* Handle the platform response when no session token is present.             */
 /* Re-registers on cert-renewal error codes; logs and advances the schedule   */
 /* on all other errors.                                                       */
+/*                                                                            */
+/* NOTE: AgentApiResult_log() calls log_error() on any STAT_ERR/STAT_WARN     */
+/* result, which sets the global 'success' flag to false as a side effect.    */
+/* Cert renewal errors (A0100007, A0100008) are recoverable -- success is     */
+/* restored to its pre-call state before re-registration is attempted, so     */
+/* that a successful re-registration does not incorrectly drive EXIT_FAILURE. */
+/* See log_error() in logging.c for the success flag side effect, and search  */
+/* for 'success_before' to locate all snapshot/restore sites.                 */
 /*                                                                            */
 /* @param  [Input]  : resp         = decoded platform response                */
 /* @param  [Output] : session      = session state to update                  */
@@ -903,19 +927,20 @@ static int handle_no_token_response(SessionRegisterResp_t *resp,
                                     ScheduledJob_t **pJobList,
                                     uint64_t agentVersion)
 {
-    char schedule[10];
     int httpRes = 0;
 
+    const bool current_success = success; /* Capture this state */
     AgentApiResult_log(resp->Result, NULL, NULL);
 
     if (is_cert_renewal_error(resp)) {
-      log_info("%s::%s(%d): Re-enrolling Agent certificate, no session token", LOG_INF);
-      httpRes = re_register_agent(session, pJobList, agentVersion, false);
+        log_info("%s::%s(%d): Re-enrolling Agent certificate, no session token", LOG_INF);
+        success = current_success; /* Don't let re-registration change the success state */
+        httpRes = re_register_agent(session, pJobList, agentVersion, false);
     } else {
-      log_error("%s::%s(%d): Session registration did not succeed with error %s", LOG_INF,
-                resp->Result.Error.Message ? resp->Result.Error.Message : "(null)");
-      log_error("%s::%s(%d): Session registration provided CodeString of %s", LOG_INF,
-                resp->Result.Error.CodeString ? resp->Result.Error.CodeString : "(null)");
+          log_error("%s::%s(%d): Session registration did not succeed with error %s", LOG_INF,
+                    resp->Result.Error.Message ? resp->Result.Error.Message : "(null)");
+          log_error("%s::%s(%d): Session registration provided CodeString of %s", LOG_INF,
+                    resp->Result.Error.CodeString ? resp->Result.Error.CodeString : "(null)");
     }
 
     return httpRes;
@@ -941,10 +966,9 @@ static int handle_no_token_response(SessionRegisterResp_t *resp,
 static int do_second_registration(SessionInfo_t * session,
                           ScheduledJob_t * *pJobList, uint64_t agentVersion)
 {
-  int httpRes = 998;
+  int httpRes;
   SessionRegisterResp_t *resp = NULL;
   char *respString = NULL;
-  char schedule[10];
 
   SessionRegisterReq_t *sessionReq = SessionRegisterReq_new(ConfigData->ClientParameterPath);
   if (!sessionReq) {
@@ -984,7 +1008,11 @@ static int do_second_registration(SessionInfo_t * session,
   SessionRegisterReq_free(sessionReq);
 
   if (0 == httpRes) {
+    const bool current_success = success;
     if (!AgentApiResult_log(resp->Result, NULL, NULL)) {
+        if (is_cert_renewal_error(resp)) {
+            success = current_success;
+        }
         if (resp->Result.Status == STAT_ERR) {
             log_error("%s::%s(%d): Command reported an error during the second registration call", LOG_INF);
             httpRes = 997;
@@ -1038,10 +1066,8 @@ static int finalize_first_registration(SessionInfo_t *session,
                                        ScheduledJob_t **pJobList,
                                        uint64_t agentVersion)
 {
-    int httpRes;
-
     log_trace("%s::%s(%d) Performing second registration.", LOG_INF);
-    httpRes = do_second_registration(session, pJobList, agentVersion);
+    int httpRes = do_second_registration(session, pJobList, agentVersion);
 
     if (0 == httpRes) {
       log_info("%s::%s(%d): Re-enrollment jobs set up successfully", LOG_INF);
@@ -1075,7 +1101,7 @@ static int finalize_first_registration(SessionInfo_t *session,
 /*                                                                            */
 int register_session(SessionInfo_t * session, ScheduledJob_t * *pJobList, uint64_t agentVersion)
 {
-    int httpRes = 998;
+    int httpRes;
     bool firstAgentRegistration   = false;
     bool bFirstRegistrationSuccess = false;
     SessionRegisterResp_t *resp   = NULL;
