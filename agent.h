@@ -44,7 +44,7 @@ extern bool success;   /* Used to define the program/library exit code */
 #endif
 
 /* Versioning Information                                                     */
-/* 3.0.0.2 = Release candidate for agent v3                                   */
+/* 3.0.0.3 = Release candidate for agent v3                                   */
 #define AGENT_MAJOR 3ULL
 #define AGENT_MINOR 0ULL
 #define AGENT_MICRO 0ULL
@@ -52,7 +52,7 @@ extern bool success;   /* Used to define the program/library exit code */
 #ifdef __QATESTING__
   #define AGENT_BUILD 999ULL // Special build number for QA testing
 #else
-  #define AGENT_BUILD 2ULL
+  #define AGENT_BUILD 3ULL
 #endif
 
 #define AGENT_VERSION \
