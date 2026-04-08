@@ -600,16 +600,24 @@ static void do_normal_registration_response(SessionRegisterResp_t * resp,
     log_info("%s::%s(%d): New session %s contains %d jobs", LOG_INF, resp->Session.Token, resp->Session.Jobs_count);
 
     size_t l = resp->Session.AgentId ? strlen((resp->Session.AgentId)) : 0;
-    if (l > 0) {
+    if (l > 0 && l < GUID_SIZE) {
         strcpy(session->AgentId, resp->Session.AgentId);
+    } else if (l >= GUID_SIZE) {
+        log_error("%s::%s(%d) : AgentId length %zu exceeds GUID_SIZE, rejecting response",
+                  LOG_INF, l);
+        return;
     } else {
         log_warn("%s::%s(%d) : No agent id in session", LOG_INF);
         session->AgentId[0] = '\0';
     }
 
     l = resp->Session.Token ? strlen((resp->Session.Token)) : 0;
-    if (l > 0) {
+    if (l > 0 && l < GUID_SIZE) {
         strcpy(session->Token, resp->Session.Token);
+    } else if (l >= GUID_SIZE) {
+        log_error("%s::%s(%d) : Token length %zu exceeds GUID_SIZE, rejecting response",
+                  LOG_INF, l);
+        return;
     } else {
         log_warn("%s::%s(%d) : No Token sent in session response", LOG_INF);
         session->Token[0] = '\0';
@@ -827,16 +835,24 @@ static int re_register_agent(SessionInfo_t * session,
                      resp->Session.Token, resp->Session.Jobs_count);
 
             size_t l = resp->Session.AgentId ? strlen(resp->Session.AgentId) : 0;
-            if (0 < l) {
+            if (0 < l && l < GUID_SIZE) {
                 strcpy(session->AgentId, resp->Session.AgentId);
+            } else if (l >= GUID_SIZE) {
+                log_error("%s::%s(%d) : AgentId length %zu exceeds GUID_SIZE, rejecting response",
+                          LOG_INF, l);
+                goto exit;
             } else {
                 log_warn("%s::%s(%d) : No AgentId provided", LOG_INF);
                 session->AgentId[0] = '\0';
             }
 
             l = resp->Session.Token ? strlen(resp->Session.Token) : 0;
-            if (0 < l) {
+            if (0 < l && l < GUID_SIZE) {
                 strcpy(session->Token, resp->Session.Token);
+            } else if (l >= GUID_SIZE) {
+                log_error("%s::%s(%d) : Token length %zu exceeds GUID_SIZE, rejecting response",
+                          LOG_INF, l);
+                goto exit;
             } else {
                 log_warn("%s::%s(%d) : No Token provided", LOG_INF);
                 session->Token[0] = '\0';
@@ -1035,16 +1051,24 @@ static int do_second_registration(SessionInfo_t * session,
                resp->Session.Token, resp->Session.Jobs_count);
 
       size_t l = resp->Session.Token ? strlen(resp->Session.Token) : 0;
-      if (0 < l) {
+      if (0 < l && l < GUID_SIZE) {
         strcpy(session->Token, resp->Session.Token);
+      } else if (l >= GUID_SIZE) {
+        log_error("%s::%s(%d) : Token length %zu exceeds GUID_SIZE, rejecting response",
+                  LOG_INF, l);
+        goto exit;
       } else {
         log_warn("%s::%s(%d) : Session does not contain a token", LOG_INF);
         session->Token[0] = '\0';
       }
 
       l = resp->Session.AgentId ? strlen(resp->Session.AgentId) : 0;
-      if (0 < l) {
+      if (0 < l && l < GUID_SIZE) {
         strcpy(session->AgentId, resp->Session.AgentId);
+      } else if (l >= GUID_SIZE) {
+        log_error("%s::%s(%d) : AgentId length %zu exceeds GUID_SIZE, rejecting response",
+                  LOG_INF, l);
+        goto exit;
       } else {
         log_warn("%s::%s(%d) : Session does not contain an AgentId", LOG_INF);
         session->AgentId[0] = '\0';

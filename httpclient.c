@@ -529,7 +529,11 @@ int http_post_json(const char *url, const char *username,
                    const char *clientKeyPass, char *postData,
                    char **pRespData, int retryCount, int retryInterval)
 {
+#ifdef __QATESTING__
+    log_qa("%s::%s(%d) : Preparing to POST to %s", LOG_INF, url);
+#else
     log_info("%s::%s(%d) : Preparing to POST to %s", LOG_INF, url);
+#endif
 
     int toReturn = CURLE_FAILED_INIT;
     unsigned char *client_cert_bytes = NULL;
