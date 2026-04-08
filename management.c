@@ -183,7 +183,12 @@ static int send_management_job_complete(const char *sessionToken,
 static bool cert_exists_in_store(const PemInventoryList *pemList,
                                  const PemInventoryItem *certToAdd)
 {
+    if (!certToAdd->thumbprint_string)
+        return false;
+
     for (int i = 0; i < pemList->item_count; i++) {
+        if (!pemList->items[i]->thumbprint_string)
+            continue;
         log_trace("%s::%s(%d) : Comparing thumbprints:\n%s\n%s",
                   LOG_INF, certToAdd->thumbprint_string,
                   pemList->items[i]->thumbprint_string);
@@ -382,6 +387,13 @@ static int handle_op_add(const ManagementConfigResp_t *manConf,
         append_line(pMessage, msg);
         *pStatus = STAT_ERR;
         return 999;
+    }
+
+    if (!manConf->Job.EntryContents) {
+        log_error("%s::%s(%d) : EntryContents is NULL", LOG_INF);
+        append_line(pMessage, "EntryContents is NULL");
+        *pStatus = STAT_ERR;
+        return -1;
     }
 
     log_info("%s::%s(%d) : Attempting to add certificate to the store:\n%s",

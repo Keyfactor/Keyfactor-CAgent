@@ -186,8 +186,8 @@ static WC_INLINE int PasswordCallBack(char* passwd, int sz, int rwflag,
             log_error("%s::%s(%d) : Out of memory", LOG_INF);
             return 0;
         } else {
-            passwd = strdup(gPasswd);
-            return strlen(gPasswd);
+            strncpy(passwd, gPasswd, sz);
+            return (int)strlen(gPasswd);
         }
 	}
 } /* PasswordCallBack */ /* PasswordCallBack */ /* parasoft-suppress BD-RES-LEAKS "Freed in wolf library" */
@@ -1338,6 +1338,10 @@ static int get_key_inventory(const char* path, const char* password,
 	if ( tmpPass )
 	{
 		gPasswd = strdup(tmpPass);
+		if (!gPasswd) {
+			log_error("%s::%s(%d) : Out of memory", LOG_INF);
+			return -1;
+		}
 	}
 
 	/* Create an array to store keys into */
@@ -1478,6 +1482,10 @@ static int get_inventory(const char* path, const char* password,
 	if (tmpPass)
 	{
 		gPasswd = strdup(tmpPass);
+		if (!gPasswd) {
+			log_error("%s::%s(%d) : Out of memory", LOG_INF);
+			return -1;
+		}
 	}
 
 	/* Open the filestore */

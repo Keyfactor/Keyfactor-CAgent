@@ -325,6 +325,10 @@ static bool get_formatted_datetime(char *buf, size_t bufLen)
         return false;
     }
     struct tm *tm = gmtime(&t);
+    if (!tm) {
+        log_error("%s::%s(%d) : gmtime failed", LOG_INF);
+        return false;
+    }
     (void)strftime(buf, bufLen, "%Y%m%d%H%M%S", tm);
     log_verbose("%s::%s(%d) : Date time is %s", LOG_INF, buf);
     return true;
@@ -791,7 +795,8 @@ static char *append_relpath_to_url(char *url, const char *relPath)
 
     log_trace("%s::%s(%d) : Stripping KeyfactorAgents/ from %s", LOG_INF, relPath);
     char *stripped = util_strip_string(relPath, "KeyfactorAgents/");
-    log_trace("%s::%s(%d) : Stripped relPath = %s", LOG_INF, stripped);
+    log_trace("%s::%s(%d) : Stripped relPath = %s", LOG_INF,
+              stripped ? stripped : "(null)");
 
     url = url_append_segment(url, stripped);
 

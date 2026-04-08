@@ -349,12 +349,15 @@ static struct curl_slist *build_request_headers(const char *postData,
     struct curl_slist *list = NULL;
 
     list = curl_slist_append(NULL, "Content-Type: application/json");
+    if (!list) return NULL;
     list = curl_slist_append(list, "Accept: application/json");
+    if (!list) return NULL;
 
     char clBuf[30];
     (void)snprintf(clBuf, sizeof(clBuf), "Content-Length: %d",
                    (int)strlen(postData));
     list = curl_slist_append(list, clBuf);
+    if (!list) return NULL;
 
     if (add_client_cert_to_header && certBytes) {
         log_debug("%s::%s(%d) : Adding client cert to %s header",

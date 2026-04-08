@@ -128,7 +128,7 @@ bool AgentApiResult_log(AgentApiResult_t result,
             messageLen = 20 + strlen(result.Error.Message);
         }
 
-        snprintf(buf, (size_t) messageLen, "%s: %s (%s)\n",
+        snprintf(buf, sizeof(buf), "%s: %s (%s)\n",
                  introBuf ? introBuf : "Unknown",
                  result.Error.Message ? result.Error.Message : "No message",
                  result.Error.CodeString ? result.Error.CodeString : "No code");
@@ -477,7 +477,8 @@ char *SessionRegisterReq_toJson(SessionRegisterReq_t * req)
         JsonNode *jsonCliParams = json_mkobject();
         if (req->ClientParameters) {
             for (int i = 0; i < req->ClientParameters_count; ++i) {
-                if (req->ClientParameters[i]) {
+                if (req->ClientParameters[i] &&
+                    req->ClientParameters[i]->Key) {
                     json_append_member(jsonCliParams,
                                        req->ClientParameters[i]->Key,
                             json_mkstring(req->ClientParameters[i]->Value));

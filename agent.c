@@ -433,6 +433,11 @@ static void cleanup_config(void)
  */
 static int dispatch_job_by_type(SessionJob_t *job, char **chainJobId)
 {
+    if (!job || !job->JobTypeId) {
+        log_error("%s::%s(%d) : NULL job or job type", LOG_INF);
+        return -1;
+    }
+
     if (0 == strcasecmp(job->JobTypeId, CAP_PEM_INVENTORY)) {
         int status = cms_job_inventory(job, SessionData.Token);
         inventory_ran = true;

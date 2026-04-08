@@ -455,6 +455,10 @@ static void reset_agent(void) {
         ConfigData->AgentId = NULL;
     }
     ConfigData->AgentId = strdup("");
+    if (!ConfigData->AgentId) {
+        log_error("%s::%s(%d) : Out of memory allocating AgentId", LOG_INF);
+        goto cleanup;
+    }
 
     /* Adjust the agent name by appending a datetime */
     /* NOTE: if a datetime is already added, be sure to remove it. */
@@ -494,8 +498,14 @@ static void reset_agent(void) {
     }
     if (0 >= snprintf(ConfigData->AgentName, correctBytes, "%s_%s", tempName, tBuf)) {
         log_error("%s::%s(%d) : Fatal error rewriting agent name, not changing name or ID", LOG_INF);
+        free(ConfigData->AgentName);
         ConfigData->AgentName = strdup(savedName);
+        free(ConfigData->AgentId);
         ConfigData->AgentId = strdup(savedId);
+        if (!ConfigData->AgentName || !ConfigData->AgentId) {
+            log_error("%s::%s(%d) : Out of memory restoring agent identity",
+                      LOG_INF);
+        }
     } else {
         /*
          * as long as we get here we successfully wrote the new agent name,

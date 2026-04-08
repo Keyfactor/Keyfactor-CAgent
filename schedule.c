@@ -69,6 +69,10 @@ SessionJob_t   *get_runnable_job(ScheduledJob_t * *pList, time_t now)
     ScheduledJob_t *current = *pList;
 
     while (current) {
+        if (!current->Job || !current->Job->JobId) {
+            current = current->NextJob;
+            continue;
+        }
         log_trace("%s::%s(%d) : Checking job %s NextExecution = %ld Now = %ld",
                   LOG_INF, current->Job->JobId, current->NextExecution, now);
         if (current->NextExecution <= now) {
@@ -95,7 +99,8 @@ SessionJob_t   *get_job_by_id(ScheduledJob_t * *pList, const char *jobId)
     ScheduledJob_t *current = *pList;
 
     while (current) {
-        if (strcasecmp(current->Job->JobId, jobId) == 0) {
+        if (current->Job && current->Job->JobId &&
+            strcasecmp(current->Job->JobId, jobId) == 0) {
             return current->Job;
         }
 
