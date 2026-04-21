@@ -74,3 +74,10 @@ valgrind.log
 signature/
 .idea/
 .clang-format
+
+# Claude Code
+# Claude Code
+.claude/
+.claude/settings.local.json
+CLAUDE.md
+.mcp.json
