@@ -9,15 +9,15 @@
  ******************************************************************************/
 /* @file utils.c                                                              */
 #include "utils.h"
-#include "logging.h"
 #include "errno.h"
-#include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
+#include "logging.h"
 #include <stdarg.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 /******************************************************************************/
 /***************************** LOCAL DEFINES  *********************************/
@@ -39,68 +39,67 @@
 /* @param const char *file = path and filename of file to create              */
 /* @returns 0 if file file creation fails, 1 if file creation succeeds        */
 /*                                                                            */
-static int create_file(const char *file)
-{
-  int retval = 0;
-  FILE *fd;
+static int create_file(const char *file) {
+    int retval = 0;
+    FILE *fd;
 
-  if (!file) {
-    log_error("%s::%s(%d) : Null pointer dereference - file is NULL", LOG_INF);
-    return 0;
-  }
+    if (!file) {
+        log_error("%s::%s(%d) : Null pointer dereference - file is NULL",
+                  LOG_INF);
+        return 0;
+    }
 
-  fd = fopen(file, "w");
-  if (fd) {
-    fclose(fd);
-    retval = 1;
-  }
-  return retval;
+    fd = fopen(file, "w");
+    if (fd) {
+        fclose(fd);
+        retval = 1;
+    }
+    return retval;
 } /* create_file */
 
-static int copy_file(const char *srcPath, const char *destPath)
-{
-  int err = 0;
+static int copy_file(const char *srcPath, const char *destPath) {
+    int err = 0;
 
-  struct stat st;
-  if (stat(srcPath, &st) == 0) {
-    FILE *fpRead = fopen(srcPath, "r");
-    if (!fpRead) {
-      err = errno;
-    }
-    FILE *fpWrite = fopen(destPath, "w");
-    if (!fpWrite) {
-      err = errno;
-    }
-
-    if (fpRead && fpWrite) {
-      char buf[1024];
-
-      bool done = false;
-      while (!done) {
-        int rcnt = fread(buf, 1, 1024, fpRead);
-        if (rcnt != 1024) {
-          done = true;
-          err = ferror(fpRead);
+    struct stat st;
+    if (stat(srcPath, &st) == 0) {
+        FILE *fpRead = fopen(srcPath, "r");
+        if (!fpRead) {
+            err = errno;
+        }
+        FILE *fpWrite = fopen(destPath, "w");
+        if (!fpWrite) {
+            err = errno;
         }
 
-        if (!err) {
-          int wcnt = fwrite(buf, 1, rcnt, fpWrite);
-          if (wcnt != rcnt) {
-            done = true;
-            err = ferror(fpWrite);
-          }
-        }
-      }
-    }
-    if (fpRead)
-      fclose(fpRead);
-    if (fpWrite)
-      fclose(fpWrite);
-  } else {
-    err = errno;
-  }
+        if (fpRead && fpWrite) {
+            char buf[1024];
 
-  return err;
+            bool done = false;
+            while (!done) {
+                int rcnt = fread(buf, 1, 1024, fpRead);
+                if (rcnt != 1024) {
+                    done = true;
+                    err = ferror(fpRead);
+                }
+
+                if (!err) {
+                    int wcnt = fwrite(buf, 1, rcnt, fpWrite);
+                    if (wcnt != rcnt) {
+                        done = true;
+                        err = ferror(fpWrite);
+                    }
+                }
+            }
+        }
+        if (fpRead)
+            fclose(fpRead);
+        if (fpWrite)
+            fclose(fpWrite);
+    } else {
+        err = errno;
+    }
+
+    return err;
 }
 
 /******************************************************************************/
@@ -113,12 +112,12 @@ static int copy_file(const char *srcPath, const char *destPath)
 /* @returns 0 if file does not exist, is a directory, or is a sym link,       */
 /* 1 if it does exist                                                         */
 /*                                                                            */
-int file_exists(const char *file)
-{
+int file_exists(const char *file) {
     int retval = 0;
 
     if (!file) {
-        log_error("%s::%s(%d) : Null pointer dereference - file is NULL", LOG_INF);
+        log_error("%s::%s(%d) : Null pointer dereference - file is NULL",
+                  LOG_INF);
         return 0;
     }
 
@@ -128,10 +127,10 @@ int file_exists(const char *file)
     return retval;
 } /* file_exists */
 
-char *hex_encode(unsigned char *inBuf, int len)
-{
+char *hex_encode(unsigned char *inBuf, int len) {
     if (!inBuf) {
-        log_error("%s::%s(%d) : Null pointer dereference - inBuf is NULL", LOG_INF);
+        log_error("%s::%s(%d) : Null pointer dereference - inBuf is NULL",
+                  LOG_INF);
         return NULL;
     }
 
@@ -143,7 +142,7 @@ char *hex_encode(unsigned char *inBuf, int len)
     char *tempBuf = thumbBuf;
 
     size_t i;
-    for (i = 0; i < (size_t) len; i++) {
+    for (i = 0; i < (size_t)len; i++) {
         tempBuf += sprintf(tempBuf, "%02x", inBuf[i]);
     }
 
@@ -166,50 +165,52 @@ exit:
  * @return 0 on success, or an error code (EINVAL, ENOMEM) on failure.
  * If realloc fails, *msg remains unchanged.
  */
-int append_line(char** msg, const char* line)
-{
-  /* Validate input parameters */
-  if (!msg || !line) {
-    return EINVAL;
-  }
+int append_line(char **msg, const char *line) {
+    /* Validate input parameters */
+    if (!msg || !line) {
+        return EINVAL;
+    }
 
-  /* Gracefully handle the case where *msg is NULL to get the current length */
-  const size_t current_len = (*msg) ? strlen(*msg) : 0;
-  const size_t line_len = strlen(line);
+    /* Gracefully handle the case where *msg is NULL to get the current length
+     */
+    const size_t current_len = (*msg) ? strlen(*msg) : 0;
+    const size_t line_len = strlen(line);
 
-  /* Calculate the new total size required:
-     current string + new line + newline char '\n' + null terminator '\0' */
-  const size_t new_size = current_len + line_len + 2;
+    /* Calculate the new total size required:
+       current string + new line + newline char '\n' + null terminator '\0' */
+    const size_t new_size = current_len + line_len + 2;
 
-  /* Reallocate memory. realloc behaves like malloc if *msg is NULL. */
-  char* new_buffer = realloc(*msg, new_size);
-  if (!new_buffer) {
-    /* On failure, realloc leaves the original block untouched. */
-    return ENOMEM;
-  }
+    /* Reallocate memory. realloc behaves like malloc if *msg is NULL. */
+    char *new_buffer = realloc(*msg, new_size);
+    if (!new_buffer) {
+        /* On failure, realloc leaves the original block untouched. */
+        return ENOMEM;
+    }
 
-  /* Copy the new line to the end of the old content */
-  strcpy(new_buffer + current_len, line);
-  /* Append the newline character */
-  new_buffer[current_len + line_len] = '\n';
-  /* Add the new null terminator */
-  new_buffer[current_len + line_len + 1] = '\0';
+    /* Copy the new line to the end of the old content */
+    strcpy(new_buffer + current_len, line);
+    /* Append the newline character */
+    new_buffer[current_len + line_len] = '\n';
+    /* Add the new null terminator */
+    new_buffer[current_len + line_len + 1] = '\0';
 
-  /* Update the caller's pointer to the new buffer */
-  *msg = new_buffer;
+    /* Update the caller's pointer to the new buffer */
+    *msg = new_buffer;
 
-  return 0;
+    return 0;
 } /* append_line */
 
 /**
- * @brief Appends a formatted string, followed by a newline, to a dynamic buffer.
+ * @brief Appends a formatted string, followed by a newline, to a dynamic
+ * buffer.
  *
- * This function operates like `printf` to create a formatted string and appends it,
- * along with a newline character, to the buffer pointed to by `msg`. The buffer is
- * automatically reallocated to the necessary size. It correctly handles the
- * case where `*msg` is initially `NULL`.
+ * This function operates like `printf` to create a formatted string and appends
+ * it, along with a newline character, to the buffer pointed to by `msg`. The
+ * buffer is automatically reallocated to the necessary size. It correctly
+ * handles the case where `*msg` is initially `NULL`.
  *
- * @param[in,out] msg   A pointer to a char pointer (`char**`). On a successful return,
+ * @param[in,out] msg   A pointer to a char pointer (`char**`). On a successful
+ * return,
  * `*msg` will point to the newly allocated buffer containing
  * the appended content. The caller is responsible for freeing
  * this memory using `free()`.
@@ -221,68 +222,69 @@ int append_line(char** msg, const char* line)
  * @return `EIO` if a formatting or encoding error occurs.
  * @return `ENOMEM` if a memory allocation fails.
  *
- * @note The memory pointed to by `*msg` is managed by this function via `realloc`.
- * The caller must not free the old pointer after a successful call,
+ * @note The memory pointed to by `*msg` is managed by this function via
+ * `realloc`. The caller must not free the old pointer after a successful call,
  * as `realloc` may have already done so. The caller is always responsible
  * for freeing the final buffer.
  */
-int append_linef(char** msg, const char* fmt, ...) {
-	if (!msg || !fmt) {
-		return EINVAL;
-	}
+int append_linef(char **msg, const char *fmt, ...) {
+    if (!msg || !fmt) {
+        return EINVAL;
+    }
 
-	/* Determine the length of the string to be appended */
-	va_list args;
-	va_start(args, fmt);
-	int append_len = vsnprintf(NULL, 0, fmt, args);
-	va_end(args);
+    /* Determine the length of the string to be appended */
+    va_list args;
+    va_start(args, fmt);
+    int append_len = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
 
-	if (append_len < 0) {
-		return EIO; // Encoding error
-	}
+    if (append_len < 0) {
+        return EIO; // Encoding error
+    }
 
-	/* Allocate temporary memory for the new line */
-	char* line_to_append = malloc(append_len + 1);
-	if (!line_to_append) {
-		return ENOMEM;
-	}
+    /* Allocate temporary memory for the new line */
+    char *line_to_append = malloc(append_len + 1);
+    if (!line_to_append) {
+        return ENOMEM;
+    }
 
-	/* Create the new line string */
-	va_start(args, fmt);
-	vsnprintf(line_to_append, append_len + 1, fmt, args);
-	va_end(args);
+    /* Create the new line string */
+    va_start(args, fmt);
+    vsnprintf(line_to_append, append_len + 1, fmt, args);
+    va_end(args);
 
-	/* Determine current message length (0 if msg is NULL) */
-	size_t current_len = (*msg) ? strlen(*msg) : 0;
+    /* Determine current message length (0 if msg is NULL) */
+    size_t current_len = (*msg) ? strlen(*msg) : 0;
 
-	/* New size = current length + appended line length + newline + null terminator */
-	size_t new_size = current_len + append_len + 2;
+    /* New size = current length + appended line length + newline + null
+     * terminator */
+    size_t new_size = current_len + append_len + 2;
 
-	char* new_msg = realloc(*msg, new_size);
-	if (!new_msg) {
-		free(line_to_append); /* Clean up the temporary line */
-		return ENOMEM;
-	}
+    char *new_msg = realloc(*msg, new_size);
+    if (!new_msg) {
+        free(line_to_append); /* Clean up the temporary line */
+        return ENOMEM;
+    }
 
-	/* If the buffer was new (current_len was 0), ensure it starts as an empty string */
-	if (current_len == 0) {
-		new_msg[0] = '\0';
-	}
+    /* If the buffer was new (current_len was 0), ensure it starts as an empty
+     * string */
+    if (current_len == 0) {
+        new_msg[0] = '\0';
+    }
 
-	/* Concatenate the new parts */
-	strcat(new_msg, line_to_append);
-	strcat(new_msg, "\n");
+    /* Concatenate the new parts */
+    strcat(new_msg, line_to_append);
+    strcat(new_msg, "\n");
 
-	/* Clean up and update the caller's pointer */
-	free(line_to_append);
-	*msg = new_msg;
+    /* Clean up and update the caller's pointer */
+    free(line_to_append);
+    *msg = new_msg;
 
-	return 0; /* Success */
+    return 0; /* Success */
 } /* append_linef */
 
 int read_file_bytes(const char *srcPath, unsigned char **pFileBytes,
-                    size_t * fileLen)
-{
+                    size_t *fileLen) {
     int err = 0;
 
     FILE *fpRead = fopen(srcPath, "r");
@@ -306,7 +308,7 @@ int read_file_bytes(const char *srcPath, unsigned char **pFileBytes,
             fseek(fpRead, 0, SEEK_SET);
 
             int rcnt = fread(*pFileBytes, 1, *fileLen, fpRead);
-            if ((size_t) rcnt != *fileLen) {
+            if ((size_t)rcnt != *fileLen) {
                 err = ferror(fpRead);
                 free(*pFileBytes);
                 *fileLen = 0;
@@ -320,8 +322,7 @@ exit:
     return err;
 }
 
-int write_file_bytes(const char *srcPath, char *pFileBytes, size_t len)
-{
+int write_file_bytes(const char *srcPath, char *pFileBytes, size_t len) {
     int err = 0;
 
     FILE *fpWrite = fopen(srcPath, "w");
@@ -333,7 +334,8 @@ int write_file_bytes(const char *srcPath, char *pFileBytes, size_t len)
         } else {
             err = errno;
             char *errStr = strerror(errno);
-            log_error("%s::%s(%d) : Unable to write config file %s: %s", LOG_INF, srcPath, errStr);
+            log_error("%s::%s(%d) : Unable to write config file %s: %s",
+                      LOG_INF, srcPath, errStr);
         }
     }
 
@@ -343,7 +345,8 @@ int write_file_bytes(const char *srcPath, char *pFileBytes, size_t len)
 }
 
 /**
- * @brief Creates a backup copy of a file by appending a tilde (~) to the filename.
+ * @brief Creates a backup copy of a file by appending a tilde (~) to the
+ * filename.
  *
  * If the specified file does not exist, it is created before the backup is
  * attempted. The backup file permissions are set to owner read/write only
@@ -356,38 +359,37 @@ int write_file_bytes(const char *srcPath, char *pFileBytes, size_t len)
  * @return ENOMEM if memory allocation for the backup path fails.
  * @return errno value if the chmod on the backup file fails.
  */
-int backup_file(const char *file)
-{
-  int err = 0;
+int backup_file(const char *file) {
+    int err = 0;
 
-  if (file) {
-    if (!file_exists(file))
-      create_file(file);
+    if (file) {
+        if (!file_exists(file))
+            create_file(file);
 
-    char* backupPath = malloc(strlen(file) + 2);
-    if (!backupPath) {
-      return ENOMEM;
+        char *backupPath = malloc(strlen(file) + 2);
+        if (!backupPath) {
+            return ENOMEM;
+        }
+        strcpy(backupPath, file);
+        strcat(backupPath, "~");
+        err = copy_file(file, backupPath);
+
+        if (!err) {
+            if (chmod(backupPath, (S_IRUSR | S_IWUSR)) < 0) {
+                err = errno;
+            }
+        }
+        free(backupPath);
+    } else {
+        log_info("%s::%s(%d) : No file found", LOG_INF);
+        err = ENOENT;
     }
-    strcpy(backupPath, file);
-    strcat(backupPath, "~");
-    err = copy_file(file, backupPath);
 
-    if (!err) {
-      if (chmod(backupPath, (S_IRUSR | S_IWUSR)) < 0) {
-        err = errno;
-      }
-    }
-    free(backupPath);
-  } else {
-    log_info("%s::%s(%d) : No file found", LOG_INF);
-    err = ENOENT;
-  }
-
-  return err;
+    return err;
 } /* backup_file */
 
-int replace_file(const char *file, const char *contents, long len, bool backup)
-{
+int replace_file(const char *file, const char *contents, long len,
+                 bool backup) {
     int err = 0;
 
     if (backup)
@@ -395,22 +397,27 @@ int replace_file(const char *file, const char *contents, long len, bool backup)
 
     if (!err || err == ENOENT) {
         err = 0;
-        //Inability to backup a file because it doesn 't exist is fine
+        // Inability to backup a file because it doesn 't exist is fine
 
         FILE *fpWrite = fopen(file, "w");
         if (!fpWrite) {
             err = errno;
             char *errStr = strerror(errno);
-            log_error("%s::%s(%d) : Unable to open store at %s for writing: %s", LOG_INF, file, errStr);
+            log_error("%s::%s(%d) : Unable to open store at %s for writing: %s",
+                      LOG_INF, file, errStr);
         } else {
-            log_verbose("%s::%s(%d) : Preparing to write %ld bytes to the modified store", LOG_INF, len);
+            log_verbose("%s::%s(%d) : Preparing to write %ld bytes to the "
+                        "modified store",
+                        LOG_INF, len);
 
-            if (fwrite(contents, 1, len, fpWrite) == (size_t) len) {
-                log_verbose("%s::%s(%d) : Store %s written successfully", LOG_INF, file);
+            if (fwrite(contents, 1, len, fpWrite) == (size_t)len) {
+                log_verbose("%s::%s(%d) : Store %s written successfully",
+                            LOG_INF, file);
             } else {
                 err = errno;
                 char *errStr = strerror(errno);
-                log_error("%s::%s(%d) : Unable to write store at %s: %s", LOG_INF, file, errStr);
+                log_error("%s::%s(%d) : Unable to write store at %s: %s",
+                          LOG_INF, file, errStr);
             }
         }
 
@@ -426,8 +433,7 @@ int replace_file(const char *file, const char *contents, long len, bool backup)
 /* @param fromString, the full string from which we want to remove            */
 /* @param stripString, the string we want to strip from fromString            */
 /*                                                                            */
-char *util_strip_string(const char *fromString, const char *stripString)
-{
+char *util_strip_string(const char *fromString, const char *stripString) {
     char *beforeString = NULL;
     char *stripPointer = NULL;
     char *afterString = NULL;
@@ -446,15 +452,16 @@ char *util_strip_string(const char *fromString, const char *stripString)
     fromLen = strlen(fromString);
     stripLen = strlen(stripString);
 
-
-    log_trace("%s::%s(%d) : Attempting to strip %s from %s", LOG_INF, stripString, fromString);
+    log_trace("%s::%s(%d) : Attempting to strip %s from %s", LOG_INF,
+              stripString, fromString);
     /* get a pointer into fromString at the staring location */
     /* of the strip string */
     stripPointer = strstr(fromString, stripString);
     if (stripPointer) {
         stripPtrLen = strlen(stripPointer);
         if (fromLen > stripPtrLen) {
-            beforeString = calloc((fromLen - stripPtrLen + 1), sizeof(*beforeString));
+            beforeString =
+                calloc((fromLen - stripPtrLen + 1), sizeof(*beforeString));
             if (!beforeString) {
                 log_error("%s::%s(%d) : Out of memory", LOG_INF);
                 goto exit;
@@ -488,7 +495,8 @@ char *util_strip_string(const char *fromString, const char *stripString)
             log_error("%s::%s(%d) : Out of memory", LOG_INF);
             goto exit;
         }
-        log_trace("%s::%s(%d) : Didn't find %s inside %s, not modifying %s", LOG_INF, stripString, fromString, fromString);
+        log_trace("%s::%s(%d) : Didn't find %s inside %s, not modifying %s",
+                  LOG_INF, stripString, fromString, fromString);
     }
 
 exit:
@@ -508,15 +516,16 @@ exit:
 /* @return success : string1 followed by string2 followed by \0 (or just \0)  */
 /* failure : NULL                                                             */
 /*                                                                            */
-char *merge_strings(const char *string1, const char *string2)
-{
+char *merge_strings(const char *string1, const char *string2) {
     size_t string1_size = 0;
     size_t string2_size = 0;
     size_t result_size = 0;
     char *resultString = NULL;
 
     if (!string1 || !string2) {
-        log_error("%s::%s(%d) : Null pointer dereference - string1 or string2 is NULL", LOG_INF);
+        log_error("%s::%s(%d) : Null pointer dereference - string1 or string2 "
+                  "is NULL",
+                  LOG_INF);
         return NULL;
     }
 
@@ -556,26 +565,27 @@ char *merge_strings(const char *string1, const char *string2)
  * @return - The substring of the string parameter up to the character to find
  *           NULL if the character is not found
  */
-char *get_prefix_substring(const char *string, const char find)
-{
+char *get_prefix_substring(const char *string, const char find) {
     char *subString = NULL;
 
     if (!string) {
-        log_error("%s::%s(%d) : Null pointer dereference - string is NULL", LOG_INF);
+        log_error("%s::%s(%d) : Null pointer dereference - string is NULL",
+                  LOG_INF);
         return NULL;
     }
 
-    log_trace("%s::%s(%d) : Find character %c in string %s",
-              LOG_INF, find, string);
+    log_trace("%s::%s(%d) : Find character %c in string %s", LOG_INF, find,
+              string);
     char *ptr = strrchr(string, find);
 
     if (ptr) {
         log_trace("%s::%s(%d) : Character found", LOG_INF);
-        size_t len = (size_t) (ptr - string);
+        size_t len = (size_t)(ptr - string);
         subString = strdup(string);
-        subString = (char *)realloc(subString, (len + 1));      /* parasoft-suppress
-                                                                 * BD-RES-LEAKS "Freed
-                                                                 * by calling function" */
+        subString =
+            (char *)realloc(subString, (len + 1)); /* parasoft-suppress
+                                                    * BD-RES-LEAKS "Freed
+                                                    * by calling function" */
         if (NULL == subString) {
             log_error("%s::%s(%d) : Out of memory", LOG_INF);
             return NULL;
@@ -594,8 +604,7 @@ char *get_prefix_substring(const char *string, const char find)
 /* @return true if file is actually a directory                               */
 /* false if the file is actually a file                                       */
 /*                                                                            */
-bool is_directory(const char *file)
-{
+bool is_directory(const char *file) {
     if ((NULL == file) || 0 == strlen(file))
         return false;
     bool bResult = false;
@@ -603,7 +612,7 @@ bool is_directory(const char *file)
     file_stat.st_mode = 0;
     stat(file, &file_stat);
     bool is_dir = S_ISDIR(file_stat.st_mode);
-    //log_trace("%s::%s(%d) : %s = %d", LOG_INF, file, is_dir);
+    // log_trace("%s::%s(%d) : %s = %d", LOG_INF, file, is_dir);
     if (is_dir)
         bResult = true;
     return bResult;

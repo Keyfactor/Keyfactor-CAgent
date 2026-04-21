@@ -12,15 +12,15 @@
 
 #include "management.h"
 #include "httpclient.h"
-#include <sys/stat.h>
+#include "lib/base64.h"
+#include "logging.h"
+#include "utils.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include "lib/base64.h"
-#include <errno.h>
-#include "utils.h"
-#include "logging.h"
+#include <sys/stat.h>
 
 #ifdef __WOLF_SSL__
 #include "wolfssl_wrapper/wolfssl_wrapper.h"
@@ -61,32 +61,31 @@
  */
 static int get_management_config(const char *sessionToken, const char *jobId,
                                  const char *endpoint,
-                                 ManagementConfigResp_t **pManConf)
-{
-    char *url     = NULL;
+                                 ManagementConfigResp_t **pManConf) {
+    char *url = NULL;
     char *jsonReq = NULL;
     char *jsonResp = NULL;
-    int   res     = 0;
+    int res = 0;
 
-    log_verbose("%s::%s(%d) : Sending management config request: %s",
-                LOG_INF, jobId);
+    log_verbose("%s::%s(%d) : Sending management config request: %s", LOG_INF,
+                jobId);
 
     CommonConfigReq_t *req = CommonConfigReq_new();
     if (!req) {
         log_error("%s::%s(%d) : Error creating new request structure", LOG_INF);
         return 999;
     }
-    req->JobId        = strdup(jobId);
+    req->JobId = strdup(jobId);
     req->SessionToken = strdup(sessionToken);
 
     jsonReq = CommonConfigReq_toJson(req);
-    url     = config_build_url(endpoint, true);
+    url = config_build_url(endpoint, true);
 
     res = http_post_json(url, ConfigData->Username, ConfigData->Password,
                          ConfigData->TrustStore, ConfigData->AgentCert,
                          ConfigData->AgentKey, ConfigData->AgentKeyPassword,
-                         jsonReq, &jsonResp,
-                         ConfigData->httpRetries, ConfigData->retryInterval);
+                         jsonReq, &jsonResp, ConfigData->httpRetries,
+                         ConfigData->retryInterval);
     if (res == 0) {
         *pManConf = ManagementConfigResp_fromJson(jsonResp);
         if (!*pManConf) {
@@ -99,14 +98,17 @@ static int get_management_config(const char *sessionToken, const char *jobId,
                   LOG_INF, res);
     }
 
-    if (jsonReq)  free(jsonReq);
-    if (jsonResp) free(jsonResp);
-    if (url)      free(url);
-    if (req)      CommonConfigReq_free(req);
+    if (jsonReq)
+        free(jsonReq);
+    if (jsonResp)
+        free(jsonResp);
+    if (url)
+        free(url);
+    if (req)
+        CommonConfigReq_free(req);
 
     return res;
 } /* get_management_config */
-
 
 /**
  * @brief Sends job completion status and result data to the platform.
@@ -121,19 +123,18 @@ static int get_management_config(const char *sessionToken, const char *jobId,
  * @return 0 on success, HTTP response code on failure.
  */
 static int send_management_job_complete(const char *sessionToken,
-                                        const char *jobId,
-                                        const char *endpoint,
+                                        const char *jobId, const char *endpoint,
                                         int jobStatus, long auditId,
                                         const char *message,
-                                        ManagementCompleteResp_t **pManComp)
-{
-    char *url      = NULL;
-    char *jsonReq  = NULL;
+                                        ManagementCompleteResp_t **pManComp) {
+    char *url = NULL;
+    char *jsonReq = NULL;
     char *jsonResp = NULL;
-    int   res      = 0;
+    int res = 0;
 
     log_verbose("%s::%s(%d) : Sending management complete request: %ld "
-                "for session: %s", LOG_INF, auditId, sessionToken);
+                "for session: %s",
+                LOG_INF, auditId, sessionToken);
 
     CommonCompleteReq_t *req = CommonCompleteReq_new();
     if (!req) {
@@ -141,19 +142,19 @@ static int send_management_job_complete(const char *sessionToken,
         return 999;
     }
     req->SessionToken = strdup(sessionToken);
-    req->JobId        = strdup(jobId);
-    req->Status       = jobStatus;
-    req->AuditId      = auditId;
-    req->Message      = strdup(message);
+    req->JobId = strdup(jobId);
+    req->Status = jobStatus;
+    req->AuditId = auditId;
+    req->Message = strdup(message);
 
     jsonReq = CommonCompleteReq_toJson(req);
-    url     = config_build_url(endpoint, true);
+    url = config_build_url(endpoint, true);
 
     res = http_post_json(url, ConfigData->Username, ConfigData->Password,
                          ConfigData->TrustStore, ConfigData->AgentCert,
                          ConfigData->AgentKey, ConfigData->AgentKeyPassword,
-                         jsonReq, &jsonResp,
-                         ConfigData->httpRetries, ConfigData->retryInterval);
+                         jsonReq, &jsonResp, ConfigData->httpRetries,
+                         ConfigData->retryInterval);
     if (res == 0) {
         *pManComp = ManagementCompleteResp_fromJson(jsonResp);
     } else {
@@ -161,14 +162,17 @@ static int send_management_job_complete(const char *sessionToken,
                   LOG_INF, res);
     }
 
-    if (jsonReq)  free(jsonReq);
-    if (jsonResp) free(jsonResp);
-    if (url)      free(url);
-    if (req)      CommonCompleteReq_free(req);
+    if (jsonReq)
+        free(jsonReq);
+    if (jsonResp)
+        free(jsonResp);
+    if (url)
+        free(url);
+    if (req)
+        CommonCompleteReq_free(req);
 
     return res;
 } /* send_management_job_complete */
-
 
 /**
  * @brief Returns true if a certificate already exists in the inventory list.
@@ -181,16 +185,15 @@ static int send_management_job_complete(const char *sessionToken,
  * @return true if a matching thumbprint is found, false otherwise.
  */
 static bool cert_exists_in_store(const PemInventoryList *pemList,
-                                 const PemInventoryItem *certToAdd)
-{
+                                 const PemInventoryItem *certToAdd) {
     if (!certToAdd->thumbprint_string)
         return false;
 
     for (int i = 0; i < pemList->item_count; i++) {
         if (!pemList->items[i]->thumbprint_string)
             continue;
-        log_trace("%s::%s(%d) : Comparing thumbprints:\n%s\n%s",
-                  LOG_INF, certToAdd->thumbprint_string,
+        log_trace("%s::%s(%d) : Comparing thumbprints:\n%s\n%s", LOG_INF,
+                  certToAdd->thumbprint_string,
                   pemList->items[i]->thumbprint_string);
         if (0 == strcasecmp(certToAdd->thumbprint_string,
                             pemList->items[i]->thumbprint_string)) {
@@ -199,7 +202,6 @@ static bool cert_exists_in_store(const PemInventoryList *pemList,
     }
     return false;
 } /* cert_exists_in_store */
-
 
 /**
  * @brief Adds a PEM certificate to the specified certificate store.
@@ -215,10 +217,9 @@ static bool cert_exists_in_store(const PemInventoryList *pemList,
  */
 static int add_cert_to_store(const char *storePath, const char *certASCII,
                              char **pMessage,
-                             enum AgentApiResultStatus *pStatus)
-{
+                             enum AgentApiResultStatus *pStatus) {
     PemInventoryItem *certToAdd = NULL;
-    PemInventoryList *pemList   = NULL;
+    PemInventoryList *pemList = NULL;
     int ret = 0;
 
     log_trace("%s::%s(%d) : Creating a new PemInventoryItem for certificate",
@@ -226,34 +227,34 @@ static int add_cert_to_store(const char *storePath, const char *certASCII,
     if (!ssl_PemInventoryItem_create(&certToAdd, certASCII)) {
         log_error("%s::%s(%d) : Error creating cert thumbprint or invalid cert",
                   LOG_INF);
-        append_linef(pMessage,
-                     "%s::%s(%d) : Error creating cert thumbprint or invalid cert",
-                     LOG_INF);
+        append_linef(
+            pMessage,
+            "%s::%s(%d) : Error creating cert thumbprint or invalid cert",
+            LOG_INF);
         *pStatus = STAT_ERR;
         return -1;
     }
-    log_trace("%s::%s(%d) : New certificate thumbprint: %s",
-              LOG_INF, certToAdd->thumbprint_string);
+    log_trace("%s::%s(%d) : New certificate thumbprint: %s", LOG_INF,
+              certToAdd->thumbprint_string);
 
-    log_trace("%s::%s(%d) : Reading cert store %s inventory",
-              LOG_INF, storePath);
+    log_trace("%s::%s(%d) : Reading cert store %s inventory", LOG_INF,
+              storePath);
     if (0 != ssl_read_store_inventory(storePath, NULL, &pemList)) {
-        log_error("%s::%s(%d) : Error reading PEM store at %s",
-                  LOG_INF, storePath);
-        append_linef(pMessage,
-                     "%s::%s(%d) : Error reading PEM store at %s",
+        log_error("%s::%s(%d) : Error reading PEM store at %s", LOG_INF,
+                  storePath);
+        append_linef(pMessage, "%s::%s(%d) : Error reading PEM store at %s",
                      LOG_INF, storePath);
         *pStatus = STAT_ERR;
         ret = -1;
         goto cleanup;
     }
-    log_trace("%s::%s(%d) : Found %d certs in store",
-              LOG_INF, pemList->item_count);
+    log_trace("%s::%s(%d) : Found %d certs in store", LOG_INF,
+              pemList->item_count);
 
     if (cert_exists_in_store(pemList, certToAdd)) {
         log_warn("%s::%s(%d) : Certificate with thumbprint %s already present "
-                 "in store %s", LOG_INF,
-                 certToAdd->thumbprint_string, storePath);
+                 "in store %s",
+                 LOG_INF, certToAdd->thumbprint_string, storePath);
         append_linef(pMessage,
                      "%s::%s(%d) : WARNING: Certificate with thumbprint %s "
                      "was already present in store %s",
@@ -266,8 +267,8 @@ static int add_cert_to_store(const char *storePath, const char *certASCII,
               LOG_INF, certToAdd->thumbprint_string, storePath);
     if (!ssl_Store_Cert_add(storePath, certASCII)) {
         log_error("%s::%s(%d) : Error writing cert to store", LOG_INF);
-        append_linef(pMessage,
-                     "%s::%s(%d) Error writing cert to store", LOG_INF);
+        append_linef(pMessage, "%s::%s(%d) Error writing cert to store",
+                     LOG_INF);
         *pStatus = STAT_ERR;
         ret = -1;
     } else {
@@ -277,11 +278,12 @@ static int add_cert_to_store(const char *storePath, const char *certASCII,
     }
 
 cleanup:
-    if (certToAdd) PemInventoryItem_free(certToAdd);
-    if (pemList)   PemInventoryList_free(pemList);
+    if (certToAdd)
+        PemInventoryItem_free(certToAdd);
+    if (pemList)
+        PemInventoryList_free(pemList);
     return ret;
 } /* add_cert_to_store */
-
 
 /**
  * @brief Removes a certificate and its associated key from a store.
@@ -296,13 +298,11 @@ cleanup:
  * @return 0 on success, -1 on failure.
  */
 static int remove_cert_from_store(const char *storePath,
-                                  const char *searchThumb,
-                                  const char *keyPath,
-                                  const char *password,
-                                  char **pMessage,
-                                  enum AgentApiResultStatus *pStatus)
-{
-    if (!ssl_remove_cert_from_store(storePath, searchThumb, keyPath, password)) {
+                                  const char *searchThumb, const char *keyPath,
+                                  const char *password, char **pMessage,
+                                  enum AgentApiResultStatus *pStatus) {
+    if (!ssl_remove_cert_from_store(storePath, searchThumb, keyPath,
+                                    password)) {
         log_error("%s::%s(%d) : Unable to remove cert from store at %s",
                   LOG_INF, storePath);
         append_linef(pMessage, "Unable to remove cert from store at %s",
@@ -313,20 +313,20 @@ static int remove_cert_from_store(const char *storePath,
     return 0;
 } /* remove_cert_from_store */
 
-
 /**
- * @brief Validates the management store configuration received from the platform.
+ * @brief Validates the management store configuration received from the
+ * platform.
  *
  * Checks that a store path was provided, that it is a file and not a directory,
  * that it is not the agent's own certificate store, and that it exists on disk.
  *
  * @param[in]  manConf        Management configuration response to validate.
- * @param[out] statusMessage  Accumulates human-readable validation failure messages.
+ * @param[out] statusMessage  Accumulates human-readable validation failure
+ * messages.
  * @return true if all validation checks pass, false if any check fails.
  */
 static bool management_store_config_valid(ManagementConfigResp_t *manConf,
-                                          char **statusMessage)
-{
+                                          char **statusMessage) {
     if (!manConf->Job.StorePath) {
         log_error("%s::%s(%d) : Job doesn't contain a target store to manage.",
                   LOG_INF);
@@ -336,8 +336,9 @@ static bool management_store_config_valid(ManagementConfigResp_t *manConf,
     }
 
     if (is_directory(manConf->Job.StorePath)) {
-        log_error("%s::%s(%d) : The store path must be a file and not a directory.",
-                  LOG_INF);
+        log_error(
+            "%s::%s(%d) : The store path must be a file and not a directory.",
+            LOG_INF);
         append_linef(statusMessage,
                      "The store path must be a file and not a directory.");
         return false;
@@ -346,7 +347,8 @@ static bool management_store_config_valid(ManagementConfigResp_t *manConf,
     if (ConfigData->UseAgentCert && ConfigData->AgentCert &&
         0 == strcasecmp(ConfigData->AgentCert, manConf->Job.StorePath)) {
         log_warn("%s::%s(%d) : Attempting a Management job on the agent cert "
-                 "store is not allowed.", LOG_INF);
+                 "store is not allowed.",
+                 LOG_INF);
         append_linef(statusMessage,
                      "Attempting a Management job on the agent cert store is "
                      "not allowed.");
@@ -355,7 +357,8 @@ static bool management_store_config_valid(ManagementConfigResp_t *manConf,
 
     if (!file_exists(manConf->Job.StorePath)) {
         log_warn("%s::%s(%d) : Attempting to manage a certificate store that "
-                 "does not exist yet.", LOG_INF);
+                 "does not exist yet.",
+                 LOG_INF);
         append_linef(statusMessage,
                      "Attempting to manage a certificate store that does not "
                      "exist yet.");
@@ -364,7 +367,6 @@ static bool management_store_config_valid(ManagementConfigResp_t *manConf,
 
     return true;
 } /* management_store_config_valid */
-
 
 /**
  * @brief Executes the ADD operation for a management job.
@@ -377,10 +379,8 @@ static bool management_store_config_valid(ManagementConfigResp_t *manConf,
  * @param[out] pStatus   Receives the result status of the operation.
  * @return 0 on success, non-zero on failure.
  */
-static int handle_op_add(const ManagementConfigResp_t *manConf,
-                         char **pMessage,
-                         enum AgentApiResultStatus *pStatus)
-{
+static int handle_op_add(const ManagementConfigResp_t *manConf, char **pMessage,
+                         enum AgentApiResultStatus *pStatus) {
     if (manConf->Job.PrivateKeyEntry) {
         const char *msg = "Adding a PFX is not supported at this time";
         log_info("%s::%s(%d) : %s", LOG_INF, msg);
@@ -398,11 +398,9 @@ static int handle_op_add(const ManagementConfigResp_t *manConf,
 
     log_info("%s::%s(%d) : Attempting to add certificate to the store:\n%s",
              LOG_INF, manConf->Job.EntryContents);
-    return add_cert_to_store(manConf->Job.StorePath,
-                             manConf->Job.EntryContents,
+    return add_cert_to_store(manConf->Job.StorePath, manConf->Job.EntryContents,
                              pMessage, pStatus);
 } /* handle_op_add */
-
 
 /**
  * @brief Executes the REMOVE operation for a management job.
@@ -417,16 +415,12 @@ static int handle_op_add(const ManagementConfigResp_t *manConf,
  */
 static int handle_op_remove(const ManagementConfigResp_t *manConf,
                             char **pMessage,
-                            enum AgentApiResultStatus *pStatus)
-{
+                            enum AgentApiResultStatus *pStatus) {
     log_verbose("%s::%s(%d) : Remove certificate operation", LOG_INF);
-    return remove_cert_from_store(manConf->Job.StorePath,
-                                  manConf->Job.Alias,
-                                  manConf->Job.PrivateKeyPath,
-                                  manConf->Job.StorePassword,
-                                  pMessage, pStatus);
+    return remove_cert_from_store(
+        manConf->Job.StorePath, manConf->Job.Alias, manConf->Job.PrivateKeyPath,
+        manConf->Job.StorePassword, pMessage, pStatus);
 } /* handle_op_remove */
-
 
 /**
  * @brief Dispatches the management job to the correct operation handler.
@@ -441,27 +435,25 @@ static int handle_op_remove(const ManagementConfigResp_t *manConf,
  */
 static int dispatch_management_operation(const ManagementConfigResp_t *manConf,
                                          char **pMessage,
-                                         enum AgentApiResultStatus *pStatus)
-{
+                                         enum AgentApiResultStatus *pStatus) {
     switch (manConf->Job.OperationType) {
-        case OP_ADD:
-            log_verbose("%s::%s(%d) : Add certificate operation", LOG_INF);
-            return handle_op_add(manConf, pMessage, pStatus);
+    case OP_ADD:
+        log_verbose("%s::%s(%d) : Add certificate operation", LOG_INF);
+        return handle_op_add(manConf, pMessage, pStatus);
 
-        case OP_REM:
-            log_verbose("%s::%s(%d) : Remove certificate operation", LOG_INF);
-            return handle_op_remove(manConf, pMessage, pStatus);
+    case OP_REM:
+        log_verbose("%s::%s(%d) : Remove certificate operation", LOG_INF);
+        return handle_op_remove(manConf, pMessage, pStatus);
 
-        default:
-            log_error("%s::%s(%d) : Unsupported operation type: %d",
-                      LOG_INF, manConf->Job.OperationType);
-            append_linef(pMessage, "Unsupported operation type: %d",
-                         manConf->Job.OperationType);
-            *pStatus = STAT_ERR;
-            return 999;
+    default:
+        log_error("%s::%s(%d) : Unsupported operation type: %d", LOG_INF,
+                  manConf->Job.OperationType);
+        append_linef(pMessage, "Unsupported operation type: %d",
+                     manConf->Job.OperationType);
+        *pStatus = STAT_ERR;
+        return 999;
     }
 } /* dispatch_management_operation */
-
 
 /**
  * @brief Sends job completion to the platform and logs the outcome.
@@ -479,17 +471,11 @@ static int dispatch_management_operation(const ManagementConfigResp_t *manConf,
 static int finalize_management_job(const char *sessionToken,
                                    const SessionJob_t *jobInfo,
                                    enum AgentApiResultStatus status,
-                                   long auditId,
-                                   const char *statusMessage)
-{
+                                   long auditId, const char *statusMessage) {
     ManagementCompleteResp_t *manComp = NULL;
-    int res = send_management_job_complete(sessionToken,
-                                           jobInfo->JobId,
-                                           jobInfo->CompletionEndpoint,
-                                           status + 1,
-                                           auditId,
-                                           statusMessage,
-                                           &manComp);
+    int res = send_management_job_complete(
+        sessionToken, jobInfo->JobId, jobInfo->CompletionEndpoint, status + 1,
+        auditId, statusMessage, &manComp);
 
     if (res == 0 && manComp) {
         AgentApiResult_log(manComp->Result, NULL, NULL);
@@ -517,7 +503,6 @@ static int finalize_management_job(const char *sessionToken,
     return (status >= STAT_ERR) ? 999 : 0;
 } /* finalize_management_job */
 
-
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
@@ -537,16 +522,15 @@ static int finalize_management_job(const char *sessionToken,
  * @param[out] chainJob      Reserved for any follow-on job to chain.
  * @return 0 on success, 1 if the job was cancelled, 999 on error.
  */
-int cms_job_manage(SessionJob_t *jobInfo, char *sessionToken, char **chainJob)
-{
+int cms_job_manage(SessionJob_t *jobInfo, char *sessionToken, char **chainJob) {
     ManagementConfigResp_t *manConf = NULL;
-    char *statusMessage             = strdup("");
+    char *statusMessage = strdup("");
     enum AgentApiResultStatus status = STAT_UNK;
     int returnable = 0;
-    int res        = 0;
+    int res = 0;
 
-    log_info("%s::%s(%d) : Starting management job %s",
-             LOG_INF, jobInfo->JobId);
+    log_info("%s::%s(%d) : Starting management job %s", LOG_INF,
+             jobInfo->JobId);
 
     res = get_management_config(sessionToken, jobInfo->JobId,
                                 jobInfo->ConfigurationEndpoint, &manConf);
@@ -558,7 +542,8 @@ int cms_job_manage(SessionJob_t *jobInfo, char *sessionToken, char **chainJob)
 
     if (!manConf) {
         log_error("%s::%s(%d) : No management configuration returned from "
-                  "the platform.", LOG_INF);
+                  "the platform.",
+                  LOG_INF);
         free(statusMessage);
         return 999;
     }

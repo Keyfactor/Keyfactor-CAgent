@@ -12,25 +12,21 @@
 #ifndef OPENSSL_COMPAT_H_
 #define OPENSSL_COMPAT_H_
 
-#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
+#define _POSIX_C_SOURCE 200809L // POSIX.1-2008
 
 #ifndef __WOLF_SSL__
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-void RSA_get0_key(const RSA* r, const BIGNUM** n, const BIGNUM** e, 
-	const BIGNUM**d)
-{
-	if(n != NULL)
-	{
-		*n = r->n;
-	}
-	if(e != NULL)
-	{
-		*e = r->e;
-	}
-	if(d != NULL)
-	{
-		*d = r->d;
-	}
+void RSA_get0_key(const RSA *r, const BIGNUM **n, const BIGNUM **e,
+                  const BIGNUM **d) {
+    if (n != NULL) {
+        *n = r->n;
+    }
+    if (e != NULL) {
+        *e = r->e;
+    }
+    if (d != NULL) {
+        *d = r->d;
+    }
 }
 #endif /* OPENSSL_VERSION_NUMBER */
 #endif /* __WOLF_SSL__ */

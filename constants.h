@@ -12,9 +12,9 @@
 #ifndef __CONSTANTS_H__
 #define __CONSTANTS_H__
 
-#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
+#define _POSIX_C_SOURCE 200809L // POSIX.1-2008
 
-#define MAX_CERT_SIZE   4096
+#define MAX_CERT_SIZE 4096
 
 /* These are the GUIDs of the capabilities supported by the Agent */
 #define CAP_PEM_INVENTORY "a809ce1f-1eea-4738-a38e-15708c89c981"
@@ -22,9 +22,9 @@
 #define CAP_PEM_REENROLLMENT "aa015d10-cffc-41f7-a9a4-c9615f6f3bdf"
 
 /* KF v9 adds in text Capabilities - they are defined in agent.c */
-extern const char* cap_pem_inventory;
-extern const char* cap_pem_management;
-extern const char* cap_pem_reenrollment;
+extern const char *cap_pem_inventory;
+extern const char *cap_pem_management;
+extern const char *cap_pem_reenrollment;
 
 /* The following capabilities are not implemented in the C-Agent */
 #define CAP_AWS_INVENTORY "afb8c78d-1436-4c93-a8e7-0218c2cb6955"
@@ -49,49 +49,44 @@ extern const char* cap_pem_reenrollment;
 /* 32 hex chars + 4 dashes + 1 NULL-terminator */
 #define GUID_SIZE 37
 
-enum InventoryStatus
-{
-	INV_STAT_ADD = 1,
-	INV_STAT_MOD = 2,
-	INV_STAT_REM = 3,
-	INV_STAT_UNCH = 4
+enum InventoryStatus {
+    INV_STAT_ADD = 1,
+    INV_STAT_MOD = 2,
+    INV_STAT_REM = 3,
+    INV_STAT_UNCH = 4
 };
 
-enum AgentPlatform
-{
-	PLAT_UNK = 0,
-	PLAT_NET = 1,
-	PLAT_JAVA = 2,
-	PLAT_MAC = 3,
-	PLAT_ANDROID = 4,
-	PLAT_NATIVE = 5
+enum AgentPlatform {
+    PLAT_UNK = 0,
+    PLAT_NET = 1,
+    PLAT_JAVA = 2,
+    PLAT_MAC = 3,
+    PLAT_ANDROID = 4,
+    PLAT_NATIVE = 5
 };
 
-enum AgentApiResultStatus
-{
-	STAT_UNK = 0,
-	STAT_SUCCESS = 1,
-	STAT_WARN = 2,
-	STAT_ERR = 3
+enum AgentApiResultStatus {
+    STAT_UNK = 0,
+    STAT_SUCCESS = 1,
+    STAT_WARN = 2,
+    STAT_ERR = 3
 };
 
-enum JobCompleteStatus
-{
-	JOB_COMP_UNK = 0,
-	JOB_COMP_PROC = 1,
-	JOB_COMP_SUCCESS = 2,
-	JOB_COMP_WARN = 3,
-	JOB_COMP_ERR = 4
+enum JobCompleteStatus {
+    JOB_COMP_UNK = 0,
+    JOB_COMP_PROC = 1,
+    JOB_COMP_SUCCESS = 2,
+    JOB_COMP_WARN = 3,
+    JOB_COMP_ERR = 4
 };
 
-enum OperationType
-{
-	OP_UNK = 0,
-	OP_INV = 1,
-	OP_ADD = 2,
-	OP_REM = 3,
-	OP_CREATE = 4,
-	OP_CREATE_ADD = 5
+enum OperationType {
+    OP_UNK = 0,
+    OP_INV = 1,
+    OP_ADD = 2,
+    OP_REM = 3,
+    OP_CREATE = 4,
+    OP_CREATE_ADD = 5
 };
 
 #endif

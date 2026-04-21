@@ -12,15 +12,14 @@
 #ifndef ENROLLMENT_H_
 #define ENROLLMENT_H_
 
-#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
+#define _POSIX_C_SOURCE 200809L // POSIX.1-2008
 
-#include "dto.h"
 #include "config.h"
+#include "dto.h"
 
 #define RSA_DEFAULT_EXP 65537
 
-int cms_job_enroll(SessionJob_t* jobInfo, char* sessionToken, 
-	char** chainJob);
+int cms_job_enroll(SessionJob_t *jobInfo, char *sessionToken, char **chainJob);
 
 #endif /* ENROLLMENT_H_ */
 /******************************************************************************/

@@ -9,42 +9,42 @@
 /* thespecific language governing permissions and limitations under the       */
 /* License.                                                                   */
 /******************************************************************************/
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 #include <time.h>
 #include <unistd.h>
-#include <getopt.h>
 
-#include <curl/curl.h>
 #include "constants.h"
+#include <curl/curl.h>
 
 #ifdef __WOLF_SSL__
 #include "wolfssl_wrapper/wolfssl_wrapper.h"
 #else
 #ifdef __OPEN_SSL__
-#include <openssl/engine.h>
 #include "openssl_wrapper/openssl_wrapper.h"
+#include <openssl/engine.h>
 #else
 #ifdef __TPM__
-#include <tss2/tss2_mu.h>
-#include <tss2/tss2_esys.h>
 #include <tpm2-tss-engine.h>
+#include <tss2/tss2_esys.h>
+#include <tss2/tss2_mu.h>
 #else
 #endif
 #endif
 #endif
 
 #include "agent.h"
-#include "inventory.h"
-#include "management.h"
+#include "config.h"
+#include "dto.h"
 #include "enrollment.h"
 #include "httpclient.h"
+#include "inventory.h"
 #include "logging.h"
-#include "dto.h"
+#include "management.h"
 #include "schedule.h"
-#include "config.h"
 #include "session.h"
 #include "utils.h"
 
@@ -56,24 +56,24 @@
 /******************************************************************************/
 /***************************** GLOBAL VARIABLES *******************************/
 /******************************************************************************/
-SessionInfo_t   SessionData;
+SessionInfo_t SessionData;
 ScheduledJob_t *JobList;
 bool success;
 
 /* KF v9 Adds in text capabilities                                            */
-const char     *cap_pem_inventory    = "CertStores.PEM.Inventory";
-const char     *cap_pem_management   = "CertStores.PEM.Management";
-const char     *cap_pem_reenrollment = "CertStores.PEM.Reenrollment";
+const char *cap_pem_inventory = "CertStores.PEM.Inventory";
+const char *cap_pem_management = "CertStores.PEM.Management";
+const char *cap_pem_reenrollment = "CertStores.PEM.Reenrollment";
 
 #if defined(__TPM__)
-ENGINE         *e = NULL;
+ENGINE *e = NULL;
 #endif
 
 /******************************************************************************/
 /************************** LOCAL GLOBAL VARIABLES ****************************/
 /******************************************************************************/
-static bool     curlLoaded             = false;
-static bool     inventory_ran          = false;
+static bool curlLoaded = false;
+static bool inventory_ran = false;
 
 /******************************************************************************/
 /************************ LOCAL FUNCTION DEFINITIONS **************************/
@@ -84,46 +84,60 @@ static bool     inventory_ran          = false;
  *
  * @param[in] program  argv[0] — the name of the running executable.
  */
-static void usage(char *program)
-{
-    uint16_t major    = (uint16_t)((AGENT_VERSION) >> (16 * 3));
-    uint16_t minor    = (uint16_t)((AGENT_VERSION & 0x0000FFFFF00000000) >> (16 * 2));
-    uint16_t build    = (uint16_t)((AGENT_VERSION & 0x00000000FFFFF0000) >> 16);
+static void usage(char *program) {
+    uint16_t major = (uint16_t)((AGENT_VERSION) >> (16 * 3));
+    uint16_t minor =
+        (uint16_t)((AGENT_VERSION & 0x0000FFFFF00000000) >> (16 * 2));
+    uint16_t build = (uint16_t)((AGENT_VERSION & 0x00000000FFFFF0000) >> 16);
     uint16_t revision = (uint16_t)(AGENT_VERSION & 0x000000000000FFFF);
 
-    fprintf(stderr,
-            "\nKeyfactor reference Linux-Agent v%hu.%hu.%hu.%hu",
-            major, minor, build, revision);
-    fprintf(stderr, "\n\n"
-            "Usage: %s [-a] [-c config_file] [-e engine_name] [-h] [-v] [-l loglevel]\n\n"
-            "\t-a, --addheader\t\t\tAdd the agent certificate to the HTTP header X-ARR-ClientCert\n"
-            "\t-c, --config\tconfig_file\tUse config_file instead of config.json for agent configuration\n"
-            "\t                         \t  where config_file is the path and filename of a properly formatted\n"
-            "\t                         \t  JSON configuration file for a Keyfactor Linux-Agent\n"
-            "\t-e, --engine\tengine_name\tUse the TPM engine engine_name for openSSL commands\n"
-            "\t                         \t  where engine_name is the name of a compatible tpm2tss engine\n"
-            "\t                         \t  build for use with the tpm2tss stack\n"
-            "\t-h, --hostname           \tUse the $HOSTNAME_$DATETIME for the agent name and CN\n"
-            "\t-v, --verbose            \tTurn on verbose logging [for agent v1.x.x.x compatibility]\n"
-            "\t-l, --loglevel\tloglevel \tSet the logging level as follows:\n"
-            "\t                         \t  o = turn off logging\n"
-            "\t                         \t  e = error messages only\n"
-            "\t                         \t  i = information and error messages\n"
-            "\t                         \t  w = warning, information, and error messages\n"
-            "\t                         \t  v = verbose, warning, information, and error messages\n"
-            "\t                         \t  d = debug, verbose, warning, information, and error messages\n"
-            "\t                         \t  t = trace, debug, verbose, warning, information, and error messages\n"
-            , program);
+    fprintf(stderr, "\nKeyfactor reference Linux-Agent v%hu.%hu.%hu.%hu", major,
+            minor, build, revision);
+    fprintf(
+        stderr,
+        "\n\n"
+        "Usage: %s [-a] [-c config_file] [-e engine_name] [-h] [-v] [-l "
+        "loglevel]\n\n"
+        "\t-a, --addheader\t\t\tAdd the agent certificate to the HTTP header "
+        "X-ARR-ClientCert\n"
+        "\t-c, --config\tconfig_file\tUse config_file instead of config.json "
+        "for agent configuration\n"
+        "\t                         \t  where config_file is the path and "
+        "filename of a properly formatted\n"
+        "\t                         \t  JSON configuration file for a "
+        "Keyfactor Linux-Agent\n"
+        "\t-e, --engine\tengine_name\tUse the TPM engine engine_name for "
+        "openSSL commands\n"
+        "\t                         \t  where engine_name is the name of a "
+        "compatible tpm2tss engine\n"
+        "\t                         \t  build for use with the tpm2tss stack\n"
+        "\t-h, --hostname           \tUse the $HOSTNAME_$DATETIME for the "
+        "agent name and CN\n"
+        "\t-v, --verbose            \tTurn on verbose logging [for agent "
+        "v1.x.x.x compatibility]\n"
+        "\t-l, --loglevel\tloglevel \tSet the logging level as follows:\n"
+        "\t                         \t  o = turn off logging\n"
+        "\t                         \t  e = error messages only\n"
+        "\t                         \t  i = information and error messages\n"
+        "\t                         \t  w = warning, information, and error "
+        "messages\n"
+        "\t                         \t  v = verbose, warning, information, and "
+        "error messages\n"
+        "\t                         \t  d = debug, verbose, warning, "
+        "information, and error messages\n"
+        "\t                         \t  t = trace, debug, verbose, warning, "
+        "information, and error messages\n",
+        program);
     fprintf(stderr,
             "Examples:\n"
-            "\t%s -ahl e \t Add the agent certificate to the header, set agent-name to $HOSTNAME, set error logging level\n"
+            "\t%s -ahl e \t Add the agent certificate to the header, set "
+            "agent-name to $HOSTNAME, set error logging level\n"
             "\t%s -l t \t Set trace logging level\n"
             "\t%s -hl o \t Set agent-name to $HOSTNAME, turn off logging\n"
             "\t%s --help \t print out usage information\n"
-            "\t%s -? \t print out usage information\n\n\n"
-            , program, program, program, program, program);
+            "\t%s -? \t print out usage information\n\n\n",
+            program, program, program, program, program);
 } /* usage */
-
 
 /**
  * @brief Sets the active logging level from a single character code.
@@ -133,21 +147,43 @@ static void usage(char *program)
  *
  * @param[in] level  Single character identifying the desired log level.
  */
-static void set_log_level(char level)
-{
+static void set_log_level(char level) {
     printf("%s::%s(%d) : Setting logging level to ", LOG_INF);
     switch (level) {
-        case 'v': printf("verbose\n");               log_set_verbosity(true); break;
-        case 'i': printf("info\n");                  log_set_info(true);      break;
-        case 'e': printf("error\n");                 log_set_error(true);     break;
-        case 'o': printf("TURNING OFF LOGGING\n");   log_set_off(true);       break;
-        case 'd': printf("debug\n");                 log_set_debug(true);     break;
-        case 't': printf("trace\n");                 log_set_trace(true);     break;
-        case 'w': printf("warning\n");               log_set_warn(true);      break;
-        default:  printf("unknown — defaulting to info\n"); log_set_info(true); break;
+    case 'v':
+        printf("verbose\n");
+        log_set_verbosity(true);
+        break;
+    case 'i':
+        printf("info\n");
+        log_set_info(true);
+        break;
+    case 'e':
+        printf("error\n");
+        log_set_error(true);
+        break;
+    case 'o':
+        printf("TURNING OFF LOGGING\n");
+        log_set_off(true);
+        break;
+    case 'd':
+        printf("debug\n");
+        log_set_debug(true);
+        break;
+    case 't':
+        printf("trace\n");
+        log_set_trace(true);
+        break;
+    case 'w':
+        printf("warning\n");
+        log_set_warn(true);
+        break;
+    default:
+        printf("unknown — defaulting to info\n");
+        log_set_info(true);
+        break;
     }
 } /* set_log_level */
-
 
 /**
  * @brief Allocates and stores the configuration file path from a CLI argument.
@@ -159,8 +195,7 @@ static void set_log_level(char level)
  * @param[in] path  Path string from the -c / --config command line option.
  * @return true on success, false if path is NULL/empty or strdup fails.
  */
-static bool allocate_config_location(const char *path)
-{
+static bool allocate_config_location(const char *path) {
     if (!path || 0 == strlen(path)) {
         printf("%s::%s(%d) : Null or empty config path argument\n", LOG_INF);
         return false;
@@ -174,7 +209,6 @@ static bool allocate_config_location(const char *path)
     return true;
 } /* allocate_config_location */
 
-
 /**
  * @brief Parses all command line arguments and sets corresponding global state.
  *
@@ -186,73 +220,74 @@ static bool allocate_config_location(const char *path)
  * @param[in] argv  Argument vector from main.
  * @return 1 on success, 0 if usage was printed or a fatal error occurred.
  */
-static int parse_parameters(int argc, char *argv[])
-{
+static int parse_parameters(int argc, char *argv[]) {
     static struct option long_options[] = {
-        {"addheader", no_argument,       0, 'a'},
-        {"config",    required_argument, 0, 'c'},
-        {"engine",    required_argument, 0, 'e'},
-        {"loglevel",  required_argument, 0, 'l'},
-        {"verbose",   no_argument,       0, 'v'},
-        {"help",      no_argument,       0, '?'},
-        {"hostname",  no_argument,       0, 'h'},
-        {0, 0, 0, 0}
-    };
-    int  option_index = 0;
-    bool foundConfig  = false;
-    int  opt;
+        {"addheader", no_argument, 0, 'a'},
+        {"config", required_argument, 0, 'c'},
+        {"engine", required_argument, 0, 'e'},
+        {"loglevel", required_argument, 0, 'l'},
+        {"verbose", no_argument, 0, 'v'},
+        {"help", no_argument, 0, '?'},
+        {"hostname", no_argument, 0, 'h'},
+        {0, 0, 0, 0}};
+    int option_index = 0;
+    bool foundConfig = false;
+    int opt;
 
 #ifdef __TPM__
-    bool        foundEngine    = false;
+    bool foundEngine = false;
     const char *default_engine = "dynamic";
 #endif
 
-    while (-1 != (opt = getopt_long(argc, argv, "ac:e:hvl:?",
-                                    long_options, &option_index))) {
+    while (-1 != (opt = getopt_long(argc, argv, "ac:e:hvl:?", long_options,
+                                    &option_index))) {
         switch (opt) {
-            case 'a':
-                add_client_cert_to_header = true;
-                printf("%s::%s(%d) : Turning on add client cert to HTTP header flag\n",
-                       LOG_INF);
-                break;
+        case 'a':
+            add_client_cert_to_header = true;
+            printf(
+                "%s::%s(%d) : Turning on add client cert to HTTP header flag\n",
+                LOG_INF);
+            break;
 
-            case 'c':
-                if (allocate_config_location(optarg))
-                    foundConfig = true;
-                break;
+        case 'c':
+            if (allocate_config_location(optarg))
+                foundConfig = true;
+            break;
 
-            case 'e':
+        case 'e':
 #ifdef __TPM__
-                printf("%s::%s(%d) : TPM switch is enabled, setting the engine to %s\n",
-                       LOG_INF, optarg);
-                strncpy(engine_id, optarg, sizeof(engine_id) - 1);
-                engine_id[sizeof(engine_id) - 1] = '\0';
-                foundEngine = true;
+            printf("%s::%s(%d) : TPM switch is enabled, setting the engine to "
+                   "%s\n",
+                   LOG_INF, optarg);
+            strncpy(engine_id, optarg, sizeof(engine_id) - 1);
+            engine_id[sizeof(engine_id) - 1] = '\0';
+            foundEngine = true;
 #else
-                printf("%s::%s(%d) : TPM switch not enabled, bypassing setting "
-                       "the openssl engine\n", LOG_INF);
+            printf("%s::%s(%d) : TPM switch not enabled, bypassing setting "
+                   "the openssl engine\n",
+                   LOG_INF);
 #endif
-                break;
+            break;
 
-            case 'h':
-                use_host_as_agent_name = true;
-                printf("%s::%s(%d) : Turning on use hostname as client name flag\n",
-                       LOG_INF);
-                break;
+        case 'h':
+            use_host_as_agent_name = true;
+            printf("%s::%s(%d) : Turning on use hostname as client name flag\n",
+                   LOG_INF);
+            break;
 
-            case 'v':
-                printf("%s::%s(%d) : Setting Verbosity to Verbose\n", LOG_INF);
-                log_set_verbosity(true);
-                break;
+        case 'v':
+            printf("%s::%s(%d) : Setting Verbosity to Verbose\n", LOG_INF);
+            log_set_verbosity(true);
+            break;
 
-            case 'l':
-                set_log_level(optarg[0]);
-                break;
+        case 'l':
+            set_log_level(optarg[0]);
+            break;
 
-            case '?':
-            default:
-                usage(argv[0]);
-                return 0;
+        case '?':
+        default:
+            usage(argv[0]);
+            return 0;
         }
     }
 
@@ -266,15 +301,15 @@ static int parse_parameters(int argc, char *argv[])
     if (!foundConfig) {
         config_location = strdup("config.json");
         if (!config_location) {
-            printf("%s::%s(%d) : Out of memory allocating default config path\n",
-                   LOG_INF);
+            printf(
+                "%s::%s(%d) : Out of memory allocating default config path\n",
+                LOG_INF);
             return 0;
         }
     }
 
     return 1;
 } /* parse_parameters */
-
 
 #ifdef __TPM__
 /**
@@ -286,8 +321,7 @@ static int parse_parameters(int argc, char *argv[])
  * @param[in] engine_id  Name of the engine to load (e.g. "tpm2tss").
  * @return Pointer to the initialised ENGINE on success, NULL on failure.
  */
-static ENGINE *initialize_engine(const char *engine_id)
-{
+static ENGINE *initialize_engine(const char *engine_id) {
     ENGINE *e = NULL;
     ENGINE_load_builtin_engines();
 
@@ -298,8 +332,8 @@ static ENGINE *initialize_engine(const char *engine_id)
     log_verbose("%s::%s(%d) : Found Engine: %s", LOG_INF, engine_id);
 
     if (!ENGINE_init(e)) {
-        log_error("%s::%s(%d) : Unable to initialize Engine: %s",
-                  LOG_INF, engine_id);
+        log_error("%s::%s(%d) : Unable to initialize Engine: %s", LOG_INF,
+                  engine_id);
         return NULL;
     }
     log_verbose("%s::%s(%d) : Initialized Engine: %s", LOG_INF, engine_id);
@@ -317,21 +351,19 @@ static ENGINE *initialize_engine(const char *engine_id)
 } /* initialize_engine */
 #endif /* __TPM__ */
 
-
 /**
  * @brief Initialises the logging subsystem.
  *
  * @return true if the log buffer was created successfully, false otherwise.
  */
-static bool init_logging(void)
-{
+static bool init_logging(void) {
     if (!load_log_buffer()) {
-        printf("%s::%s(%d) : Failed to create a log buffer. Exiting\n", LOG_INF);
+        printf("%s::%s(%d) : Failed to create a log buffer. Exiting\n",
+               LOG_INF);
         return false;
     }
     return true;
 } /* init_logging */
-
 
 #ifdef __TPM__
 /**
@@ -342,8 +374,7 @@ static bool init_logging(void)
  *
  * @return true on success, false if engine initialisation fails.
  */
-static bool init_tpm_engine(void)
-{
+static bool init_tpm_engine(void) {
     log_trace("%s::%s(%d) : Initializing TPM engine", LOG_INF);
     e = initialize_engine(engine_id);
     if (!e) {
@@ -354,14 +385,12 @@ static bool init_tpm_engine(void)
 } /* init_tpm_engine */
 #endif
 
-
 /**
  * @brief Initialises the SSL wrapper and the libcurl global state.
  *
  * @return true on success, false if curl initialisation fails.
  */
-static bool init_ssl_and_curl(void)
-{
+static bool init_ssl_and_curl(void) {
     ssl_init();
 
     log_trace("%s::%s(%d) : Initializing cURL", LOG_INF);
@@ -373,12 +402,10 @@ static bool init_ssl_and_curl(void)
     return true;
 } /* init_ssl_and_curl */
 
-
 /**
  * @brief Frees the scheduled job list if it is populated.
  */
-static void cleanup_jobs(void)
-{
+static void cleanup_jobs(void) {
     if (!JobList) {
         log_debug("%s::%s(%d) : Job list is NULL", LOG_INF);
         return;
@@ -387,12 +414,10 @@ static void cleanup_jobs(void)
     clear_job_schedules(&JobList);
 } /* cleanup_jobs */
 
-
 /**
  * @brief Cleans up the libcurl global state if curl was successfully loaded.
  */
-static void cleanup_curl(void)
-{
+static void cleanup_curl(void) {
     if (!curlLoaded)
         return;
     log_trace("%s::%s(%d) : Cleaning up curl before exiting", LOG_INF);
@@ -400,12 +425,10 @@ static void cleanup_curl(void)
     curlLoaded = false;
 } /* cleanup_curl */
 
-
 /**
  * @brief Frees the ConfigData structure and the config_location path string.
  */
-static void cleanup_config(void)
-{
+static void cleanup_config(void) {
     if (!ConfigData)
         return;
     log_trace("%s::%s(%d) : Free config data", LOG_INF);
@@ -415,7 +438,6 @@ static void cleanup_config(void)
         config_location = NULL;
     }
 } /* cleanup_config */
-
 
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
@@ -428,11 +450,11 @@ static void cleanup_config(void)
  * for any unrecognised job type.
  *
  * @param[in]  job         Job to execute.
- * @param[out] chainJobId  Receives a follow-on job ID if the handler provides one.
+ * @param[out] chainJobId  Receives a follow-on job ID if the handler provides
+ * one.
  * @return Job handler return code, or 0 for an unrecognised job type.
  */
-static int dispatch_job_by_type(SessionJob_t *job, char **chainJobId)
-{
+static int dispatch_job_by_type(SessionJob_t *job, char **chainJobId) {
     if (!job || !job->JobTypeId) {
         log_error("%s::%s(%d) : NULL job or job type", LOG_INF);
         return -1;
@@ -450,10 +472,10 @@ static int dispatch_job_by_type(SessionJob_t *job, char **chainJobId)
         return cms_job_enroll(job, SessionData.Token, chainJobId);
 
     log_error("%s::%s(%d) : Unimplemented support for job type %s. "
-              "Ignoring job request", LOG_INF, job->JobTypeId);
+              "Ignoring job request",
+              LOG_INF, job->JobTypeId);
     return 0;
 } /* dispatch_job_by_type */
-
 
 /**
  * @brief Looks up and executes a chained follow-on job if one was provided.
@@ -463,27 +485,27 @@ static int dispatch_job_by_type(SessionJob_t *job, char **chainJobId)
  *
  * @param[in] chainJobId  Job ID string returned by the preceding job handler.
  */
-static void run_chain_job_if_needed(const char *chainJobId)
-{
+static void run_chain_job_if_needed(const char *chainJobId) {
 #if defined(__RUN_CHAIN_JOBS__)
     if (!chainJobId)
         return;
 
     log_info("%s::%s(%d) : Completed job indicates that job %s should be "
-             "run immediately", LOG_INF, chainJobId);
+             "run immediately",
+             LOG_INF, chainJobId);
 
     SessionJob_t *chainJob = get_job_by_id(&JobList, chainJobId);
     if (chainJob) {
         (void)run_job(chainJob);
     } else {
         log_info("%s::%s(%d) : Job %s could not be found in the scheduled "
-                 "jobs list, and will not be run", LOG_INF, chainJobId);
+                 "jobs list, and will not be run",
+                 LOG_INF, chainJobId);
     }
 #else
     (void)chainJobId;
 #endif
 } /* run_chain_job_if_needed */
-
 
 /**
  * @brief Dispatches a job by type and runs any chained follow-on job.
@@ -492,8 +514,7 @@ static void run_chain_job_if_needed(const char *chainJobId)
  *                 GUID, and endpoint configuration.
  * @return Return code from the job handler.
  */
-int run_job(SessionJob_t *job)
-{
+int run_job(SessionJob_t *job) {
     char *chainJobId = NULL;
 
     int status = dispatch_job_by_type(job, &chainJobId);
@@ -507,7 +528,6 @@ int run_job(SessionJob_t *job)
     return status;
 } /* run_job */
 
-
 /**
  * @brief Initialises all platform components required before the main loop.
  *
@@ -519,11 +539,11 @@ int run_job(SessionJob_t *job)
  * @param[in] argv  Argument vector from main.
  * @return 1 on success, 0 on any initialisation failure.
  */
-int init_platform(int argc, char *argv[])
-{
+int init_platform(int argc, char *argv[]) {
     log_trace("%s::%s(%d) : Parsing Parameters", LOG_INF);
     if (0 == parse_parameters(argc, argv)) {
-        printf("%s::%s(%d) : Failed to parse command line arguments\n", LOG_INF);
+        printf("%s::%s(%d) : Failed to parse command line arguments\n",
+               LOG_INF);
         return 0;
     }
 
@@ -553,7 +573,6 @@ int init_platform(int argc, char *argv[])
     return 1;
 } /* init_platform */
 
-
 /**
  * @brief Releases all platform resources and resets global state.
  *
@@ -563,8 +582,7 @@ int init_platform(int argc, char *argv[])
  *
  * @return Always returns true.
  */
-bool release_platform(void)
-{
+bool release_platform(void) {
     cleanup_jobs();
     cleanup_curl();
 
@@ -585,13 +603,11 @@ bool release_platform(void)
  *
  * @return Always returns none.
  */
-void cleanup_logs(void)
-{
+void cleanup_logs(void) {
     write_log_file();
     cleanup_config();
     free_log_heap();
 } /* cleanup_logs */
-
 
 /**
  * @brief Iterates through all scheduled jobs and executes each in order.
@@ -600,8 +616,7 @@ void cleanup_logs(void)
  *
  * @return true if all jobs succeeded, false if any job returned non-zero.
  */
-static bool execute_all_jobs(void)
-{
+static bool execute_all_jobs(void) {
     bool local_success = true;
 
     while (currentJob) {
@@ -609,13 +624,13 @@ static bool execute_all_jobs(void)
             local_success = false;
 
         log_info("%s::%s(%d) : Advancing to job number %s", LOG_INF,
-                 currentJob->NextJob ? currentJob->NextJob->Job->JobId : "NULL");
+                 currentJob->NextJob ? currentJob->NextJob->Job->JobId
+                                     : "NULL");
         currentJob = currentJob->NextJob;
     }
 
     return local_success;
 } /* execute_all_jobs */
-
 
 /**
  * @brief Registers a session with the platform and runs all scheduled jobs.
@@ -626,8 +641,7 @@ static bool execute_all_jobs(void)
  * @return true if the session was established and all jobs succeeded,
  *         false otherwise.
  */
-static bool main_loop(void)
-{
+static bool main_loop(void) {
     log_verbose("%s::%s(%d) : Connecting to platform for session & job list",
                 LOG_INF);
     if (0 != register_session(&SessionData, &JobList, AGENT_VERSION)) {
@@ -638,11 +652,11 @@ static bool main_loop(void)
     currentJob = JobList;
 
     bool local_success = execute_all_jobs();
-    log_info("%s::%s(%d) : No jobs to run -- Begin Agent Shutdown & Memory Release",
-             LOG_INF);
+    log_info(
+        "%s::%s(%d) : No jobs to run -- Begin Agent Shutdown & Memory Release",
+        LOG_INF);
     return local_success;
 } /* main_loop */
-
 
 /**
  * @brief Main program entry point.
@@ -671,8 +685,9 @@ int main(int argc, char *argv[])
         success = false;
 
     release_platform(); /* The last place where we log items */
-    log_info("%s::%s(%d) : Agent preparing to clean up and should exit with a STATUS of %s",
-        LOG_INF, success ? "SUCCESS" : "FAILURE");
+    log_info("%s::%s(%d) : Agent preparing to clean up and should exit with a "
+             "STATUS of %s",
+             LOG_INF, success ? "SUCCESS" : "FAILURE");
     cleanup_logs();
     printf("\n\n");
 

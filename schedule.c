@@ -11,8 +11,8 @@
 /******************************************************************************/
 
 #include "schedule.h"
-#include "logging.h"
 #include "agent.h"
+#include "logging.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,7 +25,7 @@
 /******************************************************************************/
 /************************ LOCAL GLOBAL STRUCTURES *****************************/
 /******************************************************************************/
-ScheduledJob_t *currentJob;     /* Defined in schedule.c */
+ScheduledJob_t *currentJob; /* Defined in schedule.c */
 
 /******************************************************************************/
 /************************* LOCAL GLOBAL VARIABLES *****************************/
@@ -41,9 +41,9 @@ ScheduledJob_t *currentJob;     /* Defined in schedule.c */
 /* @return - success : The difference between time(NULL) & UTC time(NULL)     */
 /* failure : n/a                                                              */
 /*                                                                            */
-static time_t get_utc_offset(void){
+static time_t get_utc_offset(void) {
     time_t start = time(NULL);
-    struct tm       tmp;
+    struct tm tmp;
     gmtime_r(&start, &tmp);
     tmp.tm_isdst = 0;
     time_t rt = mktime(&tmp);
@@ -64,8 +64,7 @@ static time_t get_utc_offset(void){
 /* @return - NULL if no jobs are runnable                                     */
 /* - The SessionJob* to the job to execute                                    */
 /*                                                                            */
-SessionJob_t   *get_runnable_job(ScheduledJob_t * *pList, time_t now)
-{
+SessionJob_t *get_runnable_job(ScheduledJob_t **pList, time_t now) {
     ScheduledJob_t *current = *pList;
 
     while (current) {
@@ -94,8 +93,7 @@ SessionJob_t   *get_runnable_job(ScheduledJob_t * *pList, time_t now)
 /* @return - success : a pointer to the found job                             */
 /* failure : NULL                                                             */
 /*                                                                            */
-SessionJob_t   *get_job_by_id(ScheduledJob_t * *pList, const char *jobId)
-{
+SessionJob_t *get_job_by_id(ScheduledJob_t **pList, const char *jobId) {
     ScheduledJob_t *current = *pList;
 
     while (current) {
@@ -117,8 +115,7 @@ SessionJob_t   *get_job_by_id(ScheduledJob_t * *pList, const char *jobId)
 /* @param  - [Input/Ouput] pList = A list of scheduled jobs                   */
 /* @return - none                                                             */
 /*                                                                            */
-void clear_job_schedules(ScheduledJob_t * *pList)
-{
+void clear_job_schedules(ScheduledJob_t **pList) {
     ScheduledJob_t *current = *pList;
 
     while (current) {
@@ -144,64 +141,60 @@ void clear_job_schedules(ScheduledJob_t * *pList)
 /* @param  - [Input] job = a filled job session to add to the scheduled list  */
 /* @return - none                                                             */
 /*                                                                            */
-void schedule_job(ScheduledJob_t * *pList,
-                  SessionJob_t * job
-                 )
-{
-  ScheduledJob_t *newSchJob = calloc(1, sizeof(ScheduledJob_t));
-  if (!newSchJob) {
-      log_error("%s::%s(%d) : Out of memory", LOG_INF);
-      return;
-  }
-  newSchJob->Job = job;
+void schedule_job(ScheduledJob_t **pList, SessionJob_t *job) {
+    ScheduledJob_t *newSchJob = calloc(1, sizeof(ScheduledJob_t));
+    if (!newSchJob) {
+        log_error("%s::%s(%d) : Out of memory", LOG_INF);
+        return;
+    }
+    newSchJob->Job = job;
 
-  if (!(*pList)) {
-    *pList = newSchJob;
-  } else {
-    ScheduledJob_t *prev = NULL;
-    ScheduledJob_t *current = *pList;
+    if (!(*pList)) {
+        *pList = newSchJob;
+    } else {
+        ScheduledJob_t *prev = NULL;
+        ScheduledJob_t *current = *pList;
 
-    /* Go through the list of jobs & update that job if it is already */
-    /* In the list of jobs, if not, add the job to the end of the list */
-    while (current) {
-      if (strcasecmp(current->Job->JobId, job->JobId) == 0) {
-        log_verbose("%s::%s(%d) : Rescheduling job %s",
-                    LOG_INF, job->JobId);
+        /* Go through the list of jobs & update that job if it is already */
+        /* In the list of jobs, if not, add the job to the end of the list */
+        while (current) {
+            if (strcasecmp(current->Job->JobId, job->JobId) == 0) {
+                log_verbose("%s::%s(%d) : Rescheduling job %s", LOG_INF,
+                            job->JobId);
 
-        if (
-          current->NextExecution > 0 && \
-          (!job->Schedule || job->Schedule[0] == 'O')
-          ) {
-            log_verbose("%s::%s(%d) : Job %s is a one-time job, ", LOG_INF, job->JobId);
+                if (current->NextExecution > 0 &&
+                    (!job->Schedule || job->Schedule[0] == 'O')) {
+                    log_verbose("%s::%s(%d) : Job %s is a one-time job, ",
+                                LOG_INF, job->JobId);
 
-            if (prev) {
-                prev->NextJob = current->NextJob;
-            } else {    /* Removing first element */
-                *pList = current->NextJob;
+                    if (prev) {
+                        prev->NextJob = current->NextJob;
+                    } else { /* Removing first element */
+                        *pList = current->NextJob;
+                    }
+
+                    SessionJob_free(current->Job);
+                    free(current);
+                } else {
+                    current->NextExecution = newSchJob->NextExecution;
+                }
+                /*
+                 * Don't need the new struct, there is already one for this
+                 * job
+                 */
+                free(newSchJob);
+                newSchJob = NULL;
+
+                return;
             }
 
-            SessionJob_free(current->Job);
-            free(current);
-        } else {
-            current->NextExecution = newSchJob->NextExecution;
+            prev = current;
+            current = current->NextJob;
         }
-        /*
-         * Don't need the new struct, there is already one for this
-         * job
-         */
-        free(newSchJob);
-        newSchJob = NULL;
 
-        return;
-      }
-
-      prev = current;
-      current = current->NextJob;
+        if (prev)
+            prev->NextJob = newSchJob;
     }
-
-    if (prev)
-      prev->NextJob = newSchJob;
-  }
 } /* schedule_job */
 /******************************************************************************/
 /******************************* END OF FILE **********************************/

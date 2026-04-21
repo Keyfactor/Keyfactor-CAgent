@@ -12,7 +12,7 @@
 #ifndef __OPENSSL_WRAPPER_H__
 #define __OPENSSL_WRAPPER_H__
 
-#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
+#define _POSIX_C_SOURCE 200809L // POSIX.1-2008
 /** @file wolfssl_wrapper.h */
 
 #include <stdbool.h>
@@ -26,63 +26,63 @@
 /**************************************************************************/
 /****************** GLOBAL STRUCTURE PROTOTYPES ***************************/
 /**************************************************************************/
-struct PemInventoryItem
-{
-	char* cert; /* the naked pem */
-	char* thumbprint_string;
-	bool has_private_key;
+struct PemInventoryItem {
+    char *cert; /* the naked pem */
+    char *thumbprint_string;
+    bool has_private_key;
 };
 typedef struct PemInventoryItem PemInventoryItem;
 
-struct PemInventoryList
-{
-	int item_count;
-	PemInventoryItem** items;
+struct PemInventoryList {
+    int item_count;
+    PemInventoryItem **items;
 };
 typedef struct PemInventoryList PemInventoryList;
 
 /**************************************************************************/
 /******************* GLOBAL FUNCTION PROTOTYPES ***************************/
 /**************************************************************************/
-void PemInventoryItem_free(PemInventoryItem* pem);
+void PemInventoryItem_free(PemInventoryItem *pem);
 
-void PemInventoryList_free(PemInventoryList* list);
+void PemInventoryList_free(PemInventoryList *list);
 
-int ssl_seed_rng(const char* b64entropy);
+int ssl_seed_rng(const char *b64entropy);
 
 bool ssl_generate_rsa_keypair(int keySize);
 bool ssl_generate_ecc_keypair(int keySize);
 
-char* ssl_generate_csr(const char* asciiSubject, size_t* csrLen, 
-	char** pMessage);
+char *ssl_generate_csr(const char *asciiSubject, size_t *csrLen,
+                       char **pMessage);
 
-unsigned long ssl_save_cert_key(const char* storePath, const char* keyPath,	
-	const char* password, const char* cert, char** pMessage);
+unsigned long ssl_save_cert_key(const char *storePath, const char *keyPath,
+                                const char *password, const char *cert,
+                                char **pMessage);
 
-int ssl_read_store_inventory(const char* path, const char* password, 
-	PemInventoryList** ppPemList);
+int ssl_read_store_inventory(const char *path, const char *password,
+                             PemInventoryList **ppPemList);
 
-bool ssl_PemInventoryItem_create(struct PemInventoryItem** pem, 
-	const char* certASCII);
+bool ssl_PemInventoryItem_create(struct PemInventoryItem **pem,
+                                 const char *certASCII);
 
-bool ssl_PemInventoryItem_create(struct PemInventoryItem** ppPEMout, 
-	const char* pCertASCII);
+bool ssl_PemInventoryItem_create(struct PemInventoryItem **ppPEMout,
+                                 const char *pCertASCII);
 
-bool ssl_Store_Cert_add(const char* storePath, const char* certASCII);
+bool ssl_Store_Cert_add(const char *storePath, const char *certASCII);
 
-bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,\
-	const char* keyPath, const char* password);
+bool ssl_remove_cert_from_store(const char *storePath, const char *searchThumb,
+                                const char *keyPath, const char *password);
 
 bool ssl_init(void);
 
 bool ssl_cleanup(void);
 
-bool ssl_is_cert_active(char* certFile);
+bool ssl_is_cert_active(char *certFile);
 
 /* This is required to allow us to seed the wolfssl random with supplied data */
-#define CUSTOM_RAND_TYPE byte /* Our custom function returns a byte at a time */
+#define CUSTOM_RAND_TYPE byte /* Our custom function returns a byte at a time  \
+                               */
 extern byte custom_rng_seed_generator(void);
-#undef CUSTOM_RAND_GENERATE  /* remove the default function */
+#undef CUSTOM_RAND_GENERATE /* remove the default function */
 #define CUSTOM_RAND_GENERATE custom_rng_seed_generator /* Point to our func */
 
 #endif

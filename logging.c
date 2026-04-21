@@ -10,33 +10,32 @@
 /* License.                                                                   */
 /******************************************************************************/
 
-#include <stdarg.h>
-#include <stdio.h>
-#include <time.h>
-#include <stdlib.h>
-#include <limits.h>
 #include "logging.h"
+#include "agent.h"
 #include "config.h"
 #include "utils.h"
-#include "agent.h"
+#include <limits.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
 #define LOG_HEAD_SIZE 50
 #define LOG_LEVEL_SIZE 10
 #define MAX_LOG_SIZE 1024 + LOG_HEAD_SIZE + LOG_LEVEL_SIZE
 
-#define ERRORLVL   "[ERROR]  "
-#define WARNLVL    "[WARNING]"
-#define INFOLVL    "[INFO]   "
+#define ERRORLVL "[ERROR]  "
+#define WARNLVL "[WARNING]"
+#define INFOLVL "[INFO]   "
 #define VERBOSELVL "[VERBOSE]"
-#define DEBUGLVL   "[DEBUG]  "
-#define TRACELVL   "[TRACE]  "
+#define DEBUGLVL "[DEBUG]  "
+#define TRACELVL "[TRACE]  "
 #ifdef __QATESTING__
-#define QALVL      "[QA]     "
+#define QALVL "[QA]     "
 #endif
 
-#define MAX_FILE_SIZE   (5ul * 1024ul * 1024ul) /* 5MByte log file on disk */
-#define MAX_HEAP_SIZE   (256 * 1024)    /* 256k of memory */
-
+#define MAX_FILE_SIZE (5ul * 1024ul * 1024ul) /* 5MByte log file on disk */
+#define MAX_HEAP_SIZE (256 * 1024)            /* 256k of memory */
 
 /******************************************************************************/
 /************************ LOCAL GLOBAL STRUCTURES *****************************/
@@ -45,19 +44,19 @@
 /******************************************************************************/
 /************************** LOCAL GLOBAL VARIABLES ****************************/
 /******************************************************************************/
-static char*    log_head = NULL;
-static char*    log_tail = NULL;
-static bool     log_is_dirty = false;
-static size_t   log_file_index = 0;  /* Current write position in log file */
+static char *log_head = NULL;
+static char *log_tail = NULL;
+static bool log_is_dirty = false;
+static size_t log_file_index = 0; /* Current write position in log file */
 
-static bool     _trace = false;
-static bool     _debug = false;
-static bool     _verbose = false;
-static bool     _info = true;   /* default logging level */
-static bool     _warn = true;
-static bool     _error = true;
-static char     logFormat[LOG_HEAD_SIZE + MAX_LOG_SIZE + LOG_LEVEL_SIZE];
-static char     timeBuf[LOG_HEAD_SIZE];
+static bool _trace = false;
+static bool _debug = false;
+static bool _verbose = false;
+static bool _info = true; /* default logging level */
+static bool _warn = true;
+static bool _error = true;
+static char logFormat[LOG_HEAD_SIZE + MAX_LOG_SIZE + LOG_LEVEL_SIZE];
+static char timeBuf[LOG_HEAD_SIZE];
 
 /******************************************************************************/
 /************************ LOCAL FUNCTION DEFINITIONS **************************/
@@ -69,15 +68,17 @@ static char     timeBuf[LOG_HEAD_SIZE];
 /* @param  const char *logLevel = the log level of the message                */
 /* @return none                                                               */
 /*                                                                            */
-static inline void get_log_format(char *buf, const char *msgFormat, const char *logLevel)
-{
+static inline void get_log_format(char *buf, const char *msgFormat,
+                                  const char *logLevel) {
     time_t t = time(NULL);
     struct tm *tm = gmtime(&t);
     if (!tm) {
-        (void)snprintf(buf, MAX_LOG_SIZE, "[%s] - %s - %s\n", "0000-00-00 00:00:00", logLevel, msgFormat);
+        (void)snprintf(buf, MAX_LOG_SIZE, "[%s] - %s - %s\n",
+                       "0000-00-00 00:00:00", logLevel, msgFormat);
     } else {
         (void)strftime(timeBuf, LOG_HEAD_SIZE, "%Y-%m-%d %H:%M:%S", tm);
-        (void)snprintf(buf, MAX_LOG_SIZE, "[%s] - %s - %s\n", timeBuf, logLevel, msgFormat);
+        (void)snprintf(buf, MAX_LOG_SIZE, "[%s] - %s - %s\n", timeBuf, logLevel,
+                       msgFormat);
     }
 } /* get_log_format */
 
@@ -87,10 +88,10 @@ static inline void get_log_format(char *buf, const char *msgFormat, const char *
  * Reads the write position from a separate .index file that persists
  * independently of the config file.
  *
- * @return The LogFileIndex value from the .index file, or 0 if file doesn't exist
+ * @return The LogFileIndex value from the .index file, or 0 if file doesn't
+ * exist
  */
-static size_t load_log_index(void)
-{
+static size_t load_log_index(void) {
     if (!ConfigData->LogFile) {
         return 0;
     }
@@ -120,8 +121,7 @@ static size_t load_log_index(void)
  *
  * @return None
  */
-static void save_log_index(void)
-{
+static void save_log_index(void) {
     if (!ConfigData->LogFile) {
         return;
     }
@@ -133,8 +133,8 @@ static void save_log_index(void)
     if (fp) {
         fprintf(fp, "%zu\n", log_file_index);
         fclose(fp);
-        printf("%s::%s(%d) : Saved LogFileIndex to .index file: %lu\n",
-               LOG_INF, log_file_index);
+        printf("%s::%s(%d) : Saved LogFileIndex to .index file: %lu\n", LOG_INF,
+               log_file_index);
     } else {
         printf("%s::%s(%d) : WARNING: Failed to save .index file\n", LOG_INF);
     }
@@ -151,19 +151,20 @@ static void save_log_index(void)
  * @param[in] actualLogSize Actual size of the log file in bytes
  * @return None (updates ConfigData->LogFileIndex directly)
  */
-static void validate_and_correct_log_index(FILE *fp, size_t actualLogSize)
-{
+static void validate_and_correct_log_index(FILE *fp, size_t actualLogSize) {
     size_t indexFromFile = load_log_index();
     bool indexCorrected = false;
 
     printf("%s::%s(%d) : Validating LogFileIndex...\n", LOG_INF);
     printf("%s::%s(%d) :   Actual file size: %lu\n", LOG_INF, actualLogSize);
-    printf("%s::%s(%d) :   Index from .index file: %lu\n", LOG_INF, indexFromFile);
+    printf("%s::%s(%d) :   Index from .index file: %lu\n", LOG_INF,
+           indexFromFile);
 
     /* Use .index file if it exists and is valid */
     if (indexFromFile > 0) {
         if (indexFromFile > MAX_FILE_SIZE) {
-            printf("%s::%s(%d) : ERROR: .index file has invalid value (%lu > %lu), ignoring\n",
+            printf("%s::%s(%d) : ERROR: .index file has invalid value (%lu > "
+                   "%lu), ignoring\n",
                    LOG_INF, indexFromFile, MAX_FILE_SIZE);
             log_file_index = 0;
         } else {
@@ -178,7 +179,8 @@ static void validate_and_correct_log_index(FILE *fp, size_t actualLogSize)
 
     /* Validate the index against actual file size */
     if (log_file_index > MAX_FILE_SIZE) {
-        printf("%s::%s(%d) : ERROR: LogFileIndex (%lu) exceeds MAX_FILE_SIZE (%lu), resetting to 0\n",
+        printf("%s::%s(%d) : ERROR: LogFileIndex (%lu) exceeds MAX_FILE_SIZE "
+               "(%lu), resetting to 0\n",
                LOG_INF, log_file_index, MAX_FILE_SIZE);
         log_file_index = 0;
         indexCorrected = true;
@@ -187,7 +189,8 @@ static void validate_and_correct_log_index(FILE *fp, size_t actualLogSize)
     else if (actualLogSize < MAX_FILE_SIZE) {
         /* Index points beyond actual file - file was truncated */
         if (log_file_index > actualLogSize) {
-            printf("%s::%s(%d) : WARNING: LogFileIndex (%lu) > file size (%lu), file may have been truncated\n",
+            printf("%s::%s(%d) : WARNING: LogFileIndex (%lu) > file size "
+                   "(%lu), file may have been truncated\n",
                    LOG_INF, log_file_index, actualLogSize);
             printf("%s::%s(%d) :          Resetting to end of file\n", LOG_INF);
             log_file_index = actualLogSize;
@@ -195,40 +198,50 @@ static void validate_and_correct_log_index(FILE *fp, size_t actualLogSize)
         }
         /* Index is 0 but file has data - .index was deleted/missing */
         else if (log_file_index == 0 && actualLogSize > 0) {
-            printf("%s::%s(%d) : WARNING: LogFileIndex is 0 but file has %lu bytes\n",
+            printf("%s::%s(%d) : WARNING: LogFileIndex is 0 but file has %lu "
+                   "bytes\n",
                    LOG_INF, actualLogSize);
-            printf("%s::%s(%d) :          .index file may be missing. Resuming at end of file\n", LOG_INF);
+            printf("%s::%s(%d) :          .index file may be missing. Resuming "
+                   "at end of file\n",
+                   LOG_INF);
             log_file_index = actualLogSize;
             indexCorrected = true;
         }
         /* Valid case: 0 <= index <= actualLogSize */
         else {
-            printf("%s::%s(%d) : LogFileIndex is valid (%lu <= %lu)\n",
-                   LOG_INF, log_file_index, actualLogSize);
+            printf("%s::%s(%d) : LogFileIndex is valid (%lu <= %lu)\n", LOG_INF,
+                   log_file_index, actualLogSize);
         }
     }
     /* File is at or above MAX_FILE_SIZE (circular buffer is active) */
     else if (actualLogSize >= MAX_FILE_SIZE) {
         if (log_file_index > MAX_FILE_SIZE) {
-            printf("%s::%s(%d) : ERROR: LogFileIndex (%lu) exceeds MAX_FILE_SIZE (%lu), resetting to 0\n",
+            printf("%s::%s(%d) : ERROR: LogFileIndex (%lu) exceeds "
+                   "MAX_FILE_SIZE (%lu), resetting to 0\n",
                    LOG_INF, log_file_index, MAX_FILE_SIZE);
             log_file_index = 0;
             indexCorrected = true;
         } else if (log_file_index == 0 && indexFromFile == 0) {
-            printf("%s::%s(%d) : WARNING: Log file is at maximum size (%lu bytes) and LogFileIndex is 0\n",
+            printf("%s::%s(%d) : WARNING: Log file is at maximum size (%lu "
+                   "bytes) and LogFileIndex is 0\n",
                    LOG_INF, actualLogSize);
-            printf("%s::%s(%d) :          Circular buffer is active. .index file may be missing.\n", LOG_INF);
-            printf("%s::%s(%d) :          Some old logs may be overwritten.\n", LOG_INF);
+            printf("%s::%s(%d) :          Circular buffer is active. .index "
+                   "file may be missing.\n",
+                   LOG_INF);
+            printf("%s::%s(%d) :          Some old logs may be overwritten.\n",
+                   LOG_INF);
             /* Keep LogFileIndex = 0, but warn user */
         } else {
-            printf("%s::%s(%d) : Circular buffer active. Using LogFileIndex %lu in %lu byte file\n",
+            printf("%s::%s(%d) : Circular buffer active. Using LogFileIndex "
+                   "%lu in %lu byte file\n",
                    LOG_INF, log_file_index, actualLogSize);
         }
     }
 
     /* Save corrected value to .index file */
     if (indexCorrected) {
-        printf("%s::%s(%d) : LogFileIndex corrected to %lu\n", LOG_INF, log_file_index);
+        printf("%s::%s(%d) : LogFileIndex corrected to %lu\n", LOG_INF,
+               log_file_index);
         save_log_index();
     }
 } /* validate_and_correct_log_index */
@@ -237,8 +250,7 @@ static void validate_and_correct_log_index(FILE *fp, size_t actualLogSize)
 /* local-only function to print a message                                     */
 /* @returns none                                                              */
 /*                                                                            */
-static void log_me(const char *fmt,...)
-{
+static void log_me(const char *fmt, ...) {
     get_log_format(logFormat, fmt, "[LOGGING]");
 
     va_list args;
@@ -253,8 +265,7 @@ static void log_me(const char *fmt,...)
 /* @param  : none                                                             */
 /* @return : none                                                             */
 /*                                                                            */
-static void write_heap_to_disk(void)
-{
+static void write_heap_to_disk(void) {
     do {
         if (!ConfigData->LogFile) {
             printf("%s::%s(%d) : No Log file defined in config\n", LOG_INF);
@@ -273,27 +284,37 @@ static void write_heap_to_disk(void)
         if (NULL != fp) {
             fseek(fp, 0ul, SEEK_END);
             size_t actualLogSize = ftell(fp);
-            printf("%s::%s(%d) : Opened log file with size %lu\n", LOG_INF, actualLogSize);
-            
+            printf("%s::%s(%d) : Opened log file with size %lu\n", LOG_INF,
+                   actualLogSize);
+
             /* Validate and correct LogFileIndex if needed */
             validate_and_correct_log_index(fp, actualLogSize);
-            
+
             fseek(fp, log_file_index, SEEK_SET);
             size_t writeLen = log_tail - log_head;
             size_t logFileTest = (log_file_index + writeLen);
-            printf("%s::%s(%d) : writing %lu bytes to log at index of %lu\n", LOG_INF, writeLen, log_file_index);
-            printf("%s::%s(%d) : MAX_FILE_SIZE = %lu\n", LOG_INF, MAX_FILE_SIZE);
+            printf("%s::%s(%d) : writing %lu bytes to log at index of %lu\n",
+                   LOG_INF, writeLen, log_file_index);
+            printf("%s::%s(%d) : MAX_FILE_SIZE = %lu\n", LOG_INF,
+                   MAX_FILE_SIZE);
             if (MAX_FILE_SIZE > logFileTest) {
-                printf("%s::%s(%d) : Writing %lu bytes to disk\n", LOG_INF, writeLen);
-                size_t chars_written = fwrite((void *)log_head, sizeof(*log_head), writeLen, fp);
+                printf("%s::%s(%d) : Writing %lu bytes to disk\n", LOG_INF,
+                       writeLen);
+                size_t chars_written =
+                    fwrite((void *)log_head, sizeof(*log_head), writeLen, fp);
                 log_file_index += chars_written;
                 log_tail = log_head;
             } else {
-                printf("%s::%s(%d) : Log file write of %lu creates wrap of log file\n", LOG_INF, writeLen);
+                printf("%s::%s(%d) : Log file write of %lu creates wrap of log "
+                       "file\n",
+                       LOG_INF, writeLen);
                 size_t toEOF = MAX_FILE_SIZE - log_file_index;
-                size_t chars_written = fwrite((void *)log_head, sizeof(*log_head), toEOF, fp);
+                size_t chars_written =
+                    fwrite((void *)log_head, sizeof(*log_head), toEOF, fp);
                 fseek(fp, 0, SEEK_SET); /* reset to beginning of file */
-                size_t new_chars_written = fwrite((void *)(log_head + chars_written + 1), sizeof(*log_head), (writeLen - chars_written), fp);
+                size_t new_chars_written =
+                    fwrite((void *)(log_head + chars_written + 1),
+                           sizeof(*log_head), (writeLen - chars_written), fp);
                 log_file_index = new_chars_written;
                 log_tail = log_head;
             }
@@ -302,7 +323,8 @@ static void write_heap_to_disk(void)
             save_log_index();
             fclose(fp);
         } else {
-            printf("******* Error opening log file %s\n **************", ConfigData->LogFile);
+            printf("******* Error opening log file %s\n **************",
+                   ConfigData->LogFile);
             break;
         }
 
@@ -319,10 +341,7 @@ static void write_heap_to_disk(void)
 /* @param none                                                                */
 /* @returns true if verbose level is enabled, false otherwise                 */
 /*                                                                            */
-bool is_log_verbose(void)
-{
-    return _verbose;
-} /* is_log_verbose */
+bool is_log_verbose(void) { return _verbose; } /* is_log_verbose */
 
 /*                                                                            */
 /* @fn is_log_trace                                                           */
@@ -330,10 +349,7 @@ bool is_log_verbose(void)
 /* @param none                                                                */
 /* @returns true if trace level is enabled, false otherwise                   */
 /*                                                                            */
-bool is_log_trace(void)
-{
-    return _trace;
-} /* is_log_trace */
+bool is_log_trace(void) { return _trace; } /* is_log_trace */
 
 /*                                                                            */
 /* @fn is_log_debug                                                           */
@@ -341,10 +357,7 @@ bool is_log_trace(void)
 /* @param none                                                                */
 /* @returns true if debug level is enabled, false otherwise                   */
 /*                                                                            */
-bool is_log_debug(void)
-{
-    return _debug;
-} /* is_log_debug */
+bool is_log_debug(void) { return _debug; } /* is_log_debug */
 
 /*                                                                            */
 /* @fn is_log_info                                                            */
@@ -352,10 +365,7 @@ bool is_log_debug(void)
 /* @param none                                                                */
 /* @returns true if info level is enabled, false otherwise                    */
 /*                                                                            */
-bool is_log_info(void)
-{
-    return _info;
-} /* is_log_info */
+bool is_log_info(void) { return _info; } /* is_log_info */
 
 /*                                                                            */
 /* @fn is_log_warn                                                            */
@@ -363,10 +373,7 @@ bool is_log_info(void)
 /* @param none                                                                */
 /* @returns true if the warning level is enabled, false otherwise             */
 /*                                                                            */
-bool is_log_warn(void)
-{
-    return _warn;
-} /* is_log_warn */
+bool is_log_warn(void) { return _warn; } /* is_log_warn */
 
 /*                                                                            */
 /* @fn is_log_error                                                           */
@@ -374,10 +381,7 @@ bool is_log_warn(void)
 /* @param none                                                                */
 /* @returns true if error level is enabled, false otherwise                   */
 /*                                                                            */
-bool is_log_error(void)
-{
-    return _error;
-} /* is_log_error */
+bool is_log_error(void) { return _error; } /* is_log_error */
 
 /*                                                                            */
 /* @fn is_log_off                                                             */
@@ -385,11 +389,7 @@ bool is_log_error(void)
 /* @param none                                                                */
 /* @returns true if the error level is off, false otherwise                   */
 /*                                                                            */
-bool is_log_off(void)
-{
-    return !_error;
-} /* is_log_off */
-
+bool is_log_off(void) { return !_error; } /* is_log_off */
 
 /*                                                                            */
 /* @fn log_error                                                              */
@@ -405,8 +405,7 @@ bool is_log_off(void)
 /*                                                                            */
 /* @returns none                                                              */
 /*                                                                            */
-void log_error(const char *fmt,...)
-{
+void log_error(const char *fmt, ...) {
     /* NOTE: On error set global success to return EXIT_FAILURE */
     success = false;
 
@@ -420,9 +419,9 @@ void log_error(const char *fmt,...)
 
         if (config_loaded) {
             /* Write to the log buffer, too */
-            size_t log_index = (log_tail - log_head);  /* parasoft-suppress
-                                                                 * MISRAC2012-DIR_4_1-i
-                                                                 * "same array" */
+            size_t log_index = (log_tail - log_head); /* parasoft-suppress
+                                                       * MISRAC2012-DIR_4_1-i
+                                                       * "same array" */
             if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) {
                 write_heap_to_disk();
             }
@@ -430,8 +429,8 @@ void log_error(const char *fmt,...)
             va_list args_inner;
             va_start(args_inner, fmt);
             size_t remaining = MAX_HEAP_SIZE - (log_tail - log_head);
-            size_t chars_written = vsnprintf(log_tail, remaining, logFormat,
-                                             args_inner);
+            size_t chars_written =
+                vsnprintf(log_tail, remaining, logFormat, args_inner);
             va_end(args_inner);
             log_tail += chars_written;
             log_is_dirty = true;
@@ -445,8 +444,7 @@ void log_error(const char *fmt,...)
 /* @brief Print a message if the info logging level is enabled                */
 /* @returns none                                                              */
 /*                                                                            */
-void log_warn(const char *fmt,...)
-{
+void log_warn(const char *fmt, ...) {
     if (_warn) {
         get_log_format(logFormat, fmt, WARNLVL);
 
@@ -457,9 +455,9 @@ void log_warn(const char *fmt,...)
 
         if (config_loaded) {
             /* Write to the log buffer, too */
-            size_t log_index = (log_tail - log_head);  /* parasoft-suppress
-                                                                 * MISRAC2012-DIR_4_1-i
-                                                                 * "same array" */
+            size_t log_index = (log_tail - log_head); /* parasoft-suppress
+                                                       * MISRAC2012-DIR_4_1-i
+                                                       * "same array" */
             if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) {
 
                 write_heap_to_disk();
@@ -468,8 +466,8 @@ void log_warn(const char *fmt,...)
             va_list args_inner;
             va_start(args_inner, fmt);
             size_t remaining = MAX_HEAP_SIZE - (log_tail - log_head);
-            size_t chars_written = vsnprintf(log_tail, remaining, logFormat,
-                                             args_inner);
+            size_t chars_written =
+                vsnprintf(log_tail, remaining, logFormat, args_inner);
             va_end(args_inner);
             log_tail += chars_written;
             log_is_dirty = true;
@@ -483,8 +481,7 @@ void log_warn(const char *fmt,...)
 /* @brief Print a message if the info logging level is enabled                */
 /* @returns none                                                              */
 /*                                                                            */
-void log_info(const char *fmt,...)
-{
+void log_info(const char *fmt, ...) {
     if (_info) {
         get_log_format(logFormat, fmt, INFOLVL);
 
@@ -495,9 +492,9 @@ void log_info(const char *fmt,...)
 
         if (config_loaded) {
             /* Write to the log buffer, too */
-            size_t log_index = (log_tail - log_head);  /* parasoft-suppress
-                                                                 * MISRAC2012-DIR_4_1-i
-                                                                 * "same array" */
+            size_t log_index = (log_tail - log_head); /* parasoft-suppress
+                                                       * MISRAC2012-DIR_4_1-i
+                                                       * "same array" */
             if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) {
 
                 write_heap_to_disk();
@@ -506,8 +503,8 @@ void log_info(const char *fmt,...)
             va_list args_inner;
             va_start(args_inner, fmt);
             size_t remaining = MAX_HEAP_SIZE - (log_tail - log_head);
-            size_t chars_written = vsnprintf(log_tail, remaining, logFormat,
-                                             args_inner);
+            size_t chars_written =
+                vsnprintf(log_tail, remaining, logFormat, args_inner);
             va_end(args_inner);
             log_tail += chars_written;
             log_is_dirty = true;
@@ -521,8 +518,7 @@ void log_info(const char *fmt,...)
 /* @brief Print a message if the verbose logging level is enabled             */
 /* @returns none                                                              */
 /*                                                                            */
-void log_verbose(const char *fmt,...)
-{
+void log_verbose(const char *fmt, ...) {
     if (_verbose) {
         get_log_format(logFormat, fmt, VERBOSELVL);
 
@@ -533,9 +529,9 @@ void log_verbose(const char *fmt,...)
 
         if (config_loaded) {
             /* Write to the log buffer, too */
-            size_t log_index = (log_tail - log_head);  /* parasoft-suppress
-                                                                 * MISRAC2012-DIR_4_1-i
-                                                                 * "same array" */
+            size_t log_index = (log_tail - log_head); /* parasoft-suppress
+                                                       * MISRAC2012-DIR_4_1-i
+                                                       * "same array" */
             if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) {
 
                 write_heap_to_disk();
@@ -544,8 +540,8 @@ void log_verbose(const char *fmt,...)
             va_list args_inner;
             va_start(args_inner, fmt);
             size_t remaining = MAX_HEAP_SIZE - (log_tail - log_head);
-            size_t chars_written = vsnprintf(log_tail, remaining, logFormat,
-                                             args_inner);
+            size_t chars_written =
+                vsnprintf(log_tail, remaining, logFormat, args_inner);
             va_end(args_inner);
             log_tail += chars_written;
             log_is_dirty = true;
@@ -559,8 +555,7 @@ void log_verbose(const char *fmt,...)
 /* @brief Print a message if the debug logging level is enabled               */
 /* @returns none                                                              */
 /*                                                                            */
-void log_debug(const char *fmt,...)
-{
+void log_debug(const char *fmt, ...) {
     if (_debug) {
         get_log_format(logFormat, fmt, DEBUGLVL);
 
@@ -571,9 +566,9 @@ void log_debug(const char *fmt,...)
 
         if (config_loaded) {
             /* Write to the log buffer, too */
-            size_t log_index = (log_tail - log_head);  /* parasoft-suppress
-                                                                 * MISRAC2012-DIR_4_1-i
-                                                                 * "same array" */
+            size_t log_index = (log_tail - log_head); /* parasoft-suppress
+                                                       * MISRAC2012-DIR_4_1-i
+                                                       * "same array" */
             if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) {
 
                 write_heap_to_disk();
@@ -582,8 +577,8 @@ void log_debug(const char *fmt,...)
             va_list args_inner;
             va_start(args_inner, fmt);
             size_t remaining = MAX_HEAP_SIZE - (log_tail - log_head);
-            size_t chars_written = vsnprintf(log_tail, remaining, logFormat,
-                                             args_inner);
+            size_t chars_written =
+                vsnprintf(log_tail, remaining, logFormat, args_inner);
             va_end(args_inner);
             log_tail += chars_written;
             log_is_dirty = true;
@@ -597,8 +592,7 @@ void log_debug(const char *fmt,...)
 /* @brief Print a message if the trace logging level is enabled               */
 /* @returns none                                                              */
 /*                                                                            */
-void log_trace(const char *fmt,...)
-{
+void log_trace(const char *fmt, ...) {
     if (_trace) {
         get_log_format(logFormat, fmt, TRACELVL);
 
@@ -609,9 +603,9 @@ void log_trace(const char *fmt,...)
 
         if (config_loaded) {
             /* Write to the log buffer, too */
-            size_t log_index = (log_tail - log_head);  /* parasoft-suppress
-                                                                 * MISRAC2012-DIR_4_1-i
-                                                                 * "same array" */
+            size_t log_index = (log_tail - log_head); /* parasoft-suppress
+                                                       * MISRAC2012-DIR_4_1-i
+                                                       * "same array" */
             if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) {
 
                 write_heap_to_disk();
@@ -620,8 +614,8 @@ void log_trace(const char *fmt,...)
             va_list args_inner;
             va_start(args_inner, fmt);
             size_t remaining = MAX_HEAP_SIZE - (log_tail - log_head);
-            size_t chars_written = vsnprintf(log_tail, remaining, logFormat,
-                                             args_inner);
+            size_t chars_written =
+                vsnprintf(log_tail, remaining, logFormat, args_inner);
             va_end(args_inner);
             log_tail += chars_written;
             log_is_dirty = true;
@@ -636,35 +630,34 @@ void log_trace(const char *fmt,...)
 /* @brief Print a message if the info logging level is enabled                */
 /* @returns none                                                              */
 /*                                                                            */
-void log_qa(const char *fmt,...)
-{
-  get_log_format(logFormat, fmt, QALVL);
-
-  va_list args;
-  va_start(args, fmt);
-  size_t chars_to_write = vfprintf(stderr, logFormat, args);
-  va_end(args);
-
-  if (config_loaded) {
-    /* Write to the log buffer, too */
-    size_t log_index = (log_tail - log_head);  /* parasoft-suppress
-                                                         * MISRAC2012-DIR_4_1-i
-                                                         * "same array" */
-    if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) {
-
-      write_heap_to_disk();
-    }
+void log_qa(const char *fmt, ...) {
     get_log_format(logFormat, fmt, QALVL);
-    va_list args_inner;
-    va_start(args_inner, fmt);
-    size_t remaining = MAX_HEAP_SIZE - (log_tail - log_head);
-    size_t chars_written = vsnprintf(log_tail, remaining, logFormat,
-                                     args_inner);
-    va_end(args_inner);
-    log_tail += chars_written;
-    log_is_dirty = true;
-    /* End write to the log buffer, too */
-  }
+
+    va_list args;
+    va_start(args, fmt);
+    size_t chars_to_write = vfprintf(stderr, logFormat, args);
+    va_end(args);
+
+    if (config_loaded) {
+        /* Write to the log buffer, too */
+        size_t log_index = (log_tail - log_head); /* parasoft-suppress
+                                                   * MISRAC2012-DIR_4_1-i
+                                                   * "same array" */
+        if (MAX_HEAP_SIZE <= (log_index + chars_to_write)) {
+
+            write_heap_to_disk();
+        }
+        get_log_format(logFormat, fmt, QALVL);
+        va_list args_inner;
+        va_start(args_inner, fmt);
+        size_t remaining = MAX_HEAP_SIZE - (log_tail - log_head);
+        size_t chars_written =
+            vsnprintf(log_tail, remaining, logFormat, args_inner);
+        va_end(args_inner);
+        log_tail += chars_written;
+        log_is_dirty = true;
+        /* End write to the log buffer, too */
+    }
 } /* log_warn */
 #endif
 
@@ -673,8 +666,7 @@ void log_qa(const char *fmt,...)
 /* @brief Turn on the trace & all lower logging levels                        */
 /* @returns none                                                              */
 /*                                                                            */
-void log_set_trace(bool param)
-{
+void log_set_trace(bool param) {
     log_me("%s::%s(%d) : Setting logging level to trace.", LOG_INF);
     _trace = param;
     _debug = param;
@@ -689,8 +681,7 @@ void log_set_trace(bool param)
 /* @brief Turn on the debug & all lower logging levels                        */
 /* @returns none                                                              */
 /*                                                                            */
-void log_set_debug(bool param)
-{
+void log_set_debug(bool param) {
     log_me("%s::%s(%d) : Setting logging level to debug.", LOG_INF);
     _trace = !param;
     _debug = param;
@@ -705,8 +696,7 @@ void log_set_debug(bool param)
 /* @brief Turn on the verbose & all lower logging levels                      */
 /* @returns none                                                              */
 /*                                                                            */
-void log_set_verbosity(bool param)
-{
+void log_set_verbosity(bool param) {
     log_me("%s::%s(%d) : Setting logging level to verbose.", LOG_INF);
     _trace = !param;
     _debug = !param;
@@ -721,8 +711,7 @@ void log_set_verbosity(bool param)
 /* @brief Turn on the info & all lower logging levels                         */
 /* @returns none                                                              */
 /*                                                                            */
-void log_set_info(bool param)
-{
+void log_set_info(bool param) {
     log_me("%s::%s(%d) : Setting logging level to info.", LOG_INF);
     _trace = !param;
     _debug = !param;
@@ -737,8 +726,7 @@ void log_set_info(bool param)
 /* @breif Turn on the warning logging level & all lower logging levels        */
 /* @returns none                                                              */
 /*                                                                            */
-void log_set_warn(bool param)
-{
+void log_set_warn(bool param) {
     log_me("%s::%s(%d) : Setting logging level to warning.", LOG_INF);
     _trace = !param;
     _debug = !param;
@@ -753,8 +741,7 @@ void log_set_warn(bool param)
 /* @brief Turn on the error logging level                                     */
 /* @returns none                                                              */
 /*                                                                            */
-void log_set_error(bool param)
-{
+void log_set_error(bool param) {
     log_me("%s::%s(%d) : Setting logging level to error.", LOG_INF);
     _trace = !param;
     _debug = !param;
@@ -769,8 +756,7 @@ void log_set_error(bool param)
 /* @brief Turn off all further logging                                        */
 /* @returns none                                                              */
 /*                                                                            */
-void log_set_off(bool param)
-{
+void log_set_off(bool param) {
     log_me("%s::%s(%d) : Turning off all logging.", LOG_INF);
     _trace = !param;
     _debug = !param;
@@ -785,16 +771,15 @@ void log_set_off(bool param)
 /* @breif Load the log buffer from the log file                               */
 /* @return none                                                               */
 /*                                                                            */
-bool load_log_buffer(void)
-{
+bool load_log_buffer(void) {
     bool bResult = false;
 
     log_me("%s::%s(%d) : Creating log buffer", LOG_INF);
     log_head = (char *)calloc(MAX_HEAP_SIZE, sizeof(*log_head));
 
     if (log_head) {
-        log_me("%s::%s(%d) : Successfully created buffer of size %lu",
-               LOG_INF, MAX_HEAP_SIZE);
+        log_me("%s::%s(%d) : Successfully created buffer of size %lu", LOG_INF,
+               MAX_HEAP_SIZE);
         log_tail = log_head;
         bResult = true;
     } else {
@@ -809,8 +794,7 @@ bool load_log_buffer(void)
 /* @breif Write the log to disk if the buffer is dirty                        */
 /* @return none                                                               */
 /*                                                                            */
-void write_log_file(void)
-{
+void write_log_file(void) {
     if (log_is_dirty) {
         write_heap_to_disk();
     } else {
@@ -824,8 +808,7 @@ void write_log_file(void)
 /* @param  : none                                                             */
 /* @return : none                                                             */
 /*                                                                            */
-void free_log_heap(void)
-{
+void free_log_heap(void) {
     printf("%s::%s(%d) : Freeing Logging Heap Memory\n", LOG_INF);
     if (log_head)
         free(log_head);

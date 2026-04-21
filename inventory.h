@@ -12,12 +12,12 @@
 #ifndef __INVENTORY_H__
 #define __INVENTORY_H__
 
-#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
+#define _POSIX_C_SOURCE 200809L // POSIX.1-2008
 
-#include "dto.h"
 #include "config.h"
+#include "dto.h"
 
-int cms_job_inventory(SessionJob_t* jobInfo, char* sessionToken);
+int cms_job_inventory(SessionJob_t *jobInfo, char *sessionToken);
 
 #endif /* __INVENTORY_H__ */
 /******************************************************************************/

@@ -12,35 +12,35 @@
 #ifndef AGENT_H_
 #define AGENT_H_
 
-#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
+#define _POSIX_C_SOURCE 200809L // POSIX.1-2008
 
-#include "session.h"
-#include "schedule.h"
 #include "config.h"
+#include "schedule.h"
+#include "session.h"
 
-int run_job(SessionJob_t* job);
-int init_platform( int argc, char* argv[] );
-bool release_platform( void );
+int run_job(SessionJob_t *job);
+int init_platform(int argc, char *argv[]);
+bool release_platform(void);
 #ifdef __MAKE_LIBRARY__
-int KF_main( int argc, char* argv[]);
+int KF_main(int argc, char *argv[]);
 #endif
 
 /******************************************************************************/
 /************************* SYSTEM GLOBAL VARIABLES ****************************/
 /******************************************************************************/
 extern SessionInfo_t SessionData;
-extern ScheduledJob_t* JobList;
-extern ConfigData_t* ConfigData;
-extern ScheduledJob_t* currentJob; /* Defined in schedule.c */
-extern bool success;   /* Used to define the program/library exit code */
+extern ScheduledJob_t *JobList;
+extern ConfigData_t *ConfigData;
+extern ScheduledJob_t *currentJob; /* Defined in schedule.c */
+extern bool success; /* Used to define the program/library exit code */
 
 #if defined(__OPEN_SSL__) && defined(__TPM__)
-	extern char engine_id[21];
+extern char engine_id[21];
 #endif
-	
+
 #if defined(__TPM__)
-	#include <tpm2-tss-engine.h>
-	extern ENGINE* e;
+#include <tpm2-tss-engine.h>
+extern ENGINE *e;
 #endif
 
 /* Versioning Information                                                     */
@@ -50,15 +50,13 @@ extern bool success;   /* Used to define the program/library exit code */
 #define AGENT_MICRO 0ULL
 
 #ifdef __QATESTING__
-  #define AGENT_BUILD 999ULL // Special build number for QA testing
+#define AGENT_BUILD 999ULL // Special build number for QA testing
 #else
-  #define AGENT_BUILD 3ULL
+#define AGENT_BUILD 3ULL
 #endif
 
-#define AGENT_VERSION \
-((AGENT_MAJOR << 48) | \
-(AGENT_MINOR << 32) | \
-(AGENT_MICRO << 16) | \
-(AGENT_BUILD))
+#define AGENT_VERSION                                                          \
+    ((AGENT_MAJOR << 48) | (AGENT_MINOR << 32) | (AGENT_MICRO << 16) |         \
+     (AGENT_BUILD))
 
 #endif /* AGENT_H_ */

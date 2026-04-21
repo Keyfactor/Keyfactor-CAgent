@@ -10,11 +10,11 @@
 /* License.                                                                   */
 /******************************************************************************/
 
+#include "csr.h"
+#include "global.h"
+#include "logging.h"
 #include <string.h>
 #include <strings.h>
-#include "csr.h"
-#include "logging.h"
-#include "global.h"
 
 #ifdef __WOLF_SSL__
 #include "wolfssl_wrapper/wolfssl_wrapper.h"
@@ -53,26 +53,25 @@
  * key storage internally.
  *
  * @param[in] keySize  Bit length of the RSA key (e.g. 2048, 4096).
- * @param[in] path     (TPM builds only) Filesystem path for private key storage.
+ * @param[in] path     (TPM builds only) Filesystem path for private key
+ * storage.
  * @return true on success, false on failure.
  */
 #if defined(__TPM__)
-static bool generate_rsa_keypair_impl(int keySize, const char *path)
-{
+static bool generate_rsa_keypair_impl(int keySize, const char *path) {
     if (!path || 0 == strcasecmp("", path)) {
         log_error("%s::%s(%d) : Error, you must specify a private key path "
-                  "when using a TPM", LOG_INF);
+                  "when using a TPM",
+                  LOG_INF);
         return false;
     }
     return ssl_generate_rsa_keypair(keySize, path);
 }
 #else
-static bool generate_rsa_keypair_impl(int keySize)
-{
+static bool generate_rsa_keypair_impl(int keySize) {
     return ssl_generate_rsa_keypair(keySize);
 }
 #endif /* __TPM__ */
-
 
 /**
  * @brief Generates an ECC keypair of the requested curve size.
@@ -83,32 +82,34 @@ static bool generate_rsa_keypair_impl(int keySize)
  * @param[in] keySize  Curve size in bits (e.g. 256, 384).
  * @return true on success, false on failure or unsupported platform.
  */
-static bool generate_ecc_keypair_impl(int keySize)
-{
+static bool generate_ecc_keypair_impl(int keySize) {
 #if defined(__TPM__)
     (void)keySize;
     log_error("%s::%s(%d) : Error, SLB9670 with tpm2tss engine does not "
-              "support ECC keygen", LOG_INF);
+              "support ECC keygen",
+              LOG_INF);
     return false;
 #else
     return ssl_generate_ecc_keypair(keySize);
 #endif /* __TPM__ */
 }
 
-
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
 /******************************************************************************/
 
 /**
- * @brief Validates the key type and dispatches to the appropriate keypair generator.
+ * @brief Validates the key type and dispatches to the appropriate keypair
+ * generator.
  *
  * Accepts "RSA" for RSA keys and either "ECC" or "ECDSA" for elliptic curve
  * keys. Any other key type is rejected with an error.
  *
- * @param[in] keyType  Case-insensitive key type string: "RSA", "ECC", or "ECDSA".
+ * @param[in] keyType  Case-insensitive key type string: "RSA", "ECC", or
+ * "ECDSA".
  * @param[in] keySize  Bit length of the key to generate.
- * @param[in] path     (TPM builds only) Filesystem path for private key storage.
+ * @param[in] path     (TPM builds only) Filesystem path for private key
+ * storage.
  * @return true on success, false on failure or unrecognised key type.
  */
 #if defined(__TPM__)
@@ -134,8 +135,7 @@ bool generate_keypair(const char *keyType, int keySize)
 #endif
     }
 
-    if (strcasecmp(keyType, "ECC") == 0 ||
-        strcasecmp(keyType, "ECDSA") == 0) {
+    if (strcasecmp(keyType, "ECC") == 0 || strcasecmp(keyType, "ECDSA") == 0) {
         return generate_ecc_keypair_impl(keySize);
     }
 
@@ -143,25 +143,26 @@ bool generate_keypair(const char *keyType, int keySize)
     return false;
 } /* generate_keypair */
 
-
 /**
  * @brief Generates a CSR from the provided subject DN via the SSL wrapper.
  *
  * Delegates to ssl_generate_csr and translates the result into a status code.
  * The returned string is heap-allocated and must be freed by the caller.
  *
- * @param[in]  asciiSubject  Subject DN string (e.g. "CN=host,OU=NA,O=Acme,C=US").
+ * @param[in]  asciiSubject  Subject DN string (e.g.
+ * "CN=host,OU=NA,O=Acme,C=US").
  * @param[out] csrLen        Receives the length of the returned CSR string.
  * @param[out] pMessage      Accumulates human-readable status messages.
- * @param[out] pStatus       Set to STAT_SUCCESS on success, STAT_ERR on failure.
+ * @param[out] pStatus       Set to STAT_SUCCESS on success, STAT_ERR on
+ * failure.
  * @return Heap-allocated PEM CSR string on success, NULL on failure.
  */
 char *generate_csr(const char *asciiSubject, size_t *csrLen, char **pMessage,
-                   enum AgentApiResultStatus *pStatus)
-{
+                   enum AgentApiResultStatus *pStatus) {
     if (!csrLen || !pStatus) {
         log_error("%s::%s(%d) : Null pointer dereference - csrLen or pStatus "
-                  "is NULL", LOG_INF);
+                  "is NULL",
+                  LOG_INF);
         return NULL;
     }
 
@@ -172,7 +173,6 @@ char *generate_csr(const char *asciiSubject, size_t *csrLen, char **pMessage,
 
     return csrString;
 } /* generate_csr */
-
 
 /**
  * @brief Saves a certificate and its private key to disk via the SSL wrapper.
@@ -193,16 +193,15 @@ char *generate_csr(const char *asciiSubject, size_t *csrLen, char **pMessage,
 unsigned long save_cert_key(const char *storePath, const char *keyPath,
                             const char *password, const char *cert,
                             char **pMessage,
-                            enum AgentApiResultStatus *pStatus)
-{
+                            enum AgentApiResultStatus *pStatus) {
     if (!pStatus) {
         log_error("%s::%s(%d) : Null pointer dereference - pStatus is NULL",
                   LOG_INF);
         return 1;
     }
 
-    unsigned long err = ssl_save_cert_key(storePath, keyPath, password,
-                                          cert, pMessage);
+    unsigned long err =
+        ssl_save_cert_key(storePath, keyPath, password, cert, pMessage);
     *pStatus = (err == 0) ? STAT_SUCCESS : STAT_ERR;
 
     return err;

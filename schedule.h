@@ -12,24 +12,24 @@
 #ifndef SCHEDULE_H_
 #define SCHEDULE_H_
 
-#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
+#define _POSIX_C_SOURCE 200809L // POSIX.1-2008
 
-#include <time.h>
 #include "dto.h"
+#include <time.h>
 
 typedef struct ScheduledJob_s {
-	SessionJob_t* Job;
-	time_t NextExecution;
-	struct ScheduledJob_s* NextJob;
+    SessionJob_t *Job;
+    time_t NextExecution;
+    struct ScheduledJob_s *NextJob;
 } ScheduledJob_t;
 
-SessionJob_t* get_runnable_job(ScheduledJob_t** pList, time_t now);
+SessionJob_t *get_runnable_job(ScheduledJob_t **pList, time_t now);
 
-SessionJob_t* get_job_by_id(ScheduledJob_t** pList, const char* jobId);
+SessionJob_t *get_job_by_id(ScheduledJob_t **pList, const char *jobId);
 
-void clear_job_schedules(ScheduledJob_t** pList);
+void clear_job_schedules(ScheduledJob_t **pList);
 
-void schedule_job(ScheduledJob_t** pList, SessionJob_t* job);
+void schedule_job(ScheduledJob_t **pList, SessionJob_t *job);
 
 #endif /* SCHEDULE_H_ */
 /******************************************************************************/

@@ -12,18 +12,19 @@
 #ifndef __HTTPCLIENT_H__
 #define __HTTPCLIENT_H__
 
-#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
+#define _POSIX_C_SOURCE 200809L // POSIX.1-2008
 
 #define CONNECTION_TIMEOUT 60
 
-#define CLIENT_CERT_HEADER "X-ARR-ClientCert"
+#define CLIENT_CERT_HEADER "ClientCert"
 
 extern bool add_client_cert_to_header;
 
-int http_post_json(const char* url, const char* username, const char* password, 
-	const char* trustStore, const char* clientCert, const char* clientKey, 
-	const char* clientKeyPass, char* postData, char** pRespData, int retryCount,
-	int retryInterval);
+int http_post_json(const char *url, const char *username, const char *password,
+                   const char *trustStore, const char *clientCert,
+                   const char *clientKey, const char *clientKeyPass,
+                   char *postData, char **pRespData, int retryCount,
+                   int retryInterval);
 
 #endif /* __HTTPCLIENT_H__ */
 /******************************************************************************/

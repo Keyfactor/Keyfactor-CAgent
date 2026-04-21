@@ -10,37 +10,37 @@
 /* License.                                                                   */
 /******************************************************************************/
 
-#include <stdlib.h>
+#include "config.h"
+#include "global.h"
+#include "lib/json.h"
+#include "logging.h"
+#include "utils.h"
+#include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <errno.h>
 #include <time.h>
-#include "config.h"
-#include "logging.h"
-#include "lib/json.h"
-#include "utils.h"
-#include "global.h"
 
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 /******************************************************************************/
 /***************************** LOCAL DEFINES  *********************************/
 /******************************************************************************/
-#define DATE_TIME_LEN 14        /* YYYYMMDDHHMMSS */
+#define DATE_TIME_LEN 14 /* YYYYMMDDHHMMSS */
 #define STR_OR_NOT_SET(s) ((s) ? (s) : "(not set)")
 
 /******************************************************************************/
 /*************************** GLOBAL VARIABLES *********************************/
 /******************************************************************************/
-bool            config_loaded          = false;
-ConfigData_t   *ConfigData;
-char           *config_location        = NULL;
-bool            use_host_as_agent_name = false;
+bool config_loaded = false;
+ConfigData_t *ConfigData;
+char *config_location = NULL;
+bool use_host_as_agent_name = false;
 
 /******************************************************************************/
 /************************ LOCAL GLOBAL STRUCTURES *****************************/
@@ -59,38 +59,45 @@ bool            use_host_as_agent_name = false;
  *
  * @param[in] data  Pointer to the configuration structure to display.
  */
-static void print_config(const ConfigData_t *data)
-{
+static void print_config(const ConfigData_t *data) {
     if (!data) {
-        log_error("%s::%s(%d) : Null pointer dereference - data is NULL", LOG_INF);
+        log_error("%s::%s(%d) : Null pointer dereference - data is NULL",
+                  LOG_INF);
         return;
     }
-    printf("\n\n          AgentId = %s\n",            STR_OR_NOT_SET(data->AgentId));
-    printf("          AgentName = %s\n",              STR_OR_NOT_SET(data->AgentName));
-    printf("          ClientParameterPath = %s\n",    STR_OR_NOT_SET(data->ClientParameterPath));
-    printf("          Hostname = %s\n",               STR_OR_NOT_SET(data->Hostname));
-    printf("          Password = %s\n",               data->Password        ? "********" : "(not set)");
-    printf("          Username = %s\n",               STR_OR_NOT_SET(data->Username));
-    printf("          VirtualDirectory = %s\n",       STR_OR_NOT_SET(data->VirtualDirectory));
-    printf("          TrustStore = %s\n",             STR_OR_NOT_SET(data->TrustStore));
-    printf("          UseAgentCert = %s\n",           data->UseAgentCert    ? "true" : "false");
-    printf("          AgentCert = %s\n",              STR_OR_NOT_SET(data->AgentCert));
-    printf("          AgentKey = %s\n",               STR_OR_NOT_SET(data->AgentKey));
-    printf("          AgentKeyPassword = %s\n",       data->AgentKeyPassword ? "********" : "(not set)");
-    printf("          UseSsl = %s\n",                 data->UseSsl          ? "true" : "false");
-    printf("          CSRKeyType = %s\n",             STR_OR_NOT_SET(data->CSRKeyType));
-    printf("          CSRKeySize = %d\n",             data->CSRKeySize);
-    printf("          CSRSubject = %s\n",             STR_OR_NOT_SET(data->CSRSubject));
-    printf("          EnrollOnStartup = %s\n",        data->EnrollOnStartup ? "true" : "false");
-    printf("          UseBootstrapCert = %s\n",       data->UseBootstrapCert ? "true" : "false");
-    printf("          BootstrapCert = %s\n",          STR_OR_NOT_SET(data->BootstrapCert));
-    printf("          BootstrapKey = %s\n",           STR_OR_NOT_SET(data->BootstrapKey));
-    printf("          LogFile = %s\n",                STR_OR_NOT_SET(data->LogFile));
-    printf("          httpRetries = %d\n",            data->httpRetries);
-    printf("          retryInterval = %d\n",          data->retryInterval);
+    printf("\n\n          AgentId = %s\n", STR_OR_NOT_SET(data->AgentId));
+    printf("          AgentName = %s\n", STR_OR_NOT_SET(data->AgentName));
+    printf("          ClientParameterPath = %s\n",
+           STR_OR_NOT_SET(data->ClientParameterPath));
+    printf("          Hostname = %s\n", STR_OR_NOT_SET(data->Hostname));
+    printf("          Password = %s\n",
+           data->Password ? "********" : "(not set)");
+    printf("          Username = %s\n", STR_OR_NOT_SET(data->Username));
+    printf("          VirtualDirectory = %s\n",
+           STR_OR_NOT_SET(data->VirtualDirectory));
+    printf("          TrustStore = %s\n", STR_OR_NOT_SET(data->TrustStore));
+    printf("          UseAgentCert = %s\n",
+           data->UseAgentCert ? "true" : "false");
+    printf("          AgentCert = %s\n", STR_OR_NOT_SET(data->AgentCert));
+    printf("          AgentKey = %s\n", STR_OR_NOT_SET(data->AgentKey));
+    printf("          AgentKeyPassword = %s\n",
+           data->AgentKeyPassword ? "********" : "(not set)");
+    printf("          UseSsl = %s\n", data->UseSsl ? "true" : "false");
+    printf("          CSRKeyType = %s\n", STR_OR_NOT_SET(data->CSRKeyType));
+    printf("          CSRKeySize = %d\n", data->CSRKeySize);
+    printf("          CSRSubject = %s\n", STR_OR_NOT_SET(data->CSRSubject));
+    printf("          EnrollOnStartup = %s\n",
+           data->EnrollOnStartup ? "true" : "false");
+    printf("          UseBootstrapCert = %s\n",
+           data->UseBootstrapCert ? "true" : "false");
+    printf("          BootstrapCert = %s\n",
+           STR_OR_NOT_SET(data->BootstrapCert));
+    printf("          BootstrapKey = %s\n", STR_OR_NOT_SET(data->BootstrapKey));
+    printf("          LogFile = %s\n", STR_OR_NOT_SET(data->LogFile));
+    printf("          httpRetries = %d\n", data->httpRetries);
+    printf("          retryInterval = %d\n", data->retryInterval);
     printf("\n\n");
 } /* print_config */
-
 
 /**
  * @brief Validates the fields required when UseAgentCert is true.
@@ -100,20 +107,21 @@ static void print_config(const ConfigData_t *data)
  *
  * @return true if all agent certificate fields are valid, false otherwise.
  */
-static bool validate_agent_cert_config(void)
-{
+static bool validate_agent_cert_config(void) {
     if (!ConfigData->CSRSubject) {
         log_error("%s::%s(%d) : Agent CSR subject must exist", LOG_INF);
         return false;
     }
     if (4 > strlen(ConfigData->CSRSubject)) {
         log_error("%s::%s(%d) : Agent CSR subject must minimally be CN=x "
-                  "where x is a single character", LOG_INF);
+                  "where x is a single character",
+                  LOG_INF);
         return false;
     }
     if (!ConfigData->AgentCert) {
-        log_error("%s::%s(%d) : Agent Cert file must be in the config.json file",
-                  LOG_INF);
+        log_error(
+            "%s::%s(%d) : Agent Cert file must be in the config.json file",
+            LOG_INF);
         return false;
     }
     if (!ConfigData->AgentKey) {
@@ -124,27 +132,26 @@ static bool validate_agent_cert_config(void)
     return true;
 } /* validate_agent_cert_config */
 
-
 /**
  * @brief Validates the fields required when UseBootstrapCert is true.
  *
  * @return true if BootstrapCert and BootstrapKey are present, false otherwise.
  */
-static bool validate_bootstrap_cert_config(void)
-{
+static bool validate_bootstrap_cert_config(void) {
     if (!ConfigData->BootstrapCert) {
         log_error("%s::%s(%d) : BootstrapCert filename is required if "
-                  "UseBootstrapCert is true", LOG_INF);
+                  "UseBootstrapCert is true",
+                  LOG_INF);
         return false;
     }
     if (!ConfigData->BootstrapKey) {
         log_error("%s::%s(%d) : BootstrapKey filename is required if "
-                  "UseBootstrapCert is true", LOG_INF);
+                  "UseBootstrapCert is true",
+                  LOG_INF);
         return false;
     }
     return true;
 } /* validate_bootstrap_cert_config */
-
 
 /**
  * @brief Checks that all required configuration fields are populated.
@@ -154,15 +161,15 @@ static bool validate_bootstrap_cert_config(void)
  *
  * @return true if all minimum requirements are met, false otherwise.
  */
-static bool minimum_config_requirements(void)
-{
+static bool minimum_config_requirements(void) {
     if (!ConfigData) {
         log_error("%s::%s(%d) : Null pointer dereference - ConfigData is NULL",
                   LOG_INF);
         return false;
     }
     if (!ConfigData->AgentName) {
-        log_error("%s::%s(%d) : Agent name is required in config file", LOG_INF);
+        log_error("%s::%s(%d) : Agent name is required in config file",
+                  LOG_INF);
         return false;
     }
     if (1 > strlen(ConfigData->AgentName)) {
@@ -193,9 +200,9 @@ static bool minimum_config_requirements(void)
     return true;
 } /* minimum_config_requirements */
 
-
 /**
- * @brief Validates that a single cert or key path is a file in an existing directory.
+ * @brief Validates that a single cert or key path is a file in an existing
+ * directory.
  *
  * Checks that the path itself is not a directory, then extracts the parent
  * directory component and verifies it exists.
@@ -203,41 +210,41 @@ static bool minimum_config_requirements(void)
  * @param[in] path  Filesystem path to validate.
  * @return true if the path is a valid file location, false otherwise.
  */
-static bool validate_cert_file_path(const char *path)
-{
+static bool validate_cert_file_path(const char *path) {
     if (is_directory(path)) {
         log_error("%s::%s(%d) : %s is a directory. "
-                  "It must be a <path>/<filename>.", LOG_INF, path);
+                  "It must be a <path>/<filename>.",
+                  LOG_INF, path);
         return false;
     }
 
     char *parentDir = get_prefix_substring(path, '/');
     if (!parentDir)
-        return true;    /* Relative path with no directory component — OK */
+        return true; /* Relative path with no directory component — OK */
 
     bool exists = is_directory(parentDir);
     if (!exists)
-        log_error("%s::%s(%d) : Directory %s does not exist",
-                  LOG_INF, parentDir);
+        log_error("%s::%s(%d) : Directory %s does not exist", LOG_INF,
+                  parentDir);
 
     free(parentDir);
     return exists;
 } /* validate_cert_file_path */
 
-
 /**
- * @brief Verifies that the agent certificate and key paths are valid file locations.
+ * @brief Verifies that the agent certificate and key paths are valid file
+ * locations.
  *
  * Only runs when UseAgentCert is true. Delegates each path to
  * validate_cert_file_path.
  *
  * @return true if both paths are valid, false otherwise.
  */
-static bool agent_directory_exists(void)
-{
+static bool agent_directory_exists(void) {
     if (!ConfigData->UseAgentCert) {
-        log_debug("%s::%s(%d) : Skipping agent directory check for certs and such",
-                  LOG_INF);
+        log_debug(
+            "%s::%s(%d) : Skipping agent directory check for certs and such",
+            LOG_INF);
         return true;
     }
 
@@ -250,7 +257,6 @@ static bool agent_directory_exists(void)
     return true;
 } /* agent_directory_exists */
 
-
 /**
  * @brief Validates the configured key type and, for ECC, the key size.
  *
@@ -258,36 +264,35 @@ static bool agent_directory_exists(void)
  *
  * @return true if the key type and size are valid, false otherwise.
  */
-static bool keypair_sanity_check(void)
-{
+static bool keypair_sanity_check(void) {
     if (!ConfigData || !ConfigData->CSRKeyType) {
         log_error("%s::%s(%d) : Null pointer dereference - ConfigData or "
-                  "CSRKeyType is NULL", LOG_INF);
+                  "CSRKeyType is NULL",
+                  LOG_INF);
         return false;
     }
 
     if (0 == strcasecmp("ecc", ConfigData->CSRKeyType) ||
         0 == strcasecmp("ecdsa", ConfigData->CSRKeyType)) {
         switch (ConfigData->CSRKeySize) {
-            case 256:
-            case 384:
-            case 521:
-                return true;
-            default:
-                log_error("%s::%s(%d) : %d is not an implemented ECC keysize",
-                          LOG_INF, ConfigData->CSRKeySize);
-                return false;
+        case 256:
+        case 384:
+        case 521:
+            return true;
+        default:
+            log_error("%s::%s(%d) : %d is not an implemented ECC keysize",
+                      LOG_INF, ConfigData->CSRKeySize);
+            return false;
         }
     }
 
     if (0 == strcasecmp("rsa", ConfigData->CSRKeyType))
-        return true;    /* RSA key sizes can be of any reasonable length */
+        return true; /* RSA key sizes can be of any reasonable length */
 
-    log_error("%s::%s(%d) : Error %s is an unknown key type",
-              LOG_INF, ConfigData->CSRKeyType);
+    log_error("%s::%s(%d) : Error %s is an unknown key type", LOG_INF,
+              ConfigData->CSRKeyType);
     return false;
 } /* keypair_sanity_check */
-
 
 /**
  * @brief Retrieves the OS hostname into the provided buffer.
@@ -296,8 +301,7 @@ static bool keypair_sanity_check(void)
  * @param[in]  bufLen  Size of the buffer in bytes.
  * @return true on success, false if gethostname fails.
  */
-static bool get_os_hostname(char *buf, size_t bufLen)
-{
+static bool get_os_hostname(char *buf, size_t bufLen) {
     log_verbose("%s::%s(%d) : Retrieving hostname", LOG_INF);
     if (-1 == gethostname(buf, bufLen)) {
         log_error("%s::%s(%d) : Failed to retrieve hostname from host OS",
@@ -308,16 +312,15 @@ static bool get_os_hostname(char *buf, size_t bufLen)
     return true;
 } /* get_os_hostname */
 
-
 /**
  * @brief Retrieves the current UTC time formatted as YYYYMMDDHHMMSS.
  *
  * @param[out] buf     Buffer to receive the null-terminated datetime string.
- * @param[in]  bufLen  Size of the buffer in bytes (must be >= DATE_TIME_LEN + 1).
+ * @param[in]  bufLen  Size of the buffer in bytes (must be >= DATE_TIME_LEN +
+ * 1).
  * @return true on success, false if time() fails.
  */
-static bool get_formatted_datetime(char *buf, size_t bufLen)
-{
+static bool get_formatted_datetime(char *buf, size_t bufLen) {
     time_t t;
     log_verbose("%s::%s(%d) : Retrieving time from OS", LOG_INF);
     if (!time(&t)) {
@@ -334,7 +337,6 @@ static bool get_formatted_datetime(char *buf, size_t bufLen)
     return true;
 } /* get_formatted_datetime */
 
-
 /**
  * @brief Allocates and returns a "{hostname}_{datetime}" agent name string.
  *
@@ -343,9 +345,10 @@ static bool get_formatted_datetime(char *buf, size_t bufLen)
  * @return Heap-allocated name string on success, NULL on allocation failure.
  *         Caller is responsible for freeing the returned string.
  */
-static char *build_agent_name_string(const char *hostname, const char *datetime)
-{
-    size_t len = strlen(hostname) + 1 + strlen(datetime) + 1; /* host + _ + dt + \0 */
+static char *build_agent_name_string(const char *hostname,
+                                     const char *datetime) {
+    size_t len =
+        strlen(hostname) + 1 + strlen(datetime) + 1; /* host + _ + dt + \0 */
     char *name = calloc(len, sizeof(*name));
     if (!name) {
         log_error("%s::%s(%d) : Out of memory!", LOG_INF);
@@ -355,7 +358,6 @@ static char *build_agent_name_string(const char *hostname, const char *datetime)
     return name;
 } /* build_agent_name_string */
 
-
 /**
  * @brief Allocates and returns a "CN={hostname}_{datetime}" CSR subject string.
  *
@@ -364,9 +366,10 @@ static char *build_agent_name_string(const char *hostname, const char *datetime)
  * @return Heap-allocated subject string on success, NULL on allocation failure.
  *         Caller is responsible for freeing the returned string.
  */
-static char *build_csr_subject_string(const char *hostname, const char *datetime)
-{
-    size_t len = 3 + strlen(hostname) + 1 + strlen(datetime) + 1; /* "CN=" + host + _ + dt + \0 */
+static char *build_csr_subject_string(const char *hostname,
+                                      const char *datetime) {
+    size_t len = 3 + strlen(hostname) + 1 + strlen(datetime) +
+                 1; /* "CN=" + host + _ + dt + \0 */
     char *subject = calloc(len, sizeof(*subject));
     if (!subject) {
         log_error("%s::%s(%d) : Out of memory!", LOG_INF);
@@ -376,26 +379,25 @@ static char *build_csr_subject_string(const char *hostname, const char *datetime
     return subject;
 } /* build_csr_subject_string */
 
-
 /**
  * @brief Assigns the computed agent name and CSR subject to the configuration.
  *
- * Takes ownership of both strings. Frees either string that has no corresponding
- * target field to assign to, preventing leaks when the config was not fully
- * initialised.
+ * Takes ownership of both strings. Frees either string that has no
+ * corresponding target field to assign to, preventing leaks when the config was
+ * not fully initialised.
  *
  * @param[in] config   Configuration structure to update.
  * @param[in] name     Heap-allocated agent name string (ownership transferred).
- * @param[in] subject  Heap-allocated CSR subject string, or NULL (ownership transferred).
+ * @param[in] subject  Heap-allocated CSR subject string, or NULL (ownership
+ * transferred).
  */
-static void assign_agent_name_to_config(ConfigData_t *config,
-                                        char *name,
-                                        char *subject)
-{
+static void assign_agent_name_to_config(ConfigData_t *config, char *name,
+                                        char *subject) {
     if (config->AgentName) {
         free(config->AgentName);
         config->AgentName = name;
-        log_info("%s::%s(%d) : Agent name set to %s", LOG_INF, config->AgentName);
+        log_info("%s::%s(%d) : Agent name set to %s", LOG_INF,
+                 config->AgentName);
     } else {
         free(name);
     }
@@ -410,9 +412,9 @@ static void assign_agent_name_to_config(ConfigData_t *config,
     }
 } /* assign_agent_name_to_config */
 
-
 /**
- * @brief Derives the agent name and CSR subject from the OS hostname and current time.
+ * @brief Derives the agent name and CSR subject from the OS hostname and
+ * current time.
  *
  * Leaves AgentName and CSRSubject unmodified if any step fails. Builds the
  * name as "{hostname}_{YYYYMMDDHHMMSS}" and the subject as
@@ -420,8 +422,7 @@ static void assign_agent_name_to_config(ConfigData_t *config,
  *
  * @param[in,out] config  Configuration structure to update on success.
  */
-static void set_agent_name(ConfigData_t *config)
-{
+static void set_agent_name(ConfigData_t *config) {
     char hostbuffer[256];
     char tBuf[DATE_TIME_LEN + 1];
 
@@ -447,7 +448,6 @@ static void set_agent_name(ConfigData_t *config)
     assign_agent_name_to_config(config, name, subject);
 } /* set_agent_name */
 
-
 /**
  * @brief Resizes a malformed AgentId field to the correct UUID length.
  *
@@ -457,15 +457,14 @@ static void set_agent_name(ConfigData_t *config)
  *
  * @param[in,out] config  Configuration structure whose AgentId may be resized.
  */
-static void validate_and_fix_agent_id(ConfigData_t *config)
-{
+static void validate_and_fix_agent_id(ConfigData_t *config) {
     if (!config->AgentId)
         return;
     if ((UUID_LEN - 1) > strlen(config->AgentId)) {
-        log_trace("%s::%s(%d) : Resizing agent id to %lu bytes",
-                  LOG_INF, UUID_LEN * sizeof(*(config->AgentId)));
-        char *tmp = realloc(config->AgentId,
-                            UUID_LEN * sizeof(*(config->AgentId)));
+        log_trace("%s::%s(%d) : Resizing agent id to %lu bytes", LOG_INF,
+                  UUID_LEN * sizeof(*(config->AgentId)));
+        char *tmp =
+            realloc(config->AgentId, UUID_LEN * sizeof(*(config->AgentId)));
         if (!tmp) {
             log_error("%s::%s(%d) : Out of memory resizing AgentId", LOG_INF);
             return;
@@ -473,7 +472,6 @@ static void validate_and_fix_agent_id(ConfigData_t *config)
         config->AgentId = tmp;
     }
 } /* validate_and_fix_agent_id */
-
 
 /**
  * @brief Parses the agent certificate fields from a JSON node.
@@ -484,19 +482,18 @@ static void validate_and_fix_agent_id(ConfigData_t *config)
  * @param[in,out] config  Configuration structure to populate.
  * @param[in]     root    Parsed JSON root node.
  */
-static void parse_agent_cert_fields(ConfigData_t *config, JsonNode *root)
-{
-    config->AgentCert        = json_get_member_string(root, "AgentCert");
-    config->AgentKey         = json_get_member_string(root, "AgentKey");
+static void parse_agent_cert_fields(ConfigData_t *config, JsonNode *root) {
+    config->AgentCert = json_get_member_string(root, "AgentCert");
+    config->AgentKey = json_get_member_string(root, "AgentKey");
     config->AgentKeyPassword = json_get_member_string(root, "AgentKeyPassword");
-    config->CSRKeyType       = json_get_member_string(root, "CSRKeyType");
-    config->CSRKeySize       = json_get_member_number(root, "CSRKeySize", 0);
-    config->CSRSubject       = json_get_member_string(root, "CSRSubject");
+    config->CSRKeyType = json_get_member_string(root, "CSRKeyType");
+    config->CSRKeySize = json_get_member_number(root, "CSRKeySize", 0);
+    config->CSRSubject = json_get_member_string(root, "CSRSubject");
 } /* parse_agent_cert_fields */
 
-
 /**
- * @brief Parses all configuration fields from a JSON root node into a config structure.
+ * @brief Parses all configuration fields from a JSON root node into a config
+ * structure.
  *
  * Delegates agent certificate fields to parse_agent_cert_fields when
  * UseAgentCert is true. Enforces a minimum httpRetries value of 1.
@@ -504,50 +501,53 @@ static void parse_agent_cert_fields(ConfigData_t *config, JsonNode *root)
  * @param[in,out] config  Configuration structure to populate.
  * @param[in]     root    Parsed JSON root node.
  */
-static void parse_config_fields(ConfigData_t *config, JsonNode *root)
-{
+static void parse_config_fields(ConfigData_t *config, JsonNode *root) {
     config->AgentId = json_get_member_string(root, "AgentId");
     validate_and_fix_agent_id(config);
 
-    config->AgentName           = json_get_member_string(root, "AgentName");
-    config->ClientParameterPath = json_get_member_string(root, "ClientParameterPath");
-    config->Hostname            = json_get_member_string(root, "Hostname");
-    config->Password            = json_get_member_string(root, "Password");
-    config->Username            = json_get_member_string(root, "Username");
-    config->VirtualDirectory    = json_get_member_string(root, "VirtualDirectory");
-    config->TrustStore          = json_get_member_string(root, "TrustStore");
-    config->UseAgentCert        = json_get_member_bool(root, "UseAgentCert", true);
+    config->AgentName = json_get_member_string(root, "AgentName");
+    config->ClientParameterPath =
+        json_get_member_string(root, "ClientParameterPath");
+    config->Hostname = json_get_member_string(root, "Hostname");
+    config->Password = json_get_member_string(root, "Password");
+    config->Username = json_get_member_string(root, "Username");
+    config->VirtualDirectory = json_get_member_string(root, "VirtualDirectory");
+    config->TrustStore = json_get_member_string(root, "TrustStore");
+    config->UseAgentCert = json_get_member_bool(root, "UseAgentCert", true);
 
     if (config->UseAgentCert)
         parse_agent_cert_fields(config, root);
 
-    config->UseSsl               = json_get_member_bool(root, "UseSsl", true);
-    config->EnrollOnStartup      = json_get_member_bool(root, "EnrollOnStartup", false);
-    config->UseBootstrapCert     = json_get_member_bool(root, "UseBootstrapCert", false);
-    config->BootstrapCert        = json_get_member_string(root, "BootstrapCert");
-    config->BootstrapKey         = json_get_member_string(root, "BootstrapKey");
-    config->BootstrapKeyPassword = json_get_member_string(root, "BootstrapKeyPassword");
-    config->LogFile              = json_get_member_string(root, "LogFile");
+    config->UseSsl = json_get_member_bool(root, "UseSsl", true);
+    config->EnrollOnStartup =
+        json_get_member_bool(root, "EnrollOnStartup", false);
+    config->UseBootstrapCert =
+        json_get_member_bool(root, "UseBootstrapCert", false);
+    config->BootstrapCert = json_get_member_string(root, "BootstrapCert");
+    config->BootstrapKey = json_get_member_string(root, "BootstrapKey");
+    config->BootstrapKeyPassword =
+        json_get_member_string(root, "BootstrapKeyPassword");
+    config->LogFile = json_get_member_string(root, "LogFile");
     /* NOTE: LogFileIndex is NOT stored in config — managed by logging.c
      * in a separate <LogFile>.index file for robustness */
 
-    config->httpRetries  = json_get_member_number(root, "httpRetries", 1);
+    config->httpRetries = json_get_member_number(root, "httpRetries", 1);
     if (1 > config->httpRetries)
         config->httpRetries = 1;
 
     config->retryInterval = json_get_member_number(root, "retryInterval", 1);
 } /* parse_config_fields */
 
-
 /**
- * @brief Reads the configuration file at config_location into the provided buffer.
+ * @brief Reads the configuration file at config_location into the provided
+ * buffer.
  *
  * @param[out] buf     Buffer to receive the null-terminated file contents.
  * @param[in]  bufLen  Size of the buffer in bytes.
- * @return true on success, false if the file does not exist or cannot be opened.
+ * @return true on success, false if the file does not exist or cannot be
+ * opened.
  */
-static bool read_config_file(char *buf, size_t bufLen)
-{
+static bool read_config_file(char *buf, size_t bufLen) {
     if (!file_exists(config_location)) {
         log_error("%s::%s(%d) : Either %s does not exist or is a directory",
                   LOG_INF, config_location);
@@ -556,17 +556,16 @@ static bool read_config_file(char *buf, size_t bufLen)
 
     FILE *fp = fopen(config_location, "r");
     if (!fp) {
-        log_error("%s::%s(%d) : Unable to open config file %s: %s",
-                  LOG_INF, config_location, strerror(errno));
+        log_error("%s::%s(%d) : Unable to open config file %s: %s", LOG_INF,
+                  config_location, strerror(errno));
         return false;
     }
 
     size_t len = fread(buf, 1, bufLen - 1, fp);
-    buf[len]   = '\0';
+    buf[len] = '\0';
     fclose(fp);
     return true;
 } /* read_config_file */
-
 
 /**
  * @brief Writes a configuration string to the file at config_location.
@@ -576,12 +575,11 @@ static bool read_config_file(char *buf, size_t bufLen)
  * @param[in] confString  Null-terminated JSON configuration string to write.
  * @return true on success, false if the file cannot be opened for writing.
  */
-static bool write_config_to_file(const char *confString)
-{
+static bool write_config_to_file(const char *confString) {
     FILE *fp = fopen(config_location, "w");
     if (!fp) {
-        log_error("%s::%s(%d) : Unable to open config file %s: %s",
-                  LOG_INF, config_location, strerror(errno));
+        log_error("%s::%s(%d) : Unable to open config file %s: %s", LOG_INF,
+                  config_location, strerror(errno));
         return false;
     }
 
@@ -592,7 +590,6 @@ static bool write_config_to_file(const char *confString)
     return true;
 } /* write_config_to_file */
 
-
 /**
  * @brief Appends identity and connection fields to the JSON object.
  *
@@ -601,11 +598,9 @@ static bool write_config_to_file(const char *confString)
  *
  * @param[in,out] root  JSON object node to append fields to.
  */
-static void append_identity_fields_to_json(JsonNode *root)
-{
+static void append_identity_fields_to_json(JsonNode *root) {
     if (ConfigData->AgentId)
-        json_append_member(root, "AgentId",
-                           json_mkstring(ConfigData->AgentId));
+        json_append_member(root, "AgentId", json_mkstring(ConfigData->AgentId));
     if (ConfigData->AgentName)
         json_append_member(root, "AgentName",
                            json_mkstring(ConfigData->AgentName));
@@ -626,7 +621,6 @@ static void append_identity_fields_to_json(JsonNode *root)
                            json_mkstring(ConfigData->VirtualDirectory));
 } /* append_identity_fields_to_json */
 
-
 /**
  * @brief Appends TLS and agent certificate fields to the JSON object.
  *
@@ -635,8 +629,7 @@ static void append_identity_fields_to_json(JsonNode *root)
  *
  * @param[in,out] root  JSON object node to append fields to.
  */
-static void append_agent_cert_fields_to_json(JsonNode *root)
-{
+static void append_agent_cert_fields_to_json(JsonNode *root) {
     if (ConfigData->TrustStore)
         json_append_member(root, "TrustStore",
                            json_mkstring(ConfigData->TrustStore));
@@ -662,16 +655,15 @@ static void append_agent_cert_fields_to_json(JsonNode *root)
                            json_mkstring(ConfigData->CSRSubject));
 } /* append_agent_cert_fields_to_json */
 
-
 /**
  * @brief Appends bootstrap certificate fields to the JSON object.
  *
- * Covers UseBootstrapCert, BootstrapCert, BootstrapKey, and BootstrapKeyPassword.
+ * Covers UseBootstrapCert, BootstrapCert, BootstrapKey, and
+ * BootstrapKeyPassword.
  *
  * @param[in,out] root  JSON object node to append fields to.
  */
-static void append_bootstrap_fields_to_json(JsonNode *root)
-{
+static void append_bootstrap_fields_to_json(JsonNode *root) {
     json_append_member(root, "UseBootstrapCert",
                        json_mkbool(ConfigData->UseBootstrapCert));
     if (ConfigData->BootstrapCert)
@@ -685,7 +677,6 @@ static void append_bootstrap_fields_to_json(JsonNode *root)
                            json_mkstring(ConfigData->BootstrapKeyPassword));
 } /* append_bootstrap_fields_to_json */
 
-
 /**
  * @brief Appends operational and logging fields to the JSON object.
  *
@@ -695,15 +686,12 @@ static void append_bootstrap_fields_to_json(JsonNode *root)
  *
  * @param[in,out] root  JSON object node to append fields to.
  */
-static void append_operational_fields_to_json(JsonNode *root)
-{
+static void append_operational_fields_to_json(JsonNode *root) {
     json_append_member(root, "EnrollOnStartup",
                        json_mkbool(ConfigData->EnrollOnStartup));
-    json_append_member(root, "UseSsl",
-                       json_mkbool(ConfigData->UseSsl));
+    json_append_member(root, "UseSsl", json_mkbool(ConfigData->UseSsl));
     if (ConfigData->LogFile)
-        json_append_member(root, "LogFile",
-                           json_mkstring(ConfigData->LogFile));
+        json_append_member(root, "LogFile", json_mkstring(ConfigData->LogFile));
     if (ConfigData->httpRetries)
         json_append_member(root, "httpRetries",
                            json_mknumber(ConfigData->httpRetries));
@@ -712,19 +700,18 @@ static void append_operational_fields_to_json(JsonNode *root)
                            json_mknumber(ConfigData->retryInterval));
 } /* append_operational_fields_to_json */
 
-
 /**
  * @brief Appends a string segment to a heap-allocated URL via realloc.
  *
  * Returns the new pointer on success. On allocation failure, frees the
  * original URL to prevent a dangling pointer and returns NULL.
  *
- * @param[in] url      Heap-allocated URL string to extend (ownership transferred).
+ * @param[in] url      Heap-allocated URL string to extend (ownership
+ * transferred).
  * @param[in] segment  Null-terminated string to append.
  * @return Extended URL string on success, NULL on allocation failure.
  */
-static char *url_append_segment(char *url, const char *segment)
-{
+static char *url_append_segment(char *url, const char *segment) {
     if (!url || !segment)
         return url;
 
@@ -738,14 +725,12 @@ static char *url_append_segment(char *url, const char *segment)
     return tmp;
 } /* url_append_segment */
 
-
 /**
  * @brief Allocates and returns the base URL: "http(s)://{Hostname}".
  *
  * @return Heap-allocated base URL string on success, NULL on failure.
  */
-static char *build_url_base(void)
-{
+static char *build_url_base(void) {
     char *url = strdup(ConfigData->UseSsl ? "https://" : "http://");
     if (!url) {
         log_error("%s::%s(%d) : Out of memory", LOG_INF);
@@ -758,24 +743,22 @@ static char *build_url_base(void)
     return url;
 } /* build_url_base */
 
-
 /**
  * @brief Appends "/{VirtualDirectory}" to the URL.
  *
  * @param[in] url  Heap-allocated URL to extend (ownership transferred).
  * @return Extended URL on success, NULL on allocation failure.
  */
-static char *append_virtual_directory_to_url(char *url)
-{
+static char *append_virtual_directory_to_url(char *url) {
     url = url_append_segment(url, "/");
     url = url_append_segment(url, ConfigData->VirtualDirectory);
     log_trace("%s::%s(%d) : Added VirtualDirectory, url = %s", LOG_INF, url);
     return url;
 } /* append_virtual_directory_to_url */
 
-
 /**
- * @brief Strips the KeyfactorAgents/ prefix from relPath and appends it to the URL.
+ * @brief Strips the KeyfactorAgents/ prefix from relPath and appends it to the
+ * URL.
  *
  * Prepends a "/" separator if relPath does not begin with one.
  *
@@ -786,14 +769,14 @@ static char *append_virtual_directory_to_url(char *url)
  * @param[in] relPath  Relative endpoint path from the platform.
  * @return Extended URL on success, NULL on allocation failure.
  */
-static char *append_relpath_to_url(char *url, const char *relPath)
-{
+static char *append_relpath_to_url(char *url, const char *relPath) {
     if (strcspn(relPath, "/") != 0) {
         url = url_append_segment(url, "/");
         log_trace("%s::%s(%d) : Added leading /, url = %s", LOG_INF, url);
     }
 
-    log_trace("%s::%s(%d) : Stripping KeyfactorAgents/ from %s", LOG_INF, relPath);
+    log_trace("%s::%s(%d) : Stripping KeyfactorAgents/ from %s", LOG_INF,
+              relPath);
     char *stripped = util_strip_string(relPath, "KeyfactorAgents/");
     log_trace("%s::%s(%d) : Stripped relPath = %s", LOG_INF,
               stripped ? stripped : "(null)");
@@ -805,7 +788,6 @@ static char *append_relpath_to_url(char *url, const char *relPath)
 
     return url;
 } /* append_relpath_to_url */
-
 
 /******************************************************************************/
 /*********************** GLOBAL FUNCTION DEFINITIONS **************************/
@@ -827,12 +809,11 @@ static char *append_relpath_to_url(char *url, const char *relPath)
  * @param[in] buf  Null-terminated JSON configuration string.
  * @return Heap-allocated ConfigData structure on success, NULL on failure.
  */
-ConfigData_t *config_decode(const char *buf)
-{
+ConfigData_t *config_decode(const char *buf) {
     JsonNode *jsonRoot = json_decode(buf);
     if (!jsonRoot) {
-        log_error("%s::%s(%d) : Contents of %s are not valid JSON",
-                  LOG_INF, config_location);
+        log_error("%s::%s(%d) : Contents of %s are not valid JSON", LOG_INF,
+                  config_location);
         return NULL;
     }
 
@@ -858,14 +839,12 @@ ConfigData_t *config_decode(const char *buf)
     return config;
 } /* config_decode */
 
-
 /**
  * @brief Loads and decodes the configuration from the file at config_location.
  *
  * @return Heap-allocated ConfigData structure on success, NULL on failure.
  */
-ConfigData_t *config_load(void)
-{
+ConfigData_t *config_load(void) {
     char buf[MAX_CONFIG_FILE_LEN];
 
     if (!read_config_file(buf, sizeof(buf)))
@@ -873,7 +852,6 @@ ConfigData_t *config_load(void)
 
     return config_decode(buf);
 } /* config_load */
-
 
 /**
  * @brief Serialises the current ConfigData structure to a JSON string.
@@ -885,8 +863,7 @@ ConfigData_t *config_load(void)
  * @return Heap-allocated JSON string on success, NULL on failure.
  *         Caller is responsible for freeing the returned string.
  */
-char *config_to_json(void)
-{
+char *config_to_json(void) {
     JsonNode *root = json_mkobject();
 
     append_identity_fields_to_json(root);
@@ -899,17 +876,16 @@ char *config_to_json(void)
     return confString;
 } /* config_to_json */
 
-
 /**
  * @brief Serialises and saves the current configuration to config_location.
  *
  * @return true on success, false if serialisation or the file write fails.
  */
-bool config_save(void)
-{
+bool config_save(void) {
     if (!config_location) {
         log_error("%s::%s(%d) : Null pointer dereference - "
-                  "config_location is NULL", LOG_INF);
+                  "config_location is NULL",
+                  LOG_INF);
         return false;
     }
 
@@ -924,7 +900,6 @@ bool config_save(void)
     return result;
 } /* config_save */
 
-
 /**
  * @brief Validates the loaded configuration before the agent starts.
  *
@@ -934,8 +909,7 @@ bool config_save(void)
  *
  * @return true if the configuration is valid, false otherwise.
  */
-bool validate_configuration(void)
-{
+bool validate_configuration(void) {
     log_debug("%s::%s(%d) : Checking config minimum requirements", LOG_INF);
     if (!minimum_config_requirements()) {
         log_error("%s::%s(%d) : Config missing minimum requirements", LOG_INF);
@@ -971,7 +945,6 @@ bool validate_configuration(void)
     return true;
 } /* validate_configuration */
 
-
 /**
  * @brief Constructs a full URL from the platform-supplied relative endpoint.
  *
@@ -984,8 +957,7 @@ bool validate_configuration(void)
  * @return Heap-allocated URL string on success, NULL on failure.
  *         Caller is responsible for freeing the returned string.
  */
-char *config_build_url(const char *relPath, bool vdirFromConfig)
-{
+char *config_build_url(const char *relPath, bool vdirFromConfig) {
     if (!ConfigData || !relPath) {
         log_error("%s::%s(%d) : Unable to build url: Invalid arguments",
                   LOG_INF);
@@ -1006,38 +978,87 @@ char *config_build_url(const char *relPath, bool vdirFromConfig)
     return url;
 } /* config_build_url */
 
-
 /**
  * @brief Frees all heap memory associated with the global ConfigData structure.
  *
  * Sets ConfigData to NULL after freeing to prevent dangling pointer access.
  * Resets config_loaded to false.
  */
-void ConfigData_free(void)
-{
+void ConfigData_free(void) {
     if (!ConfigData)
         return;
 
-    if (ConfigData->AgentId)             { free(ConfigData->AgentId);             ConfigData->AgentId = NULL; }
-    if (ConfigData->AgentName)           { free(ConfigData->AgentName);           ConfigData->AgentName = NULL; }
-    if (ConfigData->ClientParameterPath) { free(ConfigData->ClientParameterPath); ConfigData->ClientParameterPath = NULL; }
-    if (ConfigData->Hostname)            { free(ConfigData->Hostname);            ConfigData->Hostname = NULL; }
-    if (ConfigData->Password)            { free(ConfigData->Password);            ConfigData->Password = NULL; }
-    if (ConfigData->Username)            { free(ConfigData->Username);            ConfigData->Username = NULL; }
-    if (ConfigData->VirtualDirectory)    { free(ConfigData->VirtualDirectory);    ConfigData->VirtualDirectory = NULL; }
-    if (ConfigData->TrustStore)          { free(ConfigData->TrustStore);          ConfigData->TrustStore = NULL; }
-    if (ConfigData->AgentCert)           { free(ConfigData->AgentCert);           ConfigData->AgentCert = NULL; }
-    if (ConfigData->AgentKey)            { free(ConfigData->AgentKey);            ConfigData->AgentKey = NULL; }
-    if (ConfigData->AgentKeyPassword)    { free(ConfigData->AgentKeyPassword);    ConfigData->AgentKeyPassword = NULL; }
-    if (ConfigData->CSRKeyType)          { free(ConfigData->CSRKeyType);          ConfigData->CSRKeyType = NULL; }
-    if (ConfigData->CSRSubject)          { free(ConfigData->CSRSubject);          ConfigData->CSRSubject = NULL; }
-    if (ConfigData->LogFile)             { free(ConfigData->LogFile);             ConfigData->LogFile = NULL; }
-    if (ConfigData->BootstrapCert)       { free(ConfigData->BootstrapCert);       ConfigData->BootstrapCert = NULL; }
-    if (ConfigData->BootstrapKey)        { free(ConfigData->BootstrapKey);        ConfigData->BootstrapKey = NULL; }
-    if (ConfigData->BootstrapKeyPassword){ free(ConfigData->BootstrapKeyPassword);ConfigData->BootstrapKeyPassword = NULL; }
+    if (ConfigData->AgentId) {
+        free(ConfigData->AgentId);
+        ConfigData->AgentId = NULL;
+    }
+    if (ConfigData->AgentName) {
+        free(ConfigData->AgentName);
+        ConfigData->AgentName = NULL;
+    }
+    if (ConfigData->ClientParameterPath) {
+        free(ConfigData->ClientParameterPath);
+        ConfigData->ClientParameterPath = NULL;
+    }
+    if (ConfigData->Hostname) {
+        free(ConfigData->Hostname);
+        ConfigData->Hostname = NULL;
+    }
+    if (ConfigData->Password) {
+        free(ConfigData->Password);
+        ConfigData->Password = NULL;
+    }
+    if (ConfigData->Username) {
+        free(ConfigData->Username);
+        ConfigData->Username = NULL;
+    }
+    if (ConfigData->VirtualDirectory) {
+        free(ConfigData->VirtualDirectory);
+        ConfigData->VirtualDirectory = NULL;
+    }
+    if (ConfigData->TrustStore) {
+        free(ConfigData->TrustStore);
+        ConfigData->TrustStore = NULL;
+    }
+    if (ConfigData->AgentCert) {
+        free(ConfigData->AgentCert);
+        ConfigData->AgentCert = NULL;
+    }
+    if (ConfigData->AgentKey) {
+        free(ConfigData->AgentKey);
+        ConfigData->AgentKey = NULL;
+    }
+    if (ConfigData->AgentKeyPassword) {
+        free(ConfigData->AgentKeyPassword);
+        ConfigData->AgentKeyPassword = NULL;
+    }
+    if (ConfigData->CSRKeyType) {
+        free(ConfigData->CSRKeyType);
+        ConfigData->CSRKeyType = NULL;
+    }
+    if (ConfigData->CSRSubject) {
+        free(ConfigData->CSRSubject);
+        ConfigData->CSRSubject = NULL;
+    }
+    if (ConfigData->LogFile) {
+        free(ConfigData->LogFile);
+        ConfigData->LogFile = NULL;
+    }
+    if (ConfigData->BootstrapCert) {
+        free(ConfigData->BootstrapCert);
+        ConfigData->BootstrapCert = NULL;
+    }
+    if (ConfigData->BootstrapKey) {
+        free(ConfigData->BootstrapKey);
+        ConfigData->BootstrapKey = NULL;
+    }
+    if (ConfigData->BootstrapKeyPassword) {
+        free(ConfigData->BootstrapKeyPassword);
+        ConfigData->BootstrapKeyPassword = NULL;
+    }
 
     free(ConfigData);
-    ConfigData    = NULL;
+    ConfigData = NULL;
     config_loaded = false;
 } /* ConfigData_free */
 

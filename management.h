@@ -12,12 +12,11 @@
 #ifndef __MANAGEMENT_H__
 #define __MANAGEMENT_H__
 
-#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
-#include "dto.h"
+#define _POSIX_C_SOURCE 200809L // POSIX.1-2008
 #include "config.h"
+#include "dto.h"
 
-int cms_job_manage(SessionJob_t* jobInfo, char* sessionToken, 
-	char** chainJob);
+int cms_job_manage(SessionJob_t *jobInfo, char *sessionToken, char **chainJob);
 
 #endif
 /******************************************************************************/

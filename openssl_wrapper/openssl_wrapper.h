@@ -12,9 +12,10 @@
 #ifndef __OPENSSL_WRAPPER_H__
 #define __OPENSSL_WRAPPER_H__
 
-#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
+#define _POSIX_C_SOURCE 200809L // POSIX.1-2008
 
 #include <stdbool.h>
+#include <stddef.h>
 
 /**************************************************************************/
 /****************** GLOBAL STRUCTURE PROTOTYPES ***************************/
@@ -33,11 +34,10 @@
 /*                                                                            */
 /* The thumbprint is an ASCII sha1 hash of the cert                           */
 /*                                                                            */
-struct PemInventoryItem
-{
-	char* cert;
-	char* thumbprint_string;
-	bool has_private_key;
+struct PemInventoryItem {
+    char *cert;
+    char *thumbprint_string;
+    bool has_private_key;
 };
 typedef struct PemInventoryItem PemInventoryItem;
 
@@ -45,53 +45,52 @@ typedef struct PemInventoryItem PemInventoryItem;
 /* Define a list of PEM certs held inside of a certificate store.             */
 /* This is for use by the platform's inventory function.                      */
 /*                                                                            */
-struct PemInventoryList
-{
-	int item_count;
-	PemInventoryItem** items;
+struct PemInventoryList {
+    int item_count;
+    PemInventoryItem **items;
 };
 typedef struct PemInventoryList PemInventoryList;
 
 /**************************************************************************/
 /******************* GLOBAL FUNCTION PROTOTYPES ***************************/
 /**************************************************************************/
-void PemInventoryItem_free(PemInventoryItem* pem);
+void PemInventoryItem_free(PemInventoryItem *pem);
 
-void PemInventoryList_free(PemInventoryList* list);
+void PemInventoryList_free(PemInventoryList *list);
 
-int ssl_seed_rng(const char* b64entropy);
+int ssl_seed_rng(const char *b64entropy);
 
 #if defined(__TPM__)
-	bool ssl_generate_rsa_keypair(int keySize, const char* file);
+bool ssl_generate_rsa_keypair(int keySize, const char *file);
 #else
-	bool ssl_generate_rsa_keypair(int keySize);
+bool ssl_generate_rsa_keypair(int keySize);
 #endif
 
 bool ssl_generate_ecc_keypair(int keySize);
 
-char* ssl_generate_csr(const char* asciiSubject, size_t* csrLen, 
-	char** pMessage);
+char *ssl_generate_csr(const char *asciiSubject, size_t *csrLen,
+                       char **pMessage);
 
-unsigned long ssl_save_cert_key(const char* storePath, const char* keyPath,	
-	const char* password, const char* cert, char** pMessage);
+unsigned long ssl_save_cert_key(const char *storePath, const char *keyPath,
+                                const char *password, const char *cert,
+                                char **pMessage);
 
-int ssl_read_store_inventory(const char* path, const char* password, 
-	PemInventoryList** pPemList);
+int ssl_read_store_inventory(const char *path, const char *password,
+                             PemInventoryList **pPemList);
 
-bool ssl_PemInventoryItem_create(struct PemInventoryItem** pem, 
-	const char* certASCII);
+bool ssl_PemInventoryItem_create(struct PemInventoryItem **pem,
+                                 const char *certASCII);
 
-bool ssl_Store_Cert_add(const char* storePath, const char* certASCII);
+bool ssl_Store_Cert_add(const char *storePath, const char *certASCII);
 
-bool ssl_remove_cert_from_store(const char* storePath, const char* searchThumb,\
-	const char* keyPath, const char* password);
+bool ssl_remove_cert_from_store(const char *storePath, const char *searchThumb,
+                                const char *keyPath, const char *password);
 
 void ssl_init(void);
 
 void ssl_cleanup(void);
 
-bool ssl_is_cert_active(char* certFile);
-
+bool ssl_is_cert_active(char *certFile);
 
 #endif /* OPENSSL_WRAPPER_H */
 

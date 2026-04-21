@@ -12,24 +12,24 @@
 #ifndef __CSR_H__
 #define __CSR_H__
 
-#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
+#define _POSIX_C_SOURCE 200809L // POSIX.1-2008
 
-#include "dto.h"
 #include "config.h"
+#include "dto.h"
 
 #if defined(__TPM__)
-	bool generate_keypair(const char* keyType, int keySize, const char* path);
+bool generate_keypair(const char *keyType, int keySize, const char *path);
 #else
-	bool generate_keypair(const char* keyType, int keySize);
+bool generate_keypair(const char *keyType, int keySize);
 #endif
 
-char* generate_csr(const char* asciiSubject, size_t* csrLen, 
-	char** pMessage, enum AgentApiResultStatus* pStatus); 
+char *generate_csr(const char *asciiSubject, size_t *csrLen, char **pMessage,
+                   enum AgentApiResultStatus *pStatus);
 
-
-unsigned long save_cert_key(const char* storePath, const char* keyPath, 
-	const char* password, const char* cert, char** pMessage, 
-	enum AgentApiResultStatus* pStatus);
+unsigned long save_cert_key(const char *storePath, const char *keyPath,
+                            const char *password, const char *cert,
+                            char **pMessage,
+                            enum AgentApiResultStatus *pStatus);
 
 #endif /* __CSR_H__ */
 

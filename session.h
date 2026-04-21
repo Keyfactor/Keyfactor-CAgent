@@ -12,27 +12,27 @@
 #ifndef CSS_SESSION_H
 #define CSS_SESSION_H
 
-#define _POSIX_C_SOURCE 200809L   // POSIX.1-2008
+#define _POSIX_C_SOURCE 200809L // POSIX.1-2008
 
-#include <time.h>
-#include "constants.h"
 #include "config.h"
+#include "constants.h"
 #include "schedule.h"
+#include <time.h>
 
-#define CERT_SIZE  (1024 * 8)
+#define CERT_SIZE (1024 * 8)
 
 typedef struct {
-	char Token[GUID_SIZE];
-	char AgentId[GUID_SIZE];
-	char ClientMachine[GUID_SIZE];
-	char Certificate[CERT_SIZE];
-	int Interval;
-	int UnreachableCount;
-	time_t NextExecution;
+    char Token[GUID_SIZE];
+    char AgentId[GUID_SIZE];
+    char ClientMachine[GUID_SIZE];
+    char Certificate[CERT_SIZE];
+    int Interval;
+    int UnreachableCount;
+    time_t NextExecution;
 } SessionInfo_t;
 
-int register_session(SessionInfo_t* session, 
-	ScheduledJob_t** pJobList, uint64_t agentVersion);
+int register_session(SessionInfo_t *session, ScheduledJob_t **pJobList,
+                     uint64_t agentVersion);
 
 #endif /* CSS_SESSION_H */
 /******************************************************************************/
