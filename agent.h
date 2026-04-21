@@ -44,7 +44,7 @@ extern ENGINE *e;
 #endif
 
 /* Versioning Information                                                     */
-/* 3.0.0.3 = Release candidate for agent v3                                   */
+/* 3.0.0.0 = Version 3.0.0 of the agent designed for easier implementation    */
 #define AGENT_MAJOR 3ULL
 #define AGENT_MINOR 0ULL
 #define AGENT_MICRO 0ULL
@@ -52,7 +52,7 @@ extern ENGINE *e;
 #ifdef __QATESTING__
 #define AGENT_BUILD 999ULL // Special build number for QA testing
 #else
-#define AGENT_BUILD 3ULL
+#define AGENT_BUILD 0ULL
 #endif
 
 #define AGENT_VERSION                                                          \

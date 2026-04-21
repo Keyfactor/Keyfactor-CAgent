@@ -5,8 +5,7 @@ on the agent.
 
 ## Code style
 
-The repository ships a [`.clang-format`](../.clang-format) (generated
-by CLion) that codifies the house style:
+The house style for this repository is:
 
 - K&R / LLVM base style.
 - Opening brace on the same line as the control statement.
@@ -14,11 +13,7 @@ by CLion) that codifies the house style:
 - Braces after functions, classes, enums, unions, and namespaces stay
   on the same line as their declarator.
 
-Run `clang-format` against any file you touch, or let CLion pick up
-the config automatically.
-
-A few conventions that are not captured by `clang-format` but are
-followed consistently in-tree:
+Additional conventions followed consistently in-tree:
 
 - Every `.c` and `.h` file begins with the Apache-2.0 header block.
 - Every `.h` file ends with an `END OF FILE` banner comment.
@@ -28,20 +23,6 @@ followed consistently in-tree:
   non-`static` functions for its public header surface.
 - `#define _POSIX_C_SOURCE 200809L` appears near the top of every
   header.
-
-## IDE
-
-The `.idea/` directory suggests the project is primarily developed in
-CLion. The files are committed (except for `.clang-format` per
-`.gitignore`) and can be opened directly:
-
-```
-File → Open → /path/to/Keyfactor-CAgent
-```
-
-The `makefile` is wired into a CLion custom build target
-(`customTargets.xml`). Other editors (VS Code, Vim, Emacs) work fine —
-there are no tooling lock-ins, and the project is plain C + GNU make.
 
 ## Building locally
 
@@ -87,7 +68,7 @@ The four-part version number is compiled in via
 #define AGENT_MAJOR 3ULL
 #define AGENT_MINOR 0ULL
 #define AGENT_MICRO 0ULL
-#define AGENT_BUILD 3ULL
+#define AGENT_BUILD 0ULL
 ```
 
 These are packed into a single `uint64_t` `AGENT_VERSION` that is sent
@@ -136,7 +117,7 @@ Before opening a PR:
   makefile treats warnings as errors — a warning will block the build
   and thus block review.
 - Keep changes focused. Unrelated refactors should be separate PRs.
-- Match the existing style; `clang-format` the touched files.
+- Match the existing style in files you touch.
 - If you touch the public config surface, update
   [`configuration.md`](configuration.md) and the validation logic in
   `config.c` in the same PR.

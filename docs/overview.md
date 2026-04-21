@@ -20,10 +20,10 @@ The agent version is encoded as four 16-bit fields in
 #define AGENT_MAJOR 3ULL
 #define AGENT_MINOR 0ULL
 #define AGENT_MICRO 0ULL
-#define AGENT_BUILD 3ULL
+#define AGENT_BUILD 0ULL
 ```
 
-At the time this document was written that yields **3.0.0.3**. The version
+At the time this document was written that yields **3.0.0.0**. The version
 is reported to the platform as part of `/Session/Register` (see
 `register_session` in [`session.c`](../session.c)) and is printed in the
 `--help` banner.
@@ -95,8 +95,7 @@ covered in [`logging.md`](logging.md).
   exits. Scheduling recurring runs (cron, systemd timer, etc.) is the
   responsibility of the host.
 - **No encryption of secrets at rest.** `config.json` stores credentials
-  in plain text. The in-code comment in [`README.md`](../README.md) notes
-  that a full deployment is expected to encrypt these or store them in a
-  trusted element — the reference implementation does not.
+  in plain text. A full deployment is expected to encrypt these or store
+  them in a trusted element — the reference implementation does not.
 - **Reference scope only.** Non-PEM capabilities and non-Linux hosts are
   out of scope.

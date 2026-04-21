@@ -7,7 +7,7 @@ in C, aimed at IoT and embedded Linux deployments. The agent registers
 a session with the Keyfactor Command platform, runs any PEM inventory,
 management, or reenrollment jobs the platform assigns, and exits.
 
-Current version: **3.0.0.3** (see
+Current version: **3.0.0.0** (see
 [`agent.h`](agent.h)). Supported crypto backends:
 
 - OpenSSL
@@ -55,10 +55,7 @@ The `docs/` directory contains the full, code-derived documentation:
 | [`docs/architecture.md`](docs/architecture.md)                       | Module-by-module map, session lifecycle, job dispatch, chained jobs, crypto abstraction, DTO layer. |
 | [`docs/logging.md`](docs/logging.md)                                 | Log levels, the 5 MB rolling log file, and the self-healing `.index` sidecar. |
 | [`docs/enrollment-and-certificates.md`](docs/enrollment-and-certificates.md) | Managed vs bootstrap cert flows, CSR generation, two-step first registration, cert renewal. |
-| [`docs/development.md`](docs/development.md)                         | Code style, IDE notes, compiler flags, versioning, memory hygiene, contributing. |
-
-The legacy [`README.md`](README.md) at the repo root is retained for
-history but is partially out of date — prefer the `docs/` tree above.
+| [`docs/development.md`](docs/development.md)                         | Code style, compiler flags, versioning, memory hygiene, contributing. |
 
 ## License
 

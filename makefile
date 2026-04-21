@@ -58,12 +58,12 @@ OSRC := $(wildcard *.c) \
 OOBJ = $(OSRC:%.c=%.o)
 
 # The base wolf build for a 64-bit os
-wolftest: DEFINES += -D__WOLF_SSL__
+wolftest: DEFINES += -D__WOLF_SSL__ -D_XOPEN_SOURCE=600
 wolftest: ${OBJS}
 	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${WOLFLIBS}
 
 # The base wolfSSL build to create a shared library
-wolflib: DEFINES += -D__WOLF_SSL__ -D__MAKE_LIBRARY__
+wolflib: DEFINES += -D__WOLF_SSL__ -D__MAKE_LIBRARY__  -D_XOPEN_SOURCE=600
 wolflib: ${OBJS}
 	${CC} -shared ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o libagent.so $^ ${WOLFLIBS}
 
@@ -73,7 +73,7 @@ wolfinstall: libagent.so
 	sudo chmod 755 /usr/lib/libagent.so
 
 # The wolfSSL build for any 32-bit OS like RaspOS
-wolfpi: DEFINES += -D__WOLF_SSL__ -Wno-format
+wolfpi: DEFINES += -D__WOLF_SSL__ -Wno-format  -D_XOPEN_SOURCE=600
 wolfpi: ${OBJS}
 	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${WOLFLIBS}
 
@@ -100,6 +100,10 @@ openinstall: libagent.so
 qatesting: DEFINES += -D__OPEN_SSL__ -D__QATESTING__
 qatesting: ${OOBJ}
 	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${OPENLIBS}
+
+qawolftesting: DEFINES += -D__WOLF_SSL__ -D_XOPEN_SOURCE=600 -D__QATESTING__
+qawolftesting: ${OBJS}
+	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${WOLFLIBS}
 
 # The base build for a Raspberry Pi with a TPM installed
 rpi9670test: DEFINES += -D__OPEN_SSL__ -D__TPM__ -Wno-format

@@ -32,6 +32,7 @@
 #include <wolfssl/wolfcrypt/ecc.h>
 #include <wolfssl/wolfcrypt/rsa.h>
 /* Included in header file =  <wolfssl/wolfcrypt/types.h>                     */
+#include <strings.h>
 #include <wolfssl/error-ssl.h>
 #include <wolfssl/ssl.h>
 #include <wolfssl/wolfcrypt/aes.h>
@@ -356,10 +357,10 @@ static void PrivKeyList_free(PrivKeyList *pList) {
 /* @return - success : true                                                   */
 /*         - failure : false                                                  */
 /*                                                                            */
-static bool PrivKeyList_add(PrivKeyList *pList, WOLFSSL_EVP_PKEY *pPrivateKey) {
+static bool PrivKeyList_add(PrivKeyList *pList, WOLFSSL_EVP_PKEY *p_private_key) {
     bool bResult = false;
 
-    if (pList && pPrivateKey) {
+    if (pList && p_private_key) {
         WOLFSSL_EVP_PKEY **temp =
             realloc(pList->priv_keys,
                     (1 + pList->key_count) * sizeof(WOLFSSL_EVP_PKEY *));
@@ -368,7 +369,7 @@ static bool PrivKeyList_add(PrivKeyList *pList, WOLFSSL_EVP_PKEY *pPrivateKey) {
             pList->priv_keys = temp;
             log_trace("%s::%s(%d) : Added EVP_PKEY #%d to PrivKeyList", LOG_INF,
                       pList->key_count);
-            pList->priv_keys[pList->key_count] = pPrivateKey;
+            pList->priv_keys[pList->key_count] = p_private_key;
             pList->key_count++;
             bResult = true;
         } else {
@@ -1944,7 +1945,7 @@ unsigned long ssl_save_cert_key(const char *storePath, const char *keyPath,
     unsigned long err = 0;
     char errBuf[120];
 
-    log_verbose("%s::%s(%d) : Entering function %s", LOG_INF, __FUNCTION__);
+    log_verbose("%s::%s(%d) : Entering function", LOG_INF);
     err = backup_file(storePath);
     if (err != 0 && err != ENOENT) {
         char *errStr = strerror(err);
