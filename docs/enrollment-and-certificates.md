@@ -285,8 +285,8 @@ header name itself is `CLIENT_CERT_HEADER` in
 
 ## TPM-backed keys
 
-On TPM builds (`rpi9670test`), `ssl_generate_rsa_keypair()` takes an
-extra `path` argument identifying the TPM key file:
+On TPM builds (`CRYPTO=openssl tpm=1`), `ssl_generate_rsa_keypair()`
+takes an extra `path` argument identifying the TPM key file:
 
 ```c
 bool generate_keypair(const char* keyType, int keySize, const char* path);

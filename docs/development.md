@@ -26,12 +26,13 @@ Additional conventions followed consistently in-tree:
 
 ## Building locally
 
-See [`build.md`](build.md) for the full target matrix. For day-to-day
-work on an x86_64 Linux host, the OpenSSL build is the fastest path:
+See [`build.md`](build.md) for the full variable reference. For
+day-to-day work on an x86_64 Linux host, the OpenSSL build is the
+fastest path:
 
 ```bash
 make clean
-make opentest -j$(nproc)
+make CRYPTO=openssl OUT=exec -j$(nproc)
 ./agent -l t   # trace-level, reads ./config.json
 ```
 

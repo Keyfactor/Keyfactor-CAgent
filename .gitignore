@@ -76,8 +76,10 @@ signature/
 .clang-format
 
 # Claude Code
-# Claude Code
 .claude/
 .claude/settings.local.json
 CLAUDE.md
 .mcp.json
+
+# Build artifiacts and structure
+build/

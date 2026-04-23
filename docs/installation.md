@@ -14,18 +14,19 @@ The agent always needs:
 - `git`
 - `libcurl` development headers
 
-One of the following SSL stacks is required, matching the build target
-you intend to use:
+One of the following SSL stacks is required, matching the build
+configuration you intend to use (see [`build.md`](build.md) for the
+full variable reference):
 
-- **OpenSSL build** (`opentest`, `openpi`, shared-library `openlib`) —
+- **OpenSSL build** (`CRYPTO=openssl`, any `OUT`, optionally `pi=1`) —
   distro `libssl` / `openssl-devel` headers.
-- **wolfSSL build** (`wolftest`, `wolfpi`, shared-library `wolflib`) —
+- **wolfSSL build** (`CRYPTO=wolfssl`, any `OUT`, optionally `pi=1`) —
   wolfSSL built from source **and** `libcurl` rebuilt against it (stock
   distro `libcurl` is linked against OpenSSL and will not work).
-- **TPM build** (`rpi9670test`) — OpenSSL plus `tpm2-tss` and the
-  `tpm2-tss-engine` OpenSSL engine, installed at an engines path the
-  linker can find (see the `TSSLIBS` / `RPI_TSSLIBS` variables in the
-  [`makefile`](../makefile)).
+- **TPM build** (`CRYPTO=openssl tpm=1`, typically also `pi=1`) —
+  OpenSSL plus `tpm2-tss` and the `tpm2-tss-engine` OpenSSL engine,
+  installed at an engines path the linker can find (see the TPM section
+  of [`build.md`](build.md) for the searched paths).
 
 ## Debian / Ubuntu / Raspberry Pi OS
 
@@ -38,9 +39,9 @@ sudo apt install -y libcurl4-gnutls-dev libssl-dev
 sudo apt install -y automake autoconf libtool pkg-config wget
 ```
 
-On 32-bit Raspberry Pi OS use the `openpi` / `wolfpi` make targets —
-they add `-Wno-format` to suppress spurious warnings from printing
-64-bit values with `%lu`.
+On 32-bit Raspberry Pi OS add `pi=1` to the `make` invocation — it adds
+`-Wno-format` to suppress spurious warnings from printing 64-bit values
+with `%lu`.
 
 ## RHEL / CentOS / Rocky
 

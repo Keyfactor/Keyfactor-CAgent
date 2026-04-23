@@ -1,127 +1,138 @@
-CC = gcc -std=gnu99
-#WARN_FLAGS = -Wall -Wextra -Werror
+# ---------------------------------------------------------------------------
+# Build configuration
+#
+# Variant is selected via two variables; callers usually go through the
+# legacy target aliases at the bottom of this file.
+#
+#   CRYPTO = wolfssl | openssl          (default: wolfssl)
+#   OUT    = exec    | lib              (default: exec)
+#
+# Optional flavors (set to any non-empty value, e.g. pi=1):
+#   qa   -> defines __QATESTING__
+#   pi   -> adds -Wno-format and selects Pi engine paths when tpm is on
+#   tpm  -> defines __TPM__ and links -ltpm2tss
+# ---------------------------------------------------------------------------
 
-CFLAGS += -fPIC
-# WARNING OPTIONS
-# turn on typical warnings
-CFLAGS += -Wall
-CFLAGS += -Wextra
-CFLAGS += -Wvla
-CFLAGS += -Wshadow
-# turn warnings into errors
-CFLAGS += -Werror
+CC          ?= gcc
+CSTD        ?= -std=gnu99
+CRYPTO      ?= wolfssl
+OUT         ?= exec
+DEBUG_FLAGS ?= -g0 -O0
 
-# suppress warnings for some things
-CFLAGS += -Wno-unused-parameter
-CFLAGS += -Wno-missing-field-initializers
-CFLAGS += -Wno-missing-braces
-CFLAGS += -Wno-unused-variable
-CFLAGS += -Wno-unused-but-set-variable
-CFLAGS += -Wno-unused-label
-CFLAGS += -Wno-unused-function
-CFLAGS += -Wno-pointer-sign
-CFLAGS += -Wno-deprecated-declarations
+BUILD_DIR := build/$(CRYPTO)-$(OUT)
 
-CFLAGS += -fno-strict-aliasing
-CFLAGS += -Wno-ignored-qualifiers
-CFLAGS += -pedantic
-          
-DEBUG_FLAGS = -g0 -O0
-DEFINES = 
-DEFINES += -D__RUN_CHAIN_JOBS__
-DEFINES += -D_POSIX_C_SOURCE=200809L
+# ---- Global flags (standard make variables) ----
+CPPFLAGS += -I. -D_POSIX_C_SOURCE=200809L -D__RUN_CHAIN_JOBS__
 
-WOLFLIBS = -I ./ -I/usr/local/include/wolfssl -I/usr/local/include/curl \
-           -L/usr/local/lib -L/usr/local/include/wolfssl/wolfcrypt \
-           -L/usr/local/include/wolfssl 
-WOLFLIBS += -lcurl -lwolfssl
-WOLFLIBS += -no-pie 
+CFLAGS += $(CSTD) -fPIC \
+          -Wall -Wextra -Wvla -Wshadow -Werror -pedantic \
+          -fno-strict-aliasing \
+          -Wno-unused-parameter -Wno-missing-field-initializers \
+          -Wno-missing-braces -Wno-unused-variable \
+          -Wno-unused-but-set-variable -Wno-unused-label \
+          -Wno-unused-function -Wno-pointer-sign \
+          -Wno-deprecated-declarations -Wno-ignored-qualifiers \
+          -MMD -MP \
+          $(DEBUG_FLAGS)
 
-OPENLIBS = -I ./ -I/usr/local/include/curl -L/usr/local/lib 
-OPENLIBS = -lcrypto -lcurl
+LDFLAGS +=
+LDLIBS  +=
 
-# TPM specific variables for the tpm2tss stack
-# The following TSSLIBS definition is for the Raspberry Pi
-RPI_TSSLIBS = -L/usr/lib/arm-linux-gnueabihf/engines-1.1/ -L/usr/lib/arm-linux-gnueabihf/engines-3/ -ltpm2tss
-# The following TSSLIBS definition is for a linux machine
-TSSLIBS = -ltpm2tss -L/usr/lib/x86_64-linux-gnu/engines-1.1/ -L/usr/lib/arm-linux-gnueabihf/engines-3/
+# ---- Per-crypto configuration ----
+ifeq ($(CRYPTO),wolfssl)
+  CPPFLAGS    += -D__WOLF_SSL__ -D_XOPEN_SOURCE=600 \
+                 -I/usr/local/include/wolfssl -I/usr/local/include/curl
+  LDFLAGS     += -L/usr/local/lib -no-pie
+  LDLIBS      += -lcurl -lwolfssl
+  WRAPPER_SRC := $(wildcard wolfssl_wrapper/*.c)
+else ifeq ($(CRYPTO),openssl)
+  CPPFLAGS    += -D__OPEN_SSL__ -I/usr/local/include/curl
+  LDFLAGS     += -L/usr/local/lib
+  LDLIBS      += -lcrypto -lcurl
+  WRAPPER_SRC := $(wildcard openssl_wrapper/*.c)
+else
+  $(error CRYPTO must be 'wolfssl' or 'openssl', got '$(CRYPTO)')
+endif
 
-vpath %.c ./ ./lib ./wolfssl_wrapper
-SRC := $(wildcard *.c) \
-       $(wildcard lib/*.c) \
-       $(wildcard wolfssl_wrapper/*.c) 
-OBJS = $(SRC:%.c=%.o)
+# ---- Output type ----
+ifeq ($(OUT),lib)
+  CPPFLAGS += -D__MAKE_LIBRARY__
+  LDFLAGS  += -shared
+  ARTIFACT := libagent.so
+else ifeq ($(OUT),exec)
+  ARTIFACT := agent
+else
+  $(error OUT must be 'exec' or 'lib', got '$(OUT)')
+endif
 
-OSRC := $(wildcard *.c) \
-        $(wildcard lib/*.c) \
-        $(wildcard openssl_wrapper/*.c)
-OOBJ = $(OSRC:%.c=%.o)
+# ---- Optional flavors ----
+ifdef qa
+  CPPFLAGS += -D__QATESTING__
+endif
 
-# The base wolf build for a 64-bit os
-wolftest: DEFINES += -D__WOLF_SSL__ -D_XOPEN_SOURCE=600
-wolftest: ${OBJS}
-	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${WOLFLIBS}
+ifdef pi
+  CFLAGS += -Wno-format
+endif
 
-# The base wolfSSL build to create a shared library
-wolflib: DEFINES += -D__WOLF_SSL__ -D__MAKE_LIBRARY__  -D_XOPEN_SOURCE=600
-wolflib: ${OBJS}
-	${CC} -shared ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o libagent.so $^ ${WOLFLIBS}
+ifdef tpm
+  CPPFLAGS += -D__TPM__
+  LDLIBS   += -ltpm2tss
+  ifdef pi
+    LDFLAGS += -L/usr/lib/arm-linux-gnueabihf/engines-1.1/ \
+               -L/usr/lib/arm-linux-gnueabihf/engines-3/
+  else
+    LDFLAGS += -L/usr/lib/x86_64-linux-gnu/engines-1.1/
+  endif
+endif
 
-# How to install the shared library
-wolfinstall: libagent.so
-	sudo cp libagent.so /usr/lib
-	sudo chmod 755 /usr/lib/libagent.so
+# ---- Sources / objects / deps ----
+SRC  := $(wildcard *.c) $(wildcard lib/*.c) $(WRAPPER_SRC)
+OBJS := $(SRC:%.c=$(BUILD_DIR)/%.o)
+DEPS := $(OBJS:.o=.d)
 
-# The wolfSSL build for any 32-bit OS like RaspOS
-wolfpi: DEFINES += -D__WOLF_SSL__ -Wno-format  -D_XOPEN_SOURCE=600
-wolfpi: ${OBJS}
-	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${WOLFLIBS}
+# ---- Rules ----
+.PHONY: all clean install
+all: $(ARTIFACT)
 
-# The base openSSL build for a 64-bit OS
-opentest: DEFINES += -D__OPEN_SSL__
-opentest: ${OOBJ}
-	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${OPENLIBS}
+$(ARTIFACT): $(OBJS)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-# The base openSSL build to create a shared library
-openlib: DEFINES += -D__OPEN_SSL__ -D__MAKE_LIBRARY__
-openlib: ${OOBJ}
-	${CC} -shared ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o libagent.so $^ ${OPENLIBS}
-
-# The openSSL build for any 32-bit OS like RaspOS
-openpi: DEFINES += -D__OPEN_SSL__ -Wno-format
-openpi: ${OOBJ}
-	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${OPENLIBS}
-
-# How to install the shared library
-openinstall: libagent.so
-	sudo cp libagent.so /usr/lib
-	sudo chmod 755 /usr/lib/libagent.so
-
-qatesting: DEFINES += -D__OPEN_SSL__ -D__QATESTING__
-qatesting: ${OOBJ}
-	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${OPENLIBS}
-
-qawolftesting: DEFINES += -D__WOLF_SSL__ -D_XOPEN_SOURCE=600 -D__QATESTING__
-qawolftesting: ${OBJS}
-	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${WOLFLIBS}
-
-# The base build for a Raspberry Pi with a TPM installed
-rpi9670test: DEFINES += -D__OPEN_SSL__ -D__TPM__ -Wno-format
-rpi9670test: ${OOBJ}
-	${CC} ${CFLAGS} ${DEBUG_FLAGS} ${DEFINES} -o agent $^ ${OPENLIBS} ${RPI_TSSLIBS}
-
-# define the builds
-%.o: %.c
+$(BUILD_DIR)/%.o: %.c
+	@mkdir -p $(dir $@)
 	$(info building $@ from $<)
-	- @${CC} ${CFLAGS} ${DEFINES} ${WARN_FLAGS} ${DEBUG_FLAGS} ${C_STD} -c -o $@ $<
+	@$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
-# define the clean or delete commands
-.PHONY: deleteallobs
-deleteallobs:
-	rm -rf ${OBJS} ${OOBJ} agent
+-include $(DEPS)
 
-.PHONY: cleanall
-cleanall: deleteallobs
+clean:
+	rm -rf build agent libagent.so
 
-.PHONY: clean
-clean: deleteallobs
+install: $(ARTIFACT)
+ifneq ($(OUT),lib)
+	$(error 'install' requires OUT=lib; try 'make wolfinstall' or 'make openinstall')
+endif
+	sudo install -m 0755 libagent.so /usr/lib/libagent.so
+
+# ---------------------------------------------------------------------------
+# Legacy target aliases — preserve existing muscle memory and CI contracts.
+# ---------------------------------------------------------------------------
+.PHONY: wolftest wolflib wolfpi wolfinstall \
+        opentest openlib openpi openinstall \
+        qatesting qawolftesting rpi9670test \
+        cleanall deleteallobs
+
+wolftest:      ; $(MAKE) CRYPTO=wolfssl OUT=exec
+wolflib:       ; $(MAKE) CRYPTO=wolfssl OUT=lib
+wolfpi:        ; $(MAKE) CRYPTO=wolfssl OUT=exec pi=1
+wolfinstall:   ; $(MAKE) CRYPTO=wolfssl OUT=lib install
+
+opentest:      ; $(MAKE) CRYPTO=openssl OUT=exec
+openlib:       ; $(MAKE) CRYPTO=openssl OUT=lib
+openpi:        ; $(MAKE) CRYPTO=openssl OUT=exec pi=1
+openinstall:   ; $(MAKE) CRYPTO=openssl OUT=lib install
+
+qatesting:     ; $(MAKE) CRYPTO=openssl OUT=exec qa=1
+qawolftesting: ; $(MAKE) CRYPTO=wolfssl OUT=exec qa=1
+rpi9670test:   ; $(MAKE) CRYPTO=openssl OUT=exec pi=1 tpm=1
+
+cleanall deleteallobs: clean

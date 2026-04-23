@@ -25,7 +25,7 @@ sudo apt install -y build-essential git curl libcurl4-gnutls-dev libssl-dev
 git clone https://github.com/Keyfactor/Keyfactor-CAgent ~/Keyfactor-CAgent
 cd ~/Keyfactor-CAgent
 make clean
-make opentest -j$(nproc)
+make CRYPTO=openssl OUT=exec -j$(nproc)
 
 # 3. Set up trust store and config.
 sudo mkdir -p /home/keyfactor/Keyfactor-CAgent/certs

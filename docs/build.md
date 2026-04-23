@@ -1,53 +1,70 @@
 # Build
 
-All build targets are defined in the repository-root [`makefile`](../makefile).
+All build configuration lives in the repository-root [`makefile`](../makefile).
 The makefile compiles with `gcc -std=gnu99`, treats warnings as errors
 (`-Werror`), and emits a binary named `agent` (or a shared library
-`libagent.so` for the library targets).
+`libagent.so` when building a library).
 
-The selection of crypto backend and target-specific behavior is done
-entirely through compile-time `-D` flags set by the makefile target:
+Builds are configured by setting variables on the `make` command line
+rather than by picking from a long list of target names. The makefile
+composes the right compile/link flags from a small number of axes:
 
-| Flag                | Effect                                          |
-|---------------------|-------------------------------------------------|
-| `__OPEN_SSL__`      | Build against OpenSSL (`openssl_wrapper/`).     |
-| `__WOLF_SSL__`      | Build against wolfSSL (`wolfssl_wrapper/`).     |
-| `__TPM__`           | Load a `tpm2tss` OpenSSL engine for key ops.    |
-| `__MAKE_LIBRARY__`  | Build shared library, renames `main` → `KF_main`. |
-| `__RUN_CHAIN_JOBS__`| Run chained follow-on jobs (set by default).    |
-| `_POSIX_C_SOURCE=200809L` | POSIX.1-2008 (set by default).             |
+## Build variables
 
-## Build matrix
+| Variable | Values               | Default   | Effect                                              |
+|----------|----------------------|-----------|-----------------------------------------------------|
+| `CRYPTO` | `openssl`, `wolfssl` | `wolfssl` | Selects the crypto backend and its wrapper.         |
+| `OUT`    | `exec`, `lib`        | `exec`    | Build the `agent` executable or `libagent.so`.      |
+| `qa`     | any non-empty value  | *(unset)* | Adds `-D__QATESTING__` (enables QA hooks).          |
+| `pi`     | any non-empty value  | *(unset)* | Adds `-Wno-format` (32-bit Pi targets).             |
+| `tpm`    | any non-empty value  | *(unset)* | Adds `-D__TPM__` and links `-ltpm2tss`.             |
 
-| Target         | Flags                             | Output        | When to use                               |
-|----------------|-----------------------------------|---------------|-------------------------------------------|
-| `opentest`     | `__OPEN_SSL__`                    | `agent`       | 64-bit Linux host, OpenSSL.               |
-| `openpi`       | `__OPEN_SSL__`, `-Wno-format`     | `agent`       | 32-bit Linux host (e.g. Raspberry Pi OS). |
-| `wolftest`     | `__WOLF_SSL__`                    | `agent`       | 64-bit Linux host, wolfSSL.               |
-| `wolfpi`       | `__WOLF_SSL__`, `-Wno-format`     | `agent`       | 32-bit Linux host, wolfSSL.               |
-| `openlib`      | `__OPEN_SSL__`, `__MAKE_LIBRARY__`| `libagent.so` | Shared library, OpenSSL backend.          |
-| `wolflib`      | `__WOLF_SSL__`, `__MAKE_LIBRARY__`| `libagent.so` | Shared library, wolfSSL backend.          |
-| `openinstall`  | *(consumes `libagent.so`)*        | —             | `sudo cp libagent.so /usr/lib` + chmod.   |
-| `wolfinstall`  | *(consumes `libagent.so`)*        | —             | Same as above.                            |
-| `rpi9670test`  | `__OPEN_SSL__`, `__TPM__`         | `agent`       | Raspberry Pi with a TPM via tpm2tss.      |
+Derived `-D` defines set by the makefile:
 
-Always run `make clean` before switching targets — the targets share
-object-file paths and stale objects from a different backend will cause
-link errors.
+| Flag                      | Set by                  |
+|---------------------------|-------------------------|
+| `__OPEN_SSL__`            | `CRYPTO=openssl`        |
+| `__WOLF_SSL__`            | `CRYPTO=wolfssl`        |
+| `__MAKE_LIBRARY__`        | `OUT=lib`               |
+| `__QATESTING__`           | `qa=1`                  |
+| `__TPM__`                 | `tpm=1`                 |
+| `__RUN_CHAIN_JOBS__`      | always (default on)     |
+| `_POSIX_C_SOURCE=200809L` | always (default on)     |
+| `_XOPEN_SOURCE=600`       | `CRYPTO=wolfssl` only   |
+
+Object files land in per-configuration directories under
+`build/$(CRYPTO)-$(OUT)/`, so switching between backends no longer
+requires a `make clean` in between.
+
+## Common combinations
+
+| Goal                                  | Command                                         |
+|---------------------------------------|-------------------------------------------------|
+| 64-bit Linux, OpenSSL                 | `make CRYPTO=openssl OUT=exec`                  |
+| 32-bit Linux / Raspberry Pi, OpenSSL  | `make CRYPTO=openssl OUT=exec pi=1`             |
+| 64-bit Linux, wolfSSL                 | `make CRYPTO=wolfssl OUT=exec`                  |
+| 32-bit Linux / Raspberry Pi, wolfSSL  | `make CRYPTO=wolfssl OUT=exec pi=1`             |
+| Shared library, OpenSSL               | `make CRYPTO=openssl OUT=lib`                   |
+| Shared library, wolfSSL               | `make CRYPTO=wolfssl OUT=lib`                   |
+| QA build, OpenSSL                     | `make CRYPTO=openssl OUT=exec qa=1`             |
+| QA build, wolfSSL                     | `make CRYPTO=wolfssl OUT=exec qa=1`             |
+| Raspberry Pi + TPM (tpm2tss, OpenSSL) | `make CRYPTO=openssl OUT=exec pi=1 tpm=1`       |
+| Install shared library (OpenSSL)      | `make CRYPTO=openssl OUT=lib install`           |
+| Install shared library (wolfSSL)      | `make CRYPTO=wolfssl OUT=lib install`           |
 
 ## OpenSSL builds
 
 Install dependencies (see [`installation.md`](installation.md)), then:
 
 ```bash
-# 64-bit host
 cd ~/Keyfactor-CAgent
 make clean
-make opentest -j$(nproc)
+
+# 64-bit host
+make CRYPTO=openssl OUT=exec -j$(nproc)
 
 # 32-bit host (Raspberry Pi OS, etc.)
-make clean
-make openpi -j$(nproc)
+make CRYPTO=openssl OUT=exec pi=1 -j$(nproc)
 ```
 
 The resulting `./agent` expects a `config.json` next to it unless `-c`
@@ -91,19 +108,21 @@ sudo make install
 sudo ldconfig
 ```
 
-The `makefile`'s `WOLFLIBS` variable expects wolfSSL headers under
-`/usr/local/include/wolfssl` and cURL headers under
-`/usr/local/include/curl`, with libraries under `/usr/local/lib` — the
-commands above are wired to land there.
+The makefile expects wolfSSL headers under `/usr/local/include/wolfssl`
+and cURL headers under `/usr/local/include/curl`, with libraries under
+`/usr/local/lib` — the commands above are wired to land there.
 
 ### Build the agent
 
 ```bash
 cd ~/Keyfactor-CAgent
 make clean
-make wolftest -j$(nproc)   # 64-bit
-# or
-make wolfpi   -j$(nproc)   # 32-bit
+
+# 64-bit
+make CRYPTO=wolfssl OUT=exec -j$(nproc)
+
+# 32-bit
+make CRYPTO=wolfssl OUT=exec pi=1 -j$(nproc)
 ```
 
 The list of wolfSSL symbols the agent relies on is tracked in
@@ -112,9 +131,8 @@ The list of wolfSSL symbols the agent relies on is tracked in
 
 ## Shared-library builds
 
-The `openlib` and `wolflib` targets build `libagent.so` and rename
-`main()` to `KF_main()` via the `__MAKE_LIBRARY__` guard in
-[`agent.c`](../agent.c):
+`OUT=lib` builds `libagent.so` and renames `main()` to `KF_main()` via
+the `__MAKE_LIBRARY__` guard in [`agent.c`](../agent.c):
 
 ```c
 #ifdef __MAKE_LIBRARY__
@@ -132,12 +150,17 @@ Build and install:
 
 ```bash
 make clean
-make openlib -j$(nproc)   # or wolflib
-sudo make openinstall     # or wolfinstall
+
+# Build the .so
+make CRYPTO=openssl OUT=lib -j$(nproc)   # or CRYPTO=wolfssl
+
+# Install to /usr/lib (requires sudo)
+make CRYPTO=openssl OUT=lib install      # or CRYPTO=wolfssl
 ```
 
-The install targets copy `libagent.so` to `/usr/lib` and set `755`
-permissions.
+The `install` target copies `libagent.so` to `/usr/lib` with mode
+`0755`. Invoking `install` when `OUT=exec` is an error — the target
+only makes sense for library builds.
 
 > **Note.** There is no in-tree example program that links against
 > `libagent.so` and invokes `KF_main`. Treat this target as a packaging
@@ -145,25 +168,25 @@ permissions.
 
 ## TPM build (Raspberry Pi, tpm2tss)
 
-The `rpi9670test` target builds an OpenSSL-backed agent that loads a
-`tpm2tss` OpenSSL engine to use a TPM-resident private key. The engine
-name is passed with `-e` at runtime — see [`cli.md`](cli.md).
+Setting `tpm=1` produces an agent that loads a `tpm2tss` OpenSSL
+engine to use a TPM-resident private key. The engine name is passed
+with `-e` at runtime — see [`cli.md`](cli.md).
 
 Prerequisites beyond the OpenSSL ones:
 
 - `tpm2-tss` (TPM Software Stack)
 - `tpm2-tss-engine` — the OpenSSL engine that exposes TPM keys
 - The engine `.so` must live under a path the linker can find. The
-  makefile currently searches:
-  - `/usr/lib/arm-linux-gnueabihf/engines-1.1/`
-  - `/usr/lib/arm-linux-gnueabihf/engines-3/` (for Raspberry Pi)
-  - `/usr/lib/x86_64-linux-gnu/engines-1.1/` (for x86_64 Linux)
+  makefile searches, depending on `pi`:
+  - `pi=1`: `/usr/lib/arm-linux-gnueabihf/engines-1.1/` and
+    `/usr/lib/arm-linux-gnueabihf/engines-3/`
+  - otherwise: `/usr/lib/x86_64-linux-gnu/engines-1.1/`
 
 Build:
 
 ```bash
 make clean
-make rpi9670test -j$(nproc)
+make CRYPTO=openssl OUT=exec pi=1 tpm=1 -j$(nproc)
 ```
 
 Runtime:
@@ -178,9 +201,30 @@ back to `"dynamic"` (set in `parse_parameters()` in `agent.c`).
 ## Cleaning
 
 ```bash
-make clean        # removes all .o files under the repo and the agent binary
-make cleanall     # alias for clean
+make clean
 ```
 
-Both targets delete every `*.o` matching the OpenSSL or wolfSSL object
-lists plus the `agent` executable.
+Removes the `build/` directory (all per-configuration object trees)
+along with the `agent` binary and any `libagent.so` at the repo root.
+`cleanall` and `deleteallobs` are aliases for `clean`.
+
+## Legacy target names
+
+The following single-word targets are retained as thin aliases that
+forward to the variable-driven form — they exist for muscle memory and
+CI scripts that predate the current makefile. New work should prefer
+the explicit `CRYPTO=… OUT=…` form above.
+
+| Legacy target   | Equivalent to                                    |
+|-----------------|--------------------------------------------------|
+| `wolftest`      | `make CRYPTO=wolfssl OUT=exec`                   |
+| `wolflib`       | `make CRYPTO=wolfssl OUT=lib`                    |
+| `wolfpi`        | `make CRYPTO=wolfssl OUT=exec pi=1`              |
+| `wolfinstall`   | `make CRYPTO=wolfssl OUT=lib install`            |
+| `opentest`      | `make CRYPTO=openssl OUT=exec`                   |
+| `openlib`       | `make CRYPTO=openssl OUT=lib`                    |
+| `openpi`        | `make CRYPTO=openssl OUT=exec pi=1`              |
+| `openinstall`   | `make CRYPTO=openssl OUT=lib install`            |
+| `qatesting`     | `make CRYPTO=openssl OUT=exec qa=1`              |
+| `qawolftesting` | `make CRYPTO=wolfssl OUT=exec qa=1`              |
+| `rpi9670test`   | `make CRYPTO=openssl OUT=exec pi=1 tpm=1`        |
