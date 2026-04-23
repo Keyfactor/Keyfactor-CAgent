@@ -22,7 +22,7 @@ sudo apt update
 sudo apt install -y build-essential git curl libcurl4-gnutls-dev libssl-dev
 
 # 2. Clone and build against OpenSSL (64-bit host).
-git clone https://github.com/Keyfactor/Keyfactor-CAgent ~/Keyfactor-CAgent
+git clone https://github.com/keyfactor-iot/Keyfactor-CAgent ~/Keyfactor-CAgent
 cd ~/Keyfactor-CAgent
 make clean
 make CRYPTO=openssl OUT=exec -j$(nproc)
@@ -64,5 +64,5 @@ Apache-2.0. Full license text in
 
 ## Contributing
 
-Issues and pull requests: <https://github.com/Keyfactor/Keyfactor-CAgent>.
+Issues and pull requests: <https://github.com/keyfactor-iot/Keyfactor-CAgent>.
 See [`docs/development.md`](docs/development.md) before opening a PR.

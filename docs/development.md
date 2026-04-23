@@ -110,7 +110,7 @@ excludes `valgrind.log` and `valgrind_output/`, so it is expected.
 ## Contributing
 
 Issues and pull requests are welcome at
-<https://github.com/Keyfactor/Keyfactor-CAgent>.
+<https://github.com/keyfactor-iot/Keyfactor-CAgent>.
 
 Before opening a PR:
 

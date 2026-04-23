@@ -59,7 +59,7 @@ sudo dnf install -y automake autoconf libtool pkg-config wget
 
 ```bash
 cd ~
-git clone https://github.com/Keyfactor/Keyfactor-CAgent
+git clone https://github.com/keyfactor-iot/Keyfactor-CAgent
 cd Keyfactor-CAgent
 ```
 
